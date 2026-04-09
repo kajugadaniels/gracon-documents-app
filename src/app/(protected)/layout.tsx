@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { fetchCurrentUser, redirectToLogin } from '@/lib/session';
 import { DocsHeader } from '@/components/layout/DocsHeader';
 
@@ -102,6 +103,7 @@ function normalizeSessionUser(value: unknown): SessionUser | null {
 }
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname();
     const [user, setUser] = useState<SessionUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [sessionError, setSessionError] = useState<string | null>(null);
@@ -252,10 +254,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     if (!user) return null;
 
+    const showHeader = pathname !== '/documents';
+
     return (
         <UserContext.Provider value={user}>
             <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
-                <DocsHeader user={user} />
+                {showHeader && <DocsHeader user={user} />}
                 <main style={{ flex: 1, padding: '20px clamp(18px, 3.4vw, 38px) 42px' }}>
                     {children}
                 </main>
