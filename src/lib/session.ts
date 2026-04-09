@@ -12,7 +12,7 @@
  * to keep cookie management in one place.
  */
 
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:4000';
+export const APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL ?? 'http://localhost:4000';
 export const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:4002';
 
 /**
