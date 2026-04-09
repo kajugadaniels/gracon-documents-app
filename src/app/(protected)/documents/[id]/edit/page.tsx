@@ -13,16 +13,25 @@ import {
 
 const AUTOSAVE_INTERVAL_MS = 30_000; // 30 seconds
 
+function getErrorMessage(error: unknown, fallback: string) {
+    const message = (error as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message;
+
+    return typeof message === 'string' && message.trim() ? message : fallback;
+}
+
 export default function EditDocumentPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
 
     const [doc, setDoc] = useState<DocumentDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [editingTitle, setEditingTitle] = useState(false);
     const [title, setTitle] = useState('');
     const [showSigning, setShowSigning] = useState(false);
+    const [retryKey, setRetryKey] = useState(0);
 
     const contentRef = useRef<Record<string, unknown> | null>(null);
     const wordCntRef = useRef(0);
@@ -31,15 +40,36 @@ export default function EditDocumentPage() {
 
     // Load document
     useEffect(() => {
+        let ignore = false;
+
+        setLoading(true);
+        setLoadError(null);
+
         getDocument(id, true)
             .then(d => {
+                if (ignore) return;
                 setDoc(d);
                 setTitle(d.title);
                 contentRef.current = d.content;
             })
-            .catch(() => { toast.error('Failed to load document.'); router.replace('/documents'); })
-            .finally(() => setLoading(false));
-    }, [id, router]);
+            .catch((error: unknown) => {
+                if (ignore) return;
+
+                const message = getErrorMessage(
+                    error,
+                    'Failed to load document.',
+                );
+                setLoadError(message);
+                toast.error(message);
+            })
+            .finally(() => {
+                if (!ignore) setLoading(false);
+            });
+
+        return () => {
+            ignore = true;
+        };
+    }, [id, retryKey]);
 
     // Autosave logic
     const save = useCallback(async (force = false) => {
@@ -110,10 +140,33 @@ export default function EditDocumentPage() {
         }
     }
 
-    if (loading || !doc) {
+    if (loading) {
         return (
             <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid rgba(91,35,255,0.2)', borderTopColor: 'var(--color-primary)', animation: 'btn-spin 0.7s linear infinite' }} />
+            </div>
+        );
+    }
+
+    if (!doc) {
+        return (
+            <div className="glass" style={{ maxWidth: 720, margin: '60px auto 0', borderRadius: 'var(--radius-xl)', padding: '28px 24px', display: 'grid', gap: 14, textAlign: 'center' }}>
+                <div>
+                    <p style={{ margin: '0 0 6px', fontSize: 19, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                        Unable to open this document
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                        {loadError ?? 'The editor could not load the requested document.'}
+                    </p>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <button onClick={() => setRetryKey((value) => value + 1)} className="btn-primary" style={{ fontSize: 12 }}>
+                        Retry
+                    </button>
+                    <button onClick={() => router.push('/documents')} className="btn-ghost" style={{ fontSize: 12 }}>
+                        Back to documents
+                    </button>
+                </div>
             </div>
         );
     }
