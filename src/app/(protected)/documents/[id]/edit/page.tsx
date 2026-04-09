@@ -4,10 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from '@/components/ui';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
-import { SpreadsheetEditor } from '@/components/editor/SpreadsheetEditor';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
-import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
     exportDocumentAsPdf,
@@ -175,10 +173,32 @@ export default function EditDocumentPage() {
         );
     }
 
+    if (doc.type !== 'RICH_TEXT') {
+        return (
+            <div className="glass" style={{ maxWidth: 760, margin: '60px auto 0', borderRadius: 'var(--radius-xl)', padding: '30px 26px', display: 'grid', gap: 16, textAlign: 'center' }}>
+                <div>
+                    <p style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                        Spreadsheet documents are no longer supported here
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                        The documents workspace is now dedicated to rich text documents only. Spreadsheet support will move to its own service and frontend later.
+                    </p>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <button onClick={() => router.push('/documents')} className="btn-primary" style={{ fontSize: 12 }}>
+                        Back to documents
+                    </button>
+                    <button onClick={() => router.push('/documents/new')} className="btn-ghost" style={{ fontSize: 12 }}>
+                        Create rich text document
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const isReadOnly = doc.status !== 'DRAFT';
     const isLocked = doc.status === 'LOCKED';
     const isFinalised = doc.status === 'FINALISED';
-    const isPaperDocument = doc.type === 'RICH_TEXT';
 
     async function handleExportPdf() {
         if (!doc) return;
@@ -205,7 +225,7 @@ export default function EditDocumentPage() {
     ) : null;
 
     return (
-        <div style={{ maxWidth: isPaperDocument ? 1060 : 1180, margin: '0 auto' }}>
+        <div style={{ maxWidth: 1060, margin: '0 auto' }}>
             {/* Editor header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
                 {/* Back */}
@@ -277,46 +297,18 @@ export default function EditDocumentPage() {
                 </div>
             )}
 
-            <div className={isPaperDocument ? 'document-workspace-stage' : undefined}>
-                {/* Editor */}
-                {doc.type === 'RICH_TEXT' ? (
-                    <RichTextEditor
-                        key={doc.id}
-                        initialContent={doc.content}
-                        onContentChange={isReadOnly ? undefined : handleContentChange}
-                        readOnly={isReadOnly}
-                        paperMode
-                        paperTitle={doc.title}
-                        paperStatus={doc.status}
-                        pageNumber={1}
-                        overlayContent={signatureStrip}
-                    />
-                ) : (
-                    <SpreadsheetEditor
-                        key={doc.id}
-                        initialContent={doc.content}
-                        onContentChange={isReadOnly ? undefined : handleContentChange}
-                        readOnly={isReadOnly}
-                    />
-                )}
-
-                {isLocked && !isPaperDocument && (
-                    <DocumentPaperSheet
-                        eyebrow="Digital signature"
-                        title="Signed verification strip"
-                        meta={<span className="document-paper-sheet__page-tag">Page 2</span>}
-                        footer={(
-                            <div className="document-paper-sheet__footer-bar">
-                                <span>{doc.title}</span>
-                                <span>Signature appendix</span>
-                            </div>
-                        )}
-                        overlay={signatureStrip}
-                    >
-                        {/* Empty body — signature strip is positioned in the overlay */}
-                        <div style={{ minHeight: 240 }} />
-                    </DocumentPaperSheet>
-                )}
+            <div className="document-workspace-stage">
+                <RichTextEditor
+                    key={doc.id}
+                    initialContent={doc.content}
+                    onContentChange={isReadOnly ? undefined : handleContentChange}
+                    readOnly={isReadOnly}
+                    paperMode
+                    paperTitle={doc.title}
+                    paperStatus={doc.status}
+                    pageNumber={1}
+                    overlayContent={signatureStrip}
+                />
             </div>
 
             {/* Signing modal */}
