@@ -17,18 +17,82 @@ export function DocumentSignatureBlock({
     contentHash,
 }: DocumentSignatureBlockProps) {
     if (!snapshot) {
-        return null;
+        return (
+            <div
+                style={{
+                    display: 'grid',
+                    gap: 16,
+                }}
+            >
+                <div>
+                    <p
+                        style={{
+                            margin: '0 0 4px',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            color: 'var(--color-text-muted)',
+                        }}
+                    >
+                        Signed Document Evidence
+                    </p>
+                    <p
+                        style={{
+                            margin: 0,
+                            fontSize: 14,
+                            color: 'var(--color-text-secondary)',
+                            lineHeight: 1.6,
+                        }}
+                    >
+                        This document was locked before visual signature snapshots were introduced.
+                        Its cryptographic lock is still valid, but no embedded signature image was preserved.
+                    </p>
+                </div>
+
+                {contentHash && (
+                    <div
+                        style={{
+                            padding: '14px 16px',
+                            borderRadius: 18,
+                            background: 'rgba(5,150,105,0.05)',
+                            border: '1px solid rgba(5,150,105,0.14)',
+                            display: 'grid',
+                            gap: 6,
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                                color: 'var(--color-text-muted)',
+                            }}
+                        >
+                            Document Hash
+                        </span>
+                        <span
+                            style={{
+                                fontSize: 11,
+                                fontFamily: 'monospace',
+                                color: 'var(--color-text-secondary)',
+                                wordBreak: 'break-all',
+                            }}
+                        >
+                            {contentHash}
+                        </span>
+                    </div>
+                )}
+            </div>
+        );
     }
 
     return (
         <div
-            className="glass"
             style={{
-                marginTop: 18,
-                borderRadius: 'var(--radius-xl)',
-                padding: 22,
                 display: 'grid',
-                gap: 18,
+                gap: 24,
             }}
         >
             <div>
@@ -59,22 +123,33 @@ export function DocumentSignatureBlock({
             <div
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(220px, 300px) minmax(0, 1fr)',
-                    gap: 18,
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                    gap: 22,
+                    alignItems: 'start',
                 }}
             >
                 <div
                     style={{
-                        borderRadius: 'var(--radius-lg)',
-                        border: '1px solid var(--color-border)',
-                        background: 'rgba(255,255,255,0.8)',
-                        minHeight: 164,
-                        padding: 18,
+                        borderRadius: 24,
+                        border: '1px solid rgba(91,35,255,0.12)',
+                        background: 'linear-gradient(180deg, rgba(248,246,255,0.98) 0%, rgba(241,237,255,0.94) 100%)',
+                        minHeight: 208,
+                        padding: 22,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        position: 'relative',
+                        overflow: 'hidden',
                     }}
                 >
+                    <div
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundImage: 'linear-gradient(to bottom, transparent 0, transparent calc(100% - 40px), rgba(91,35,255,0.1) calc(100% - 40px), rgba(91,35,255,0.1) calc(100% - 39px), transparent calc(100% - 39px))',
+                            pointerEvents: 'none',
+                        }}
+                    />
                     {snapshot.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -82,8 +157,10 @@ export function DocumentSignatureBlock({
                             alt={snapshot.signerName ?? 'Signature image'}
                             style={{
                                 maxWidth: '100%',
-                                maxHeight: 110,
+                                maxHeight: 126,
                                 objectFit: 'contain',
+                                position: 'relative',
+                                zIndex: 1,
                             }}
                         />
                     ) : (
@@ -91,8 +168,10 @@ export function DocumentSignatureBlock({
                             style={{
                                 textAlign: 'center',
                                 display: 'grid',
-                                gap: 6,
+                                gap: 8,
                                 color: 'var(--color-text-muted)',
+                                position: 'relative',
+                                zIndex: 1,
                             }}
                         >
                             <span style={{ fontSize: 28 }}>✍️</span>
@@ -103,7 +182,7 @@ export function DocumentSignatureBlock({
                     )}
                 </div>
 
-                <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'grid', gap: 12 }}>
                     {[
                         { label: 'Signed by', value: snapshot.signerName ?? '—' },
                         { label: 'Signed at', value: formatDateTime(snapshot.signedAt) },
@@ -116,7 +195,7 @@ export function DocumentSignatureBlock({
                             style={{
                                 display: 'grid',
                                 gap: 4,
-                                paddingBottom: 10,
+                                padding: '0 0 12px',
                                 borderBottom: '1px solid rgba(22,16,58,0.08)',
                             }}
                         >
@@ -148,10 +227,10 @@ export function DocumentSignatureBlock({
                     {contentHash && (
                         <div
                             style={{
-                                padding: '10px 12px',
-                                borderRadius: 'var(--radius-md)',
-                                background: 'rgba(5,150,105,0.06)',
-                                border: '1px solid rgba(5,150,105,0.16)',
+                                padding: '14px 16px',
+                                borderRadius: 18,
+                                background: 'rgba(5,150,105,0.05)',
+                                border: '1px solid rgba(5,150,105,0.14)',
                                 display: 'grid',
                                 gap: 6,
                             }}
