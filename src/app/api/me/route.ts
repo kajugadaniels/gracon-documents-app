@@ -1,131 +1,124 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-const MAIN_APP_URL =
-    process.env.NEXT_PUBLIC_MAIN_APP_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    'http://localhost:4000';
+const AUTH_BASE =
+    process.env.NEXT_PUBLIC_AUTH_API_URL ??
+    process.env.NEXT_PUBLIC_API_URL ??
+    'http://localhost:3000/api/v1';
 
-function getSetCookies(response: Response) {
-    const responseHeaders = response.headers as Headers & {
-        getSetCookie?: () => string[];
+async function fetchProfile(accessToken: string) {
+    return fetch(`${AUTH_BASE}/users/profile`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: 'no-store',
+    });
+}
+
+async function refreshSession(refreshToken: string) {
+    const response = await fetch(`${AUTH_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+        cache: 'no-store',
+    });
+
+    if (!response.ok) {
+        return null;
+    }
+
+    const data = await response.json();
+    const payload = data?.data ?? data;
+
+    if (!payload?.accessToken || !payload?.refreshToken) {
+        return null;
+    }
+
+    return {
+        accessToken: payload.accessToken as string,
+        refreshToken: payload.refreshToken as string,
     };
-
-    const setCookies = responseHeaders.getSetCookie?.();
-    if (setCookies?.length) return setCookies;
-
-    const setCookie = response.headers.get('set-cookie');
-    return setCookie ? [setCookie] : [];
 }
 
-function buildResponseHeaders(response: Response, forwardedCookies: string[] = []) {
-    const headers = new Headers();
-    const contentType = response.headers.get('content-type');
-
-    if (contentType) {
-        headers.set('content-type', contentType);
-    }
-
-    const seen = new Set<string>();
-
-    for (const cookie of [...forwardedCookies, ...getSetCookies(response)]) {
-        if (!seen.has(cookie)) {
-            headers.append('set-cookie', cookie);
-            seen.add(cookie);
-        }
-    }
-
-    return headers;
+function clearSessionCookies(response: NextResponse) {
+    response.cookies.set('g360_at', '', { maxAge: 0, path: '/', sameSite: 'lax' });
+    response.cookies.set('g360_rt', '', { maxAge: 0, path: '/', sameSite: 'lax' });
+    return response;
 }
 
-function mergeCookieHeader(baseCookieHeader: string, setCookies: string[]) {
-    const cookieMap = new Map<string, string>();
+function applySessionCookies(
+    response: NextResponse,
+    accessToken: string,
+    refreshToken: string,
+) {
+    const maxAge = 60 * 60 * 24 * 30;
 
-    for (const cookiePart of baseCookieHeader.split(/;\s*/)) {
-        if (!cookiePart) continue;
-        const separatorIndex = cookiePart.indexOf('=');
-        if (separatorIndex === -1) continue;
+    response.cookies.set('g360_at', accessToken, {
+        maxAge,
+        path: '/',
+        sameSite: 'lax',
+    });
+    response.cookies.set('g360_rt', refreshToken, {
+        maxAge,
+        path: '/',
+        sameSite: 'lax',
+    });
 
-        const name = cookiePart.slice(0, separatorIndex).trim();
-        const value = cookiePart.slice(separatorIndex + 1);
-
-        if (name) cookieMap.set(name, value);
-    }
-
-    for (const setCookie of setCookies) {
-        const [cookiePair, ...attributes] = setCookie.split(';');
-        const separatorIndex = cookiePair.indexOf('=');
-        if (separatorIndex === -1) continue;
-
-        const name = cookiePair.slice(0, separatorIndex).trim();
-        const value = cookiePair.slice(separatorIndex + 1);
-        const isExpired = attributes.some((attribute) => {
-            const [rawKey, rawValue = ''] = attribute.split('=');
-            return rawKey.trim().toLowerCase() === 'max-age' && rawValue.trim() === '0';
-        });
-
-        if (!name) continue;
-
-        if (isExpired || value === '') cookieMap.delete(name);
-        else cookieMap.set(name, value);
-    }
-
-    return Array.from(cookieMap.entries())
-        .map(([name, value]) => `${name}=${value}`)
-        .join('; ');
+    return response;
 }
 
 export async function GET(request: NextRequest) {
-    const cookieHeader = request.headers.get('cookie') ?? '';
+    let accessToken = request.cookies.get('g360_at')?.value ?? null;
+    const refreshToken = request.cookies.get('g360_rt')?.value ?? null;
+    let refreshedTokens:
+        | {
+              accessToken: string;
+              refreshToken: string;
+          }
+        | null = null;
 
     try {
-        let profileResponse = await fetch(`${MAIN_APP_URL}/api/me`, {
-            headers: {
-                cookie: cookieHeader,
-            },
-            cache: 'no-store',
-        });
-
-        if (profileResponse.status !== 401) {
-            return new Response(await profileResponse.text(), {
-                status: profileResponse.status,
-                headers: buildResponseHeaders(profileResponse),
-            });
+        if (!accessToken && refreshToken) {
+            const refreshed = await refreshSession(refreshToken);
+            if (refreshed) {
+                accessToken = refreshed.accessToken;
+                refreshedTokens = refreshed;
+            }
         }
 
-        const refreshResponse = await fetch(`${MAIN_APP_URL}/api/refresh`, {
-            method: 'POST',
-            headers: {
-                cookie: cookieHeader,
-            },
-            cache: 'no-store',
-        });
-
-        const refreshCookies = getSetCookies(refreshResponse);
-
-        if (!refreshResponse.ok) {
-            return new Response(await refreshResponse.text(), {
-                status: refreshResponse.status,
-                headers: buildResponseHeaders(refreshResponse),
-            });
+        if (!accessToken) {
+            return clearSessionCookies(
+                NextResponse.json({ error: 'Not authenticated' }, { status: 401 }),
+            );
         }
 
-        const refreshedCookieHeader = mergeCookieHeader(cookieHeader, refreshCookies);
+        let profileResponse = await fetchProfile(accessToken);
 
-        profileResponse = await fetch(`${MAIN_APP_URL}/api/me`, {
-            headers: {
-                cookie: refreshedCookieHeader,
-            },
-            cache: 'no-store',
-        });
+        if (!profileResponse.ok && refreshToken) {
+            const refreshed = await refreshSession(refreshToken);
+            if (refreshed) {
+                accessToken = refreshed.accessToken;
+                refreshedTokens = refreshed;
+                profileResponse = await fetchProfile(accessToken);
+            }
+        }
 
-        return new Response(await profileResponse.text(), {
-            status: profileResponse.status,
-            headers: buildResponseHeaders(profileResponse, refreshCookies),
-        });
+        if (!profileResponse.ok) {
+            return clearSessionCookies(
+                NextResponse.json({ error: 'Session expired' }, { status: 401 }),
+            );
+        }
+
+        const data = await profileResponse.json();
+        const response = NextResponse.json(data);
+
+        if (refreshedTokens) {
+            applySessionCookies(
+                response,
+                refreshedTokens.accessToken,
+                refreshedTokens.refreshToken,
+            );
+        }
+
+        return response;
     } catch {
-        return Response.json(
-            { error: 'Main app unavailable' },
-            { status: 502 },
-        );
+        return NextResponse.json({ error: 'Auth service unavailable' }, { status: 503 });
     }
 }
