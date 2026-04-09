@@ -1,8 +1,8 @@
 'use client';
 
 import { useEditor, EditorContent } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
@@ -11,13 +11,18 @@ import TableHeader from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import Highlight from '@tiptap/extension-highlight';
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
 
 interface RichTextEditorProps {
     initialContent?: Record<string, unknown> | null;
     onContentChange?: (content: Record<string, unknown>, wordCount: number) => void;
     readOnly?: boolean;
     placeholder?: string;
+    paperMode?: boolean;
+    paperTitle?: string;
+    paperStatus?: string;
+    pageNumber?: number;
 }
 
 export function RichTextEditor({
@@ -25,17 +30,21 @@ export function RichTextEditor({
     onContentChange,
     readOnly = false,
     placeholder = 'Start writing your document…',
+    paperMode = false,
+    paperTitle = 'Document',
+    paperStatus,
+    pageNumber = 1,
 }: RichTextEditorProps) {
     const onChangeRef = useRef(onContentChange);
     onChangeRef.current = onContentChange;
 
     const editor = useEditor({
+        immediatelyRender: false,
         extensions: [
             StarterKit.configure({
                 heading: { levels: [1, 2, 3] },
                 codeBlock: { languageClassPrefix: 'language-' },
             }),
-            Underline,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Table.configure({ resizable: true }),
             TableRow,
@@ -65,6 +74,35 @@ export function RichTextEditor({
 
     if (!editor) return null;
 
+    if (paperMode) {
+        const footerLabel = paperStatus
+            ? `${paperStatus.toLowerCase()} document`
+            : readOnly
+                ? 'Read-only document'
+                : 'Editable draft';
+
+        return (
+            <div className="tiptap-editor tiptap-editor-paper">
+                {!readOnly && <EditorToolbar editor={editor} paperMode />}
+                <DocumentPaperSheet
+                    className="document-paper-sheet--editor"
+                    bodyClassName="document-paper-sheet__body--editor"
+                    eyebrow={readOnly ? 'Locked page' : ''}
+                    title={paperTitle}
+                    meta={<span className="document-paper-sheet__page-tag">Page {pageNumber}</span>}
+                    footer={(
+                        <div className="document-paper-sheet__footer-bar">
+                            <span>{footerLabel}</span>
+                            <span>Page {pageNumber}</span>
+                        </div>
+                    )}
+                >
+                    <EditorContent editor={editor} />
+                </DocumentPaperSheet>
+            </div>
+        );
+    }
+
     return (
         <div className="tiptap-editor">
             {!readOnly && <EditorToolbar editor={editor} />}
@@ -74,8 +112,6 @@ export function RichTextEditor({
 }
 
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
-
-import type { Editor } from '@tiptap/react';
 
 function ToolbarButton({
     onClick, active, disabled, title, children,
@@ -116,20 +152,30 @@ function Divider() {
     return <div style={{ width: 1, height: 20, background: 'var(--color-border)', margin: '0 4px', flexShrink: 0 }} />;
 }
 
-function EditorToolbar({ editor }: { editor: Editor }) {
+function EditorToolbar({
+    editor,
+    paperMode = false,
+}: {
+    editor: Editor;
+    paperMode?: boolean;
+}) {
     return (
         <div style={{
             display: 'flex',
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: 2,
-            padding: '8px 12px',
-            borderBottom: '1px solid var(--editor-toolbar-border)',
-            background: 'var(--editor-toolbar-bg)',
-            backdropFilter: 'blur(12px)',
-            borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+            width: paperMode ? 'fit-content' : 'auto',
+            margin: paperMode ? '0 auto 14px' : 0,
+            padding: paperMode ? '10px 14px' : '8px 12px',
+            border: paperMode ? '1px solid rgba(91,35,255,0.14)' : 'none',
+            borderBottom: paperMode ? '1px solid rgba(91,35,255,0.14)' : '1px solid var(--editor-toolbar-border)',
+            background: paperMode ? 'rgba(255,255,255,0.88)' : 'var(--editor-toolbar-bg)',
+            boxShadow: paperMode ? '0 16px 34px rgba(22,16,58,0.08)' : 'none',
+            backdropFilter: 'blur(18px)',
+            borderRadius: paperMode ? '999px' : 'var(--radius-lg) var(--radius-lg) 0 0',
             position: 'sticky',
-            top: 0,
+            top: paperMode ? 16 : 0,
             zIndex: 10,
         }}>
             {/* History */}
