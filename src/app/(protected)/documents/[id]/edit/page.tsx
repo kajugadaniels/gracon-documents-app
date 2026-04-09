@@ -7,6 +7,7 @@ import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { SpreadsheetEditor } from '@/components/editor/SpreadsheetEditor';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
+import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
     type DocumentDetail,
@@ -175,9 +176,10 @@ export default function EditDocumentPage() {
     const isReadOnly = doc.status !== 'DRAFT';
     const isLocked = doc.status === 'LOCKED';
     const isFinalised = doc.status === 'FINALISED';
+    const isPaperDocument = doc.type === 'RICH_TEXT';
 
     return (
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ maxWidth: isPaperDocument ? 1060 : 1180, margin: '0 auto' }}>
             {/* Editor header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
                 {/* Back */}
@@ -239,29 +241,47 @@ export default function EditDocumentPage() {
                 </div>
             )}
 
-            {/* Editor */}
-            {doc.type === 'RICH_TEXT' ? (
-                <RichTextEditor
-                    key={doc.id}
-                    initialContent={doc.content}
-                    onContentChange={isReadOnly ? undefined : handleContentChange}
-                    readOnly={isReadOnly}
-                />
-            ) : (
-                <SpreadsheetEditor
-                    key={doc.id}
-                    initialContent={doc.content}
-                    onContentChange={isReadOnly ? undefined : handleContentChange}
-                    readOnly={isReadOnly}
-                />
-            )}
+            <div className={isPaperDocument ? 'document-workspace-stage' : undefined}>
+                {/* Editor */}
+                {doc.type === 'RICH_TEXT' ? (
+                    <RichTextEditor
+                        key={doc.id}
+                        initialContent={doc.content}
+                        onContentChange={isReadOnly ? undefined : handleContentChange}
+                        readOnly={isReadOnly}
+                        paperMode
+                        paperTitle={doc.title}
+                        paperStatus={doc.status}
+                        pageNumber={1}
+                    />
+                ) : (
+                    <SpreadsheetEditor
+                        key={doc.id}
+                        initialContent={doc.content}
+                        onContentChange={isReadOnly ? undefined : handleContentChange}
+                        readOnly={isReadOnly}
+                    />
+                )}
 
-            {isLocked && (
-                <DocumentSignatureBlock
-                    snapshot={doc.signatureSnapshot}
-                    contentHash={doc.contentHash}
-                />
-            )}
+                {isLocked && (
+                    <DocumentPaperSheet
+                        eyebrow="Signature Evidence"
+                        title="Frozen signing snapshot"
+                        meta={<span className="document-paper-sheet__page-tag">Page 2</span>}
+                        footer={(
+                            <div className="document-paper-sheet__footer-bar">
+                                <span>{doc.title}</span>
+                                <span>Signature appendix</span>
+                            </div>
+                        )}
+                    >
+                        <DocumentSignatureBlock
+                            snapshot={doc.signatureSnapshot}
+                            contentHash={doc.contentHash}
+                        />
+                    </DocumentPaperSheet>
+                )}
+            </div>
 
             {/* Signing modal */}
             {showSigning && doc.contentHash && (
