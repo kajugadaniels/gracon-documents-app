@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { toast } from '@/components/ui';
 import { lockDocument, type DocumentDetail } from '@/api/documents.api';
 
-const SIG_API = process.env.NEXT_PUBLIC_SIGNATURE_API_URL ?? 'http://localhost:3002/api/v1';
-
 interface SigningModalProps {
     document: DocumentDetail;
     onClose: () => void;
@@ -26,13 +24,13 @@ export function SigningModal({ document: doc, onClose, onLocked }: SigningModalP
 
         setLoading(true);
         try {
-            // Call api/signature/ to sign the document hash
-            const res = await fetch(`${SIG_API}/signature/signing/sign`, {
+            // Sign via the local proxy so the browser never calls api/signature cross-origin.
+            const res = await fetch('/api/v1/signature/signing/sign', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('doc_at') ?? ''}`,
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     documentHash: doc.contentHash,
                     documentName: doc.title,
