@@ -177,6 +177,17 @@ export default function EditDocumentPage() {
     const isLocked = doc.status === 'LOCKED';
     const isFinalised = doc.status === 'FINALISED';
     const isPaperDocument = doc.type === 'RICH_TEXT';
+    const signatureStrip = isLocked ? (
+        <DocumentSignatureBlock
+            documentId={doc.id}
+            documentTitle={doc.title}
+            snapshot={doc.signatureSnapshot}
+            canAdjustPlacement={isLocked}
+            onSnapshotUpdated={(signatureSnapshot) => {
+                setDoc((prev) => (prev ? { ...prev, signatureSnapshot } : prev));
+            }}
+        />
+    ) : null;
 
     return (
         <div style={{ maxWidth: isPaperDocument ? 1060 : 1180, margin: '0 auto' }}>
@@ -253,6 +264,7 @@ export default function EditDocumentPage() {
                         paperTitle={doc.title}
                         paperStatus={doc.status}
                         pageNumber={1}
+                        afterContent={signatureStrip}
                     />
                 ) : (
                     <SpreadsheetEditor
@@ -263,10 +275,10 @@ export default function EditDocumentPage() {
                     />
                 )}
 
-                {isLocked && (
+                {isLocked && !isPaperDocument && (
                     <DocumentPaperSheet
-                        eyebrow="Signature Evidence"
-                        title="Frozen signing snapshot"
+                        eyebrow="Digital signature"
+                        title="Signed verification strip"
                         meta={<span className="document-paper-sheet__page-tag">Page 2</span>}
                         footer={(
                             <div className="document-paper-sheet__footer-bar">
@@ -275,10 +287,7 @@ export default function EditDocumentPage() {
                             </div>
                         )}
                     >
-                        <DocumentSignatureBlock
-                            snapshot={doc.signatureSnapshot}
-                            contentHash={doc.contentHash}
-                        />
+                        {signatureStrip}
                     </DocumentPaperSheet>
                 )}
             </div>
