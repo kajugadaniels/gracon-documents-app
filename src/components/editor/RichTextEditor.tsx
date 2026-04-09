@@ -24,7 +24,12 @@ interface RichTextEditorProps {
     paperTitle?: string;
     paperStatus?: string;
     pageNumber?: number;
-    afterContent?: ReactNode;
+    /**
+     * Rendered as an absolutely-positioned overlay that fills the paper sheet.
+     * Used for the draggable signature block so it can be placed anywhere on
+     * the page rather than being constrained to the document flow.
+     */
+    overlayContent?: ReactNode;
 }
 
 export function RichTextEditor({
@@ -36,7 +41,7 @@ export function RichTextEditor({
     paperTitle = 'Document',
     paperStatus,
     pageNumber = 1,
-    afterContent,
+    overlayContent,
 }: RichTextEditorProps) {
     const onChangeRef = useRef(onContentChange);
     onChangeRef.current = onContentChange;
@@ -83,7 +88,7 @@ export function RichTextEditor({
             : readOnly
                 ? 'Read-only document'
                 : 'Editable draft';
-        const paperEditorClassName = afterContent
+        const paperEditorClassName = overlayContent
             ? 'tiptap-editor tiptap-editor-paper tiptap-editor-paper-signed'
             : 'tiptap-editor tiptap-editor-paper';
 
@@ -102,13 +107,9 @@ export function RichTextEditor({
                             <span>Page {pageNumber}</span>
                         </div>
                     )}
+                    overlay={overlayContent}
                 >
                     <EditorContent editor={editor} />
-                    {afterContent && (
-                        <div className="document-paper-sheet__after-content">
-                            {afterContent}
-                        </div>
-                    )}
                 </DocumentPaperSheet>
             </div>
         );
