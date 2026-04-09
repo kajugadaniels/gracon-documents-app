@@ -22,13 +22,16 @@ export default function TemplatesPage() {
     const [category, setCategory] = useState<string | null>(null);
 
     useEffect(() => {
-        listTemplates().then(setTemplates).catch(() => toast.error('Failed to load templates.')).finally(() => setLoading(false));
+        listTemplates({ type: 'RICH_TEXT' })
+            .then(setTemplates)
+            .catch(() => toast.error('Failed to load templates.'))
+            .finally(() => setLoading(false));
     }, []);
 
-    async function handleUse(templateId: string, type: 'RICH_TEXT' | 'SPREADSHEET') {
+    async function handleUse(templateId: string) {
         setCreating(templateId);
         try {
-            const doc = await createDocument({ type, templateId });
+            const doc = await createDocument({ type: 'RICH_TEXT', templateId });
             router.push(`/documents/${doc.id}/edit`);
         } catch { toast.error('Failed to create from template.'); setCreating(null); }
     }
@@ -71,7 +74,7 @@ export default function TemplatesPage() {
                             onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.transform = 'none'}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                <span style={{ fontSize: 24 }}>{t.type === 'RICH_TEXT' ? '📄' : '📊'}</span>
+                                <span style={{ fontSize: 24 }}>📄</span>
                                 <span style={{ padding: '3px 10px', borderRadius: 9999, background: 'var(--color-primary-subtle)', color: 'var(--color-primary)', fontSize: 11, fontWeight: 600, border: '1px solid var(--color-border-primary)' }}>
                                     {CATEGORY_LABELS[t.category] ?? t.category}
                                 </span>
@@ -84,7 +87,7 @@ export default function TemplatesPage() {
 
                             <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Used {t.usageCount.toLocaleString()} times</span>
-                                <button onClick={() => handleUse(t.id, t.type)} disabled={creating === t.id} className="btn-primary" style={{ padding: '8px 18px', fontSize: 12 }}>
+                                <button onClick={() => handleUse(t.id)} disabled={creating === t.id} className="btn-primary" style={{ padding: '8px 18px', fontSize: 12 }}>
                                     {creating === t.id ? 'Creating…' : 'Use →'}
                                 </button>
                             </div>
