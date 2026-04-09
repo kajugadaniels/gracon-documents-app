@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { DM_Sans } from 'next/font/google';
-import { Toaster } from 'sonner';
+import { AppToaster } from '@/components/ui';
 import { AuthProvider } from '@/components/shared/AuthProvider';
 import './globals.css';
 
@@ -19,21 +19,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en" className={dmSans.variable}>
-            <body>
+            <body className="font-sans antialiased" suppressHydrationWarning>
                 <AuthProvider>
-                    <Toaster
-                        position="top-right"
-                        toastOptions={{
-                            style: {
-                                background: 'rgba(255,255,255,0.92)',
-                                border: '1px solid rgba(91,35,255,0.15)',
-                                color: 'var(--color-text-primary)',
-                                fontFamily: 'var(--font-sans)',
-                                fontSize: '13px',
-                                backdropFilter: 'blur(20px)',
-                            },
-                        }}
-                    />
+                    <AppToaster />
                     {children}
                 </AuthProvider>
             </body>
