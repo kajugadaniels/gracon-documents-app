@@ -1,0 +1,188 @@
+import { apiClient } from './client';
+
+export type DocumentType = 'RICH_TEXT' | 'SPREADSHEET';
+export type DocumentStatus = 'DRAFT' | 'FINALISED' | 'SIGNED' | 'LOCKED';
+
+export interface DocumentSummary {
+    id: string;
+    title: string;
+    type: DocumentType;
+    status: DocumentStatus;
+    tags: string[];
+    wordCount: number;
+    folderId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    signedAt: string | null;
+    lockedAt: string | null;
+}
+
+export interface DocumentDetail extends DocumentSummary {
+    content: Record<string, unknown> | null;
+    contentHash: string | null;
+    collaborators: { userId: string; role: string; acceptedAt: string | null }[];
+}
+
+export interface DocumentVersion {
+    id: string;
+    versionNumber: number;
+    wordCount: number;
+    createdAt: string;
+}
+
+export interface Template {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    type: DocumentType;
+    usageCount: number;
+    contentJson?: Record<string, unknown>;
+    previewUrl?: string;
+}
+
+export interface Folder {
+    id: string;
+    name: string;
+    parentFolderId: string | null;
+    subFolders: Folder[];
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+export async function createDocument(data: {
+    title?: string;
+    type: DocumentType;
+    folderId?: string;
+    templateId?: string;
+    tags?: string[];
+}): Promise<DocumentSummary> {
+    const res = await apiClient.post('/documents', data);
+    return res.data;
+}
+
+export async function listDocuments(params: {
+    status?: DocumentStatus;
+    type?: DocumentType;
+    folderId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+}): Promise<{ total: number; page: number; limit: number; items: DocumentSummary[] }> {
+    const res = await apiClient.get('/documents', { params });
+    return res.data;
+}
+
+export async function getDocument(
+    id: string,
+    includeContent = true,
+): Promise<DocumentDetail> {
+    const res = await apiClient.get(`/documents/${id}`, {
+        params: { includeContent },
+    });
+    return res.data;
+}
+
+export async function autosaveDocument(
+    id: string,
+    content: Record<string, unknown>,
+    wordCount?: number,
+): Promise<{ saved: boolean; versionNumber: number; savedAt: string }> {
+    const res = await apiClient.patch(`/documents/${id}/autosave`, { content, wordCount });
+    return res.data;
+}
+
+export async function updateDocumentMeta(
+    id: string,
+    data: { title?: string; tags?: string[] },
+): Promise<DocumentSummary> {
+    const res = await apiClient.patch(`/documents/${id}`, data);
+    return res.data;
+}
+
+export async function finaliseDocument(
+    id: string,
+    note?: string,
+): Promise<DocumentSummary & { contentHash: string; message: string }> {
+    const res = await apiClient.post(`/documents/${id}/finalise`, { note });
+    return res.data;
+}
+
+export async function lockDocument(
+    id: string,
+    signatureId: string,
+    documentHash: string,
+): Promise<DocumentSummary & { signatureId: string; message: string }> {
+    const res = await apiClient.post(`/documents/${id}/lock`, { signatureId, documentHash });
+    return res.data;
+}
+
+export async function deleteDocument(id: string): Promise<{ deleted: boolean }> {
+    const res = await apiClient.delete(`/documents/${id}`);
+    return res.data;
+}
+
+export async function getVersions(id: string): Promise<DocumentVersion[]> {
+    const res = await apiClient.get(`/documents/${id}/versions`);
+    return res.data;
+}
+
+export async function restoreVersion(
+    id: string,
+    versionNumber: number,
+): Promise<{ restored: boolean; versionNumber: number }> {
+    const res = await apiClient.post(`/documents/${id}/versions/${versionNumber}/restore`);
+    return res.data;
+}
+
+export async function verifyDocument(id: string): Promise<{
+    verified: boolean;
+    documentId?: string;
+    title?: string;
+    contentHash?: string;
+    signedBy?: { name: string };
+    signedAt?: string;
+    lockedAt?: string;
+}> {
+    const res = await apiClient.get(`/documents/${id}/verify`);
+    return res.data;
+}
+
+// ─── Templates ────────────────────────────────────────────────────────────────
+
+export async function listTemplates(params?: {
+    category?: string;
+    type?: DocumentType;
+}): Promise<Template[]> {
+    const res = await apiClient.get('/templates', { params });
+    return res.data;
+}
+
+export async function getTemplate(id: string): Promise<Template> {
+    const res = await apiClient.get(`/templates/${id}`);
+    return res.data;
+}
+
+// ─── Folders ──────────────────────────────────────────────────────────────────
+
+export async function listFolders(): Promise<Folder[]> {
+    const res = await apiClient.get('/folders');
+    return res.data;
+}
+
+export async function createFolder(data: {
+    name: string; parentFolderId?: string;
+}): Promise<Folder> {
+    const res = await apiClient.post('/folders', data);
+    return res.data;
+}
+
+export async function renameFolder(id: string, name: string): Promise<Folder> {
+    const res = await apiClient.patch(`/folders/${id}/rename`, { name });
+    return res.data;
+}
+
+export async function deleteFolder(id: string): Promise<{ deleted: boolean }> {
+    const res = await apiClient.delete(`/folders/${id}`);
+    return res.data;
+}
