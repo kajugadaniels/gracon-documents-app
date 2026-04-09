@@ -24,6 +24,7 @@ export interface DocumentSignatureSnapshot {
     imageUrl: string | null;
     mimeType: string | null;
     sizeBytes: number | null;
+    alignment: 'LEFT' | 'CENTER' | 'RIGHT' | null;
     signedAt: string | null;
     lockedAt: string | null;
 }
@@ -151,6 +152,16 @@ export async function lockDocument(
     signatureSnapshot: DocumentSignatureSnapshot | null;
 }> {
     const res = await apiClient.post(`/documents/${id}/lock`, { signatureId, documentHash });
+    return res.data;
+}
+
+export async function updateSignatureLayout(
+    id: string,
+    alignment: 'LEFT' | 'CENTER' | 'RIGHT',
+): Promise<DocumentSummary & { signatureSnapshot: DocumentSignatureSnapshot | null }> {
+    const res = await apiClient.patch(`/documents/${id}/signature-layout`, {
+        alignment,
+    });
     return res.data;
 }
 
