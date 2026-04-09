@@ -6,6 +6,7 @@ import { toast } from '@/components/ui';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { SpreadsheetEditor } from '@/components/editor/SpreadsheetEditor';
 import { SigningModal } from '@/components/documents/SigningModal';
+import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
     type DocumentDetail,
@@ -252,6 +253,13 @@ export default function EditDocumentPage() {
                     initialContent={doc.content}
                     onContentChange={isReadOnly ? undefined : handleContentChange}
                     readOnly={isReadOnly}
+                />
+            )}
+
+            {isLocked && (
+                <DocumentSignatureBlock
+                    snapshot={doc.signatureSnapshot}
+                    contentHash={doc.contentHash}
                 />
             )}
 
