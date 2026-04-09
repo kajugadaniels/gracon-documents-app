@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
     verifyDocument,
     type VerifyDocumentResponse,
@@ -11,17 +12,18 @@ const DOCUMENT_ID_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function VerifyForm() {
+    const searchParams = useSearchParams();
     const [documentId, setDocumentId] = useState('');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<VerifyDocumentResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const lastAutoVerifiedIdRef = useRef<string | null>(null);
 
-    async function handleVerify() {
+    async function runVerification(targetId: string) {
         setError(null);
         setResult(null);
 
-        const trimmedId = documentId.trim();
-        if (!DOCUMENT_ID_PATTERN.test(trimmedId)) {
+        if (!DOCUMENT_ID_PATTERN.test(targetId)) {
             setError('Document ID must be a valid UUID.');
             return;
         }
@@ -29,7 +31,7 @@ export function VerifyForm() {
         setLoading(true);
 
         try {
-            const response = await verifyDocument(trimmedId);
+            const response = await verifyDocument(targetId);
             setResult(response);
         } catch (issue: unknown) {
             const message =
@@ -44,10 +46,32 @@ export function VerifyForm() {
         }
     }
 
+    async function handleVerify() {
+        const trimmedId = documentId.trim();
+        await runVerification(trimmedId);
+    }
+
+    useEffect(() => {
+        const presetId = searchParams.get('documentId')?.trim() ?? '';
+
+        if (!presetId || !DOCUMENT_ID_PATTERN.test(presetId)) {
+            return;
+        }
+
+        if (lastAutoVerifiedIdRef.current === presetId) {
+            return;
+        }
+
+        lastAutoVerifiedIdRef.current = presetId;
+        setDocumentId(presetId);
+        void runVerification(presetId);
+    }, [searchParams]);
+
     function reset() {
         setDocumentId('');
         setResult(null);
         setError(null);
+        lastAutoVerifiedIdRef.current = null;
     }
 
     return (
@@ -190,7 +214,9 @@ export function VerifyForm() {
                                 }}
                             >
                                 {result.verified
-                                    ? 'Document is Authentic'
+                                    ? result.title
+                                        ? `Document "${result.title}" is authentic`
+                                        : 'Document is authentic'
                                     : 'Document could not be verified'}
                             </p>
                             {!result.verified && result.message && (
