@@ -32,17 +32,21 @@ apiClient.interceptors.response.use(
         if (error.response?.status === 401 && !original._retry) {
             original._retry = true;
 
-            const newToken = await refreshAccessToken();
-            if (newToken) {
+            const refresh = await refreshAccessToken();
+            if (refresh.status === 'refreshed') {
                 original.headers = {
                     ...original.headers,
-                    Authorization: `Bearer ${newToken}`,
+                    Authorization: `Bearer ${refresh.accessToken}`,
                 };
                 return apiClient(original);
             }
 
-            // Refresh failed — send user back to app/app login
-            redirectToLogin(window.location.pathname);
+            if (refresh.status === 'unauthenticated') {
+                const intendedPath =
+                    `${window.location.pathname}${window.location.search}${window.location.hash}`;
+                redirectToLogin(intendedPath);
+            }
+
             return Promise.reject(error);
         }
 
