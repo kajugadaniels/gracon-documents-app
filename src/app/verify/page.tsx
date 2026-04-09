@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { VerifyForm } from '@/components/pages/verify';
 
 export const metadata: Metadata = {
@@ -64,7 +65,9 @@ export default function VerifyPage() {
                 </p>
             </div>
 
-            <VerifyForm />
+            <Suspense fallback={null}>
+                <VerifyForm />
+            </Suspense>
 
             <p
                 style={{
