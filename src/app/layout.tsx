@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { DM_Sans } from 'next/font/google';
 import { AppToaster } from '@/components/ui';
-import { AuthProvider } from '@/components/shared/AuthProvider';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -20,10 +19,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
         <html lang="en" className={dmSans.variable}>
             <body className="font-sans antialiased" suppressHydrationWarning>
-                <AuthProvider>
-                    <AppToaster />
-                    {children}
-                </AuthProvider>
+                <AppToaster />
+                {children}
             </body>
         </html>
     );
