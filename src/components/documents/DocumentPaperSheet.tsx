@@ -1,0 +1,60 @@
+import type { ReactNode } from 'react';
+
+interface DocumentPaperSheetProps {
+    children: ReactNode;
+    eyebrow?: string;
+    title?: string;
+    meta?: ReactNode;
+    footer?: ReactNode;
+    className?: string;
+    bodyClassName?: string;
+}
+
+export function DocumentPaperSheet({
+    children,
+    eyebrow,
+    title,
+    meta,
+    footer,
+    className,
+    bodyClassName,
+}: DocumentPaperSheetProps) {
+    const sheetClassName = className
+        ? `document-paper-sheet ${className}`
+        : 'document-paper-sheet';
+
+    const contentClassName = bodyClassName
+        ? `document-paper-sheet__body ${bodyClassName}`
+        : 'document-paper-sheet__body';
+
+    return (
+        <section className={sheetClassName}>
+            {(eyebrow || title || meta) && (
+                <header className="document-paper-sheet__header">
+                    <div style={{ display: 'grid', gap: 4 }}>
+                        {eyebrow && (
+                            <span className="document-paper-sheet__eyebrow">{eyebrow}</span>
+                        )}
+                        {title && (
+                            <h3 className="document-paper-sheet__title">{title}</h3>
+                        )}
+                    </div>
+
+                    {meta && (
+                        <div className="document-paper-sheet__meta">
+                            {meta}
+                        </div>
+                    )}
+                </header>
+            )}
+
+            <div className={contentClassName}>{children}</div>
+
+            {footer && (
+                <footer className="document-paper-sheet__footer">
+                    {footer}
+                </footer>
+            )}
+        </section>
+    );
+}
