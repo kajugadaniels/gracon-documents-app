@@ -25,6 +25,15 @@ const HEADER_W = 48;
 function cellKey(row: number, col: number) { return `R${row}C${col}`; }
 function colLabel(col: number) { return COL_LETTERS[col] ?? `C${col}`; }
 
+function isSheetData(value: unknown): value is SheetData {
+    return !!value
+        && typeof value === 'object'
+        && 'type' in value
+        && 'sheets' in value
+        && (value as { type?: unknown }).type === 'spreadsheet'
+        && Array.isArray((value as { sheets?: unknown }).sheets);
+}
+
 // Very simple formula evaluation — SUM, AVERAGE, COUNT
 function evalFormula(formula: string, cells: Record<string, string>): string {
     try {
@@ -71,8 +80,8 @@ export function SpreadsheetEditor({
     readOnly = false,
 }: SpreadsheetEditorProps) {
     const parseContent = (c: Record<string, unknown> | null | undefined): SheetData => {
-        if (c?.type === 'spreadsheet' && Array.isArray((c as SheetData).sheets)) {
-            return c as SheetData;
+        if (isSheetData(c)) {
+            return c;
         }
         return {
             type: 'spreadsheet',
