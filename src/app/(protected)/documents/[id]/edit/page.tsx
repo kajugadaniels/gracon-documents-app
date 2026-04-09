@@ -10,6 +10,7 @@ import { DocumentSignatureBlock } from '@/components/documents/DocumentSignature
 import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
+    exportDocumentAsPdf,
     type DocumentDetail,
 } from '@/api/documents.api';
 
@@ -34,6 +35,7 @@ export default function EditDocumentPage() {
     const [title, setTitle] = useState('');
     const [showSigning, setShowSigning] = useState(false);
     const [retryKey, setRetryKey] = useState(0);
+    const [exportingPdf, setExportingPdf] = useState(false);
 
     const contentRef = useRef<Record<string, unknown> | null>(null);
     const wordCntRef = useRef(0);
@@ -177,6 +179,19 @@ export default function EditDocumentPage() {
     const isLocked = doc.status === 'LOCKED';
     const isFinalised = doc.status === 'FINALISED';
     const isPaperDocument = doc.type === 'RICH_TEXT';
+
+    async function handleExportPdf() {
+        if (!doc) return;
+        setExportingPdf(true);
+        try {
+            await exportDocumentAsPdf(doc.id, doc.title);
+        } catch {
+            toast.error('Failed to export PDF. Please try again.');
+        } finally {
+            setExportingPdf(false);
+        }
+    }
+
     const signatureStrip = isLocked ? (
         <DocumentSignatureBlock
             documentId={doc.id}
@@ -237,9 +252,19 @@ export default function EditDocumentPage() {
                         </button>
                     )}
                     {isLocked && (
-                        <button onClick={() => setShowSigning(true)} className="btn-ghost" style={{ fontSize: 12 }}>
-                            📋 View Signature
-                        </button>
+                        <>
+                            <button
+                                onClick={handleExportPdf}
+                                disabled={exportingPdf}
+                                className="btn-ghost"
+                                style={{ fontSize: 12 }}
+                            >
+                                {exportingPdf ? '⏳ Exporting…' : '⬇️ Download PDF'}
+                            </button>
+                            <button onClick={() => setShowSigning(true)} className="btn-ghost" style={{ fontSize: 12 }}>
+                                📋 View Signature
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
@@ -264,7 +289,7 @@ export default function EditDocumentPage() {
                         paperTitle={doc.title}
                         paperStatus={doc.status}
                         pageNumber={1}
-                        afterContent={signatureStrip}
+                        overlayContent={signatureStrip}
                     />
                 ) : (
                     <SpreadsheetEditor
@@ -286,8 +311,10 @@ export default function EditDocumentPage() {
                                 <span>Signature appendix</span>
                             </div>
                         )}
+                        overlay={signatureStrip}
                     >
-                        {signatureStrip}
+                        {/* Empty body — signature strip is positioned in the overlay */}
+                        <div style={{ minHeight: 240 }} />
                     </DocumentPaperSheet>
                 )}
             </div>
