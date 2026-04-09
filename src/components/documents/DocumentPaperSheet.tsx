@@ -8,6 +8,13 @@ interface DocumentPaperSheetProps {
     footer?: ReactNode;
     className?: string;
     bodyClassName?: string;
+    /**
+     * Rendered as an absolutely-positioned layer that fills the entire paper sheet.
+     * The overlay container itself has pointer-events:none so document content
+     * below remains interactive. Individual elements inside the overlay must
+     * set pointer-events:auto to receive events (e.g. the draggable signature card).
+     */
+    overlay?: ReactNode;
 }
 
 export function DocumentPaperSheet({
@@ -18,6 +25,7 @@ export function DocumentPaperSheet({
     footer,
     className,
     bodyClassName,
+    overlay,
 }: DocumentPaperSheetProps) {
     const sheetClassName = className
         ? `document-paper-sheet ${className}`
@@ -55,6 +63,10 @@ export function DocumentPaperSheet({
                     {footer}
                 </footer>
             )}
+
+            {/* Absolute overlay — signature drag layer, tooltips, etc.
+                pointer-events:none on the wrapper; elements inside opt in with pointer-events:auto */}
+            {overlay}
         </section>
     );
 }
