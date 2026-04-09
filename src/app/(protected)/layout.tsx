@@ -1,24 +1,53 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/auth.store';
+import { useEffect, useState } from 'react';
+import { fetchCurrentUser, redirectToLogin } from '@/lib/session';
 import { DocsSidebar } from '@/components/layout/DocsSidebar';
 import { DocsHeader } from '@/components/layout/DocsHeader';
+import { useSidebarStore, hydrateSidebar } from '@/lib/store/sidebar.store';
 
 const SIDEBAR_W = 260;
 const COLLAPSED_W = 64;
 
+// The user profile type — matches what app/app's /api/me returns
+export interface SessionUser {
+    userId: string;
+    email: string;
+    phoneNumber: string | null;
+    imageUrl: string | null;
+    surName: string;
+    postNames: string;
+    sex: string;
+    isIdVerified: boolean;
+    idVerifiedAt: string | null;
+    createdAt: string;
+}
+
+// Shared context so child components can read the user
+import { createContext, useContext } from 'react';
+
+const UserContext = createContext<SessionUser | null>(null);
+export function useSessionUser() { return useContext(UserContext); }
+
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-    const { isHydrated, isLoggedIn } = useAuthStore();
-    const router = useRouter();
+    const [user, setUser] = useState<SessionUser | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!isHydrated) return;
-        if (!isLoggedIn()) router.replace('/login');
-    }, [isHydrated, isLoggedIn, router]);
+        hydrateSidebar();
 
-    if (!isHydrated) {
+        fetchCurrentUser().then((u) => {
+            if (!u) {
+                // No valid session in app/app — redirect to login
+                redirectToLogin(window.location.pathname);
+                return;
+            }
+            setUser(u?.data ?? u); // handle both { data: user } and { ...user } response shapes
+            setLoading(false);
+        });
+    }, []);
+
+    if (loading) {
         return (
             <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid rgba(91,35,255,0.2)', borderTopColor: 'var(--color-primary)', animation: 'btn-spin 0.7s linear infinite' }} />
@@ -26,34 +55,27 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         );
     }
 
-    if (!isLoggedIn()) return null;
+    if (!user) return null;
 
     return (
-        <div style={{ minHeight: '100dvh', display: 'flex' }}>
-            <DocsSidebar />
-            <div
-                id="docs-main"
-                style={{
-                    flex: 1,
-                    marginLeft: SIDEBAR_W,
-                    minHeight: '100dvh',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    transition: 'margin-left 250ms cubic-bezier(0.4,0,0.2,1)',
-                }}
-            >
-                <DocsHeader />
-                <main style={{ flex: 1, padding: '28px 32px', maxWidth: 1200 }}>
-                    {children}
-                </main>
+        <UserContext.Provider value={user}>
+            <div style={{ minHeight: '100dvh', display: 'flex' }}>
+                <DocsSidebar user={user} />
+                <div
+                    id="docs-main"
+                    style={{ flex: 1, marginLeft: SIDEBAR_W, minHeight: '100dvh', display: 'flex', flexDirection: 'column', transition: 'margin-left 250ms cubic-bezier(0.4,0,0.2,1)' }}
+                >
+                    <DocsHeader user={user} />
+                    <main style={{ flex: 1, padding: '28px 32px' }}>
+                        {children}
+                    </main>
+                </div>
+                <SidebarSync expanded={SIDEBAR_W} collapsed={COLLAPSED_W} />
+                <style>{`@media(max-width:767px){#docs-main{margin-left:0!important;}}`}</style>
             </div>
-            <SidebarSync expanded={SIDEBAR_W} collapsed={COLLAPSED_W} />
-            <style>{`@media(max-width:767px){#docs-main{margin-left:0!important;}}`}</style>
-        </div>
+        </UserContext.Provider>
     );
 }
-
-import { useSidebarStore } from '@/lib/store/sidebar.store';
 
 function SidebarSync({ expanded, collapsed }: { expanded: number; collapsed: number }) {
     const isCollapsed = useSidebarStore((s) => s.collapsed);
