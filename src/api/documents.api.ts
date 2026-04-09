@@ -135,7 +135,7 @@ export async function restoreVersion(
     return res.data;
 }
 
-export async function verifyDocument(id: string): Promise<{
+export interface VerifyDocumentResponse {
     verified: boolean;
     documentId?: string;
     title?: string;
@@ -143,7 +143,10 @@ export async function verifyDocument(id: string): Promise<{
     signedBy?: { name: string };
     signedAt?: string;
     lockedAt?: string;
-}> {
+    message?: string;
+}
+
+export async function verifyDocument(id: string): Promise<VerifyDocumentResponse> {
     const res = await apiClient.get(`/documents/${id}/verify`);
     return res.data;
 }
