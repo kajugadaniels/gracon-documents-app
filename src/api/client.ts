@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 
-const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_API_URL ?? 'http://localhost:3000/api/v1';
+const AUTH_BASE = '/api/v1';
 const DOCS_BASE = process.env.NEXT_PUBLIC_DOCS_API_URL ?? 'http://localhost:3005/api/v1';
 
 // ─── Auth client — only for token refresh ────────────────────────────────────
