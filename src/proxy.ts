@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 const PUBLIC = ['/login', '/verify'];
 const COOKIE = 'doc_session';
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
     const { pathname } = req.nextUrl;
     const hasSession = req.cookies.has(COOKIE);
     const isPublic = PUBLIC.some((r) => pathname === r || pathname.startsWith(`${r}/`));
