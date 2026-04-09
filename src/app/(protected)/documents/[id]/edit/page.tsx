@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { SpreadsheetEditor } from '@/components/editor/SpreadsheetEditor';
 import { SigningModal } from '@/components/documents/SigningModal';
