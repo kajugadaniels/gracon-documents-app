@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import type { SessionUser } from '@/app/(protected)/layout';
 import { useSidebarStore, hydrateSidebar } from '@/lib/store/sidebar.store';
-import { useAuthStore } from '@/lib/store/auth.store';
 
 const NAV = [
     { href: '/documents', label: 'My Documents', icon: '📄', exact: true },
@@ -12,13 +12,12 @@ const NAV = [
     { href: '/documents?status=LOCKED', label: 'Signed', icon: '✅', exact: false },
 ];
 
-export function DocsSidebar() {
+export function DocsSidebar({ user }: { user: SessionUser }) {
     const pathname = usePathname();
     const collapsed = useSidebarStore((s) => s.collapsed);
     const mobileOpen = useSidebarStore((s) => s.mobileOpen);
     const toggle = useSidebarStore((s) => s.toggle);
     const closeMobile = useSidebarStore((s) => s.closeMobile);
-    const { user } = useAuthStore();
 
     useEffect(() => { hydrateSidebar(); }, []);
 
