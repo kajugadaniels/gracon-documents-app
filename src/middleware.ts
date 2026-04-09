@@ -5,8 +5,11 @@ import type { NextRequest } from 'next/server';
 const SHARED_TOKEN_COOKIE = 'g360_at';
 
 // The URL of app/app — unauthenticated users are redirected here
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:4000';
-const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:4002';
+const APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL ?? 'http://localhost:4000';
+const DOCS_URL =
+    process.env.NEXT_PUBLIC_DOCS_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    'http://localhost:4002';
 
 // Public routes in app/documents that do not require authentication
 const PUBLIC_PATHS = ['/verify'];
@@ -16,6 +19,11 @@ export function middleware(req: NextRequest) {
 
     // Never intercept Next.js internals
     if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) {
+        return NextResponse.next();
+    }
+
+    // Allow app-internal API routes to proxy auth/session requests.
+    if (pathname.startsWith('/api')) {
         return NextResponse.next();
     }
 
