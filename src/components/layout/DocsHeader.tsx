@@ -1,3 +1,10 @@
+/**
+ * DocsHeader
+ *
+ * Google Docs-style sticky header. Single compact bar with logo, prominent
+ * search, action buttons, and user avatar. Navigation tabs rendered below
+ * as a minimal underline strip — active tab uses a primary-colour bottom border.
+ */
 'use client';
 
 import Link from 'next/link';
@@ -34,6 +41,7 @@ export function DocsHeader({ user }: { user: SessionUser }) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [query, setQuery] = useState(searchParams.get('search') ?? '');
+    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
     useEffect(() => {
         setQuery(searchParams.get('search') ?? '');
@@ -47,407 +55,153 @@ export function DocsHeader({ user }: { user: SessionUser }) {
 
     function submitSearch(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-
         const value = query.trim();
         const params = new URLSearchParams(searchParams.toString());
+        if (value) params.set('search', value); else params.delete('search');
+        const target = pathname !== '/documents' ? '/documents' : pathname;
+        router.push(`${target}${params.toString() ? `?${params.toString()}` : ''}`);
+    }
 
-        if (value) params.set('search', value);
-        else params.delete('search');
-
-        if (pathname !== '/documents') {
-            router.push(`/documents${params.toString() ? `?${params.toString()}` : ''}`);
-            return;
-        }
-
-        router.push(`${pathname}${params.toString() ? `?${params.toString()}` : ''}`);
+    function clearSearch() {
+        setQuery('');
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('search');
+        router.push(`/documents${params.toString() ? `?${params.toString()}` : ''}`);
     }
 
     const initials =
-        `${user.postNames?.[0] ?? ''}${user.surName?.[0] ?? ''}`.toUpperCase() ||
-        'U';
+        `${user.postNames?.[0] ?? ''}${user.surName?.[0] ?? ''}`.toUpperCase() || 'U';
     const status = searchParams.get('status');
 
     return (
-        <header
-            style={{
-                position: 'sticky',
-                top: 0,
-                zIndex: 30,
-                padding: '18px clamp(18px, 3.4vw, 38px) 0',
-                background:
-                    'linear-gradient(180deg, rgba(236,233,255,0.94) 0%, rgba(236,233,255,0.78) 72%, rgba(236,233,255,0) 100%)',
-                backdropFilter: 'blur(14px)',
-                WebkitBackdropFilter: 'blur(14px)',
-            }}
-        >
-            <div
-                className="glass-strong animate-fade-up"
-                style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    borderRadius: 28,
-                    padding: '18px 20px 16px',
-                    display: 'grid',
-                    gap: 16,
-                }}
-            >
-                <div
-                    aria-hidden
-                    style={{
-                        position: 'absolute',
-                        inset: '-32px auto auto -24px',
-                        width: 220,
-                        height: 220,
-                        borderRadius: '50%',
-                        background:
-                            'radial-gradient(circle, rgba(91,35,255,0.16) 0%, rgba(91,35,255,0) 72%)',
-                        pointerEvents: 'none',
-                    }}
-                />
-                <div
-                    aria-hidden
-                    style={{
-                        position: 'absolute',
-                        inset: 'auto -40px -80px auto',
-                        width: 280,
-                        height: 180,
-                        borderRadius: '50%',
-                        background:
-                            'radial-gradient(circle, rgba(59,130,246,0.10) 0%, rgba(59,130,246,0) 74%)',
-                        pointerEvents: 'none',
-                    }}
-                />
+        <header className="docs-header">
+            {/* ── Main bar ── */}
+            <div className="docs-header__bar">
+                {/* Logo */}
+                <Link href="/documents" className="docs-header__logo" aria-label="Gracon Docs home">
+                    <div className="docs-header__logo-mark">G</div>
+                    <div className="docs-header__logo-text">
+                        <span className="docs-header__logo-eyebrow">Gracon 360</span>
+                        <span className="docs-header__logo-name">Documents</span>
+                    </div>
+                </Link>
 
-                <div
-                    style={{
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 18,
-                        flexWrap: 'wrap',
-                    }}
+                {/* Search — hidden on mobile, toggled by button */}
+                <form
+                    onSubmit={submitSearch}
+                    className="docs-header__search"
+                    role="search"
+                    aria-label="Search documents"
                 >
-                    <Link
-                        href="/documents"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 14,
-                            textDecoration: 'none',
-                            minWidth: 0,
-                        }}
+                    <span className="docs-header__search-icon" aria-hidden>⌕</span>
+                    <input
+                        type="search"
+                        placeholder="Search documents…"
+                        className="input-glass"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        aria-label="Search documents"
+                    />
+                </form>
+
+                {/* Right-side actions */}
+                <div className="docs-header__actions">
+                    {/* Mobile search toggle */}
+                    <button
+                        className="btn-icon docs-header__mobile-search-btn"
+                        onClick={() => setMobileSearchOpen((v) => !v)}
+                        aria-label="Search"
                     >
-                        <div
-                            style={{
-                                width: 46,
-                                height: 46,
-                                borderRadius: 16,
-                                background:
-                                    'linear-gradient(135deg, var(--color-primary) 0%, #7352ff 100%)',
-                                color: '#fff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: 18,
-                                fontWeight: 800,
-                                boxShadow: '0 12px 28px rgba(91,35,255,0.22)',
-                                flexShrink: 0,
-                            }}
-                        >
-                            G
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                            <p
-                                style={{
-                                    margin: 0,
-                                    fontSize: 11,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.18em',
-                                    color: 'var(--color-text-muted)',
-                                    fontWeight: 700,
-                                }}
-                            >
-                                Gracon 360
-                            </p>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 10,
-                                    flexWrap: 'wrap',
-                                }}
-                            >
-                                <h1
-                                    style={{
-                                        margin: 0,
-                                        fontSize: 'clamp(1.1rem, 1rem + 0.6vw, 1.55rem)',
-                                        lineHeight: 1,
-                                        letterSpacing: '-0.04em',
-                                        color: 'var(--color-text-primary)',
-                                        fontWeight: 800,
-                                    }}
-                                >
-                                    Documents
-                                </h1>
-                                <span
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                        padding: '5px 10px',
-                                        borderRadius: 999,
-                                        background: 'rgba(255,255,255,0.8)',
-                                        border: '1px solid rgba(91,35,255,0.14)',
-                                        color: 'var(--color-text-secondary)',
-                                        fontSize: 11,
-                                        fontWeight: 600,
-                                        whiteSpace: 'nowrap',
-                                    }}
-                                >
-                                    <span
-                                        style={{
-                                            width: 7,
-                                            height: 7,
-                                            borderRadius: '50%',
-                                            background: 'var(--color-success)',
-                                            boxShadow:
-                                                '0 0 0 4px rgba(5,150,105,0.12)',
-                                        }}
-                                    />
-                                    Workspace ready
-                                </span>
-                            </div>
-                        </div>
+                        ⌕
+                    </button>
+
+                    <Link
+                        href="/documents/new?type=RICH_TEXT"
+                        className="btn-primary"
+                        style={{ textDecoration: 'none', padding: '10px 20px', fontSize: 13 }}
+                    >
+                        + New
                     </Link>
 
-                    <form
-                        onSubmit={submitSearch}
-                        style={{
-                            flex: '1 1 360px',
-                            maxWidth: 620,
-                            minWidth: 260,
-                        }}
+                    <Link
+                        href="/verify"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-ghost docs-header__verify"
+                        style={{ textDecoration: 'none', padding: '9px 16px', fontSize: 13 }}
                     >
-                        <div
-                            style={{
-                                position: 'relative',
-                                display: 'flex',
-                                alignItems: 'center',
-                            }}
-                        >
-                            <span
-                                aria-hidden
-                                style={{
-                                    position: 'absolute',
-                                    left: 16,
-                                    fontSize: 13,
-                                    color: 'var(--color-text-muted)',
-                                    pointerEvents: 'none',
-                                }}
-                            >
-                                ⌕
-                            </span>
-                            <input
-                                type="search"
-                                placeholder="Search titles, tags, or signed files"
-                                className="input-glass"
-                                value={query}
-                                onChange={(event) => setQuery(event.target.value)}
-                                style={{
-                                    height: 48,
-                                    paddingLeft: 42,
-                                    paddingRight: 14,
-                                    borderRadius: 999,
-                                    fontSize: 13,
-                                    background: 'rgba(255,255,255,0.88)',
-                                }}
+                        Verify
+                    </Link>
+
+                    {/* Avatar — click to sign out */}
+                    <button
+                        onClick={logout}
+                        className="docs-header__avatar"
+                        title={`${user.postNames} ${user.surName} — click to sign out`}
+                        aria-label="Sign out"
+                    >
+                        {user.imageUrl ? (
+                            <img
+                                src={user.imageUrl}
+                                alt={initials}
+                                width={38}
+                                height={38}
+                                style={{ borderRadius: '50%', objectFit: 'cover', display: 'block' }}
                             />
-                        </div>
-                    </form>
-
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            flexWrap: 'wrap',
-                            justifyContent: 'flex-end',
-                        }}
-                    >
-                        <Link
-                            href="/documents/new?type=RICH_TEXT"
-                            className="btn-primary"
-                            style={{ textDecoration: 'none', padding: '11px 18px' }}
-                        >
-                            New document
-                        </Link>
-                        <Link
-                            href="/verify"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn-ghost"
-                            style={{
-                                textDecoration: 'none',
-                                padding: '10px 16px',
-                                background: 'rgba(255,255,255,0.72)',
-                            }}
-                        >
-                            Verify
-                        </Link>
-                    </div>
-                </div>
-
-                <div
-                    style={{
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 14,
-                        flexWrap: 'wrap',
-                    }}
-                >
-                    <nav
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            flexWrap: 'wrap',
-                        }}
-                    >
-                        {NAV_ITEMS.map((item) => {
-                            const active = item.isActive(pathname, status);
-
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    title={item.description}
-                                    style={{
-                                        textDecoration: 'none',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        padding: '10px 14px',
-                                        borderRadius: 14,
-                                        border: `1px solid ${
-                                            active
-                                                ? 'rgba(91,35,255,0.22)'
-                                                : 'rgba(91,35,255,0.08)'
-                                        }`,
-                                        background: active
-                                            ? 'linear-gradient(180deg, rgba(91,35,255,0.14) 0%, rgba(91,35,255,0.08) 100%)'
-                                            : 'rgba(255,255,255,0.6)',
-                                        color: active
-                                            ? 'var(--color-primary)'
-                                            : 'var(--color-text-secondary)',
-                                        fontSize: 13,
-                                        fontWeight: active ? 700 : 600,
-                                        boxShadow: active
-                                            ? '0 8px 18px rgba(91,35,255,0.10)'
-                                            : 'none',
-                                        transition:
-                                            'transform 150ms ease, box-shadow 150ms ease, background 150ms ease',
-                                    }}
-                                >
-                                    <span
-                                        style={{
-                                            width: 7,
-                                            height: 7,
-                                            borderRadius: '50%',
-                                            background: active
-                                                ? 'var(--color-primary)'
-                                                : 'rgba(91,35,255,0.18)',
-                                        }}
-                                    />
-                                    {item.label}
-                                </Link>
-                            );
-                        })}
-                    </nav>
-
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            flexWrap: 'wrap',
-                            justifyContent: 'flex-end',
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 12,
-                                padding: '8px 10px 8px 8px',
-                                borderRadius: 18,
-                                background: 'rgba(255,255,255,0.72)',
-                                border: '1px solid rgba(91,35,255,0.10)',
-                                minWidth: 0,
-                            }}
-                        >
-                            <div
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 14,
-                                    background:
-                                        'linear-gradient(135deg, rgba(91,35,255,0.14) 0%, rgba(59,130,246,0.14) 100%)',
-                                    border: '1px solid rgba(91,35,255,0.12)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'var(--color-primary)',
-                                    fontSize: 12,
-                                    fontWeight: 800,
-                                    flexShrink: 0,
-                                }}
-                            >
-                                {initials}
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                                <p
-                                    style={{
-                                        margin: 0,
-                                        fontSize: 12,
-                                        fontWeight: 700,
-                                        color: 'var(--color-text-primary)',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        maxWidth: 180,
-                                    }}
-                                >
-                                    {`${user.postNames} ${user.surName}`.trim()}
-                                </p>
-                                <p
-                                    style={{
-                                        margin: '1px 0 0',
-                                        fontSize: 11,
-                                        color: 'var(--color-text-muted)',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        maxWidth: 180,
-                                    }}
-                                >
-                                    {user.email}
-                                </p>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={logout}
-                            className="btn-ghost"
-                            style={{ padding: '10px 16px', fontSize: 12 }}
-                        >
-                            Sign out
-                        </button>
-                    </div>
+                        ) : (
+                            <span>{initials}</span>
+                        )}
+                    </button>
                 </div>
             </div>
+
+            {/* ── Mobile search overlay ── */}
+            {mobileSearchOpen && (
+                <div
+                    style={{
+                        padding: '10px 16px',
+                        borderTop: '1px solid var(--color-border)',
+                        background: 'rgba(255,255,255,0.98)',
+                    }}
+                >
+                    <form onSubmit={(e) => { submitSearch(e); setMobileSearchOpen(false); }} style={{ display: 'flex', gap: 8 }}>
+                        <div style={{ flex: 1, position: 'relative' }}>
+                            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: 'var(--color-text-muted)', pointerEvents: 'none' }}>⌕</span>
+                            <input
+                                type="search"
+                                placeholder="Search documents…"
+                                className="input-glass"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                autoFocus
+                                style={{ paddingLeft: 40, height: 44, borderRadius: 9999, fontSize: 14 }}
+                            />
+                        </div>
+                        {query && (
+                            <button type="button" onClick={() => { clearSearch(); setMobileSearchOpen(false); }} className="btn-ghost" style={{ padding: '9px 14px', fontSize: 12, flexShrink: 0 }}>
+                                Clear
+                            </button>
+                        )}
+                    </form>
+                </div>
+            )}
+
+            {/* ── Nav strip ── */}
+            <nav className="docs-header__nav" aria-label="Document sections">
+                {NAV_ITEMS.map((item) => {
+                    const active = item.isActive(pathname, status);
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            title={item.description}
+                            className={`docs-header__nav-item${active ? ' docs-header__nav-item--active' : ''}`}
+                        >
+                            {item.label}
+                        </Link>
+                    );
+                })}
+            </nav>
         </header>
     );
 }
