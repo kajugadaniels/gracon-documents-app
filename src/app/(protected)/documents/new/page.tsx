@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui';
 import { listTemplates, createDocument, type Template } from '@/api/documents.api';
 
 export default function NewDocumentPage() {
