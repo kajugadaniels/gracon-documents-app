@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input, Card } from '@/components/ui';
 import { loginApi } from '@/api/auth/login.api';
-import { useAuthStore } from '@/lib/store/auth.store';
 
 const MAIN_APP_URL =
     process.env.NEXT_PUBLIC_MAIN_APP_URL ?? 'http://localhost:4000';
@@ -17,7 +16,6 @@ interface LoginErrors {
 export function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { setTokens, setUser } = useAuthStore();
 
     const nextPath = searchParams.get('next') ?? '/documents';
 
@@ -62,15 +60,16 @@ export function LoginForm() {
                 email: email.toLowerCase().trim(),
                 password,
             });
-            const { accessToken, refreshToken, user } = response.data.data;
+            const { accessToken, refreshToken } = response.data.data;
+
+            const maxAge = 60 * 60 * 24 * 30;
+            document.cookie = `g360_at=${accessToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
+            document.cookie = `g360_rt=${refreshToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
 
             if (response.data.tokenType === 'limited') {
                 window.location.href = `${MAIN_APP_URL}/verify-identity`;
                 return;
             }
-
-            setTokens(accessToken, refreshToken);
-            setUser(user);
 
             document.cookie =
                 `doc_session=1; path=/; SameSite=Strict; max-age=${60 * 60 * 24 * 30}`;
