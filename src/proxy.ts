@@ -1,21 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// The shared cookie written by app/app on login.
-const SHARED_TOKEN_COOKIE = 'g360_at';
-
-// The URL of app/app — unauthenticated users are redirected here.
-const APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL ?? 'http://localhost:4000';
-const DOCS_URL =
-    process.env.NEXT_PUBLIC_DOCS_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    'http://localhost:4002';
+// The shared cookies written by app/app on login.
+const ACCESS_TOKEN_COOKIE = 'g360_at';
+const REFRESH_TOKEN_COOKIE = 'g360_rt';
 
 // Public routes in app/documents that do not require authentication.
-const PUBLIC_PATHS = ['/verify'];
+const PUBLIC_PATHS = ['/verify', '/login'];
 
 export function proxy(req: NextRequest) {
-    const { pathname } = req.nextUrl;
+    const { pathname, search } = req.nextUrl;
 
     // Never intercept Next.js internals.
     if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) {
@@ -28,13 +22,18 @@ export function proxy(req: NextRequest) {
     }
 
     const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-    const hasToken = req.cookies.has(SHARED_TOKEN_COOKIE);
+    const hasSessionCookie =
+        req.cookies.has(ACCESS_TOKEN_COOKIE) || req.cookies.has(REFRESH_TOKEN_COOKIE);
+
+    if (pathname === '/login' && hasSessionCookie) {
+        return NextResponse.redirect(new URL('/documents', req.url));
+    }
 
     if (isPublic) return NextResponse.next();
 
-    if (!hasToken) {
-        const next = `${DOCS_URL}${pathname}`;
-        const loginUrl = `${APP_URL}/login?next=${encodeURIComponent(next)}`;
+    if (!hasSessionCookie) {
+        const loginUrl = new URL('/login', req.url);
+        loginUrl.searchParams.set('next', `${pathname}${search}`);
         return NextResponse.redirect(loginUrl);
     }
 
