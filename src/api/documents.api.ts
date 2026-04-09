@@ -17,10 +17,22 @@ export interface DocumentSummary {
     lockedAt: string | null;
 }
 
+export interface DocumentSignatureSnapshot {
+    signatureId: string | null;
+    certificateId: string | null;
+    signerName: string | null;
+    imageUrl: string | null;
+    mimeType: string | null;
+    sizeBytes: number | null;
+    signedAt: string | null;
+    lockedAt: string | null;
+}
+
 export interface DocumentDetail extends DocumentSummary {
     content: Record<string, unknown> | null;
     contentHash: string | null;
     collaborators: { userId: string; role: string; acceptedAt: string | null }[];
+    signatureSnapshot: DocumentSignatureSnapshot | null;
 }
 
 export interface DocumentVersion {
@@ -133,7 +145,11 @@ export async function lockDocument(
     id: string,
     signatureId: string,
     documentHash: string,
-): Promise<DocumentSummary & { signatureId: string; message: string }> {
+): Promise<DocumentSummary & {
+    signatureId: string;
+    message: string;
+    signatureSnapshot: DocumentSignatureSnapshot | null;
+}> {
     const res = await apiClient.post(`/documents/${id}/lock`, { signatureId, documentHash });
     return res.data;
 }
