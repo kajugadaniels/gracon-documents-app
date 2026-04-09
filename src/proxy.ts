@@ -6,6 +6,12 @@ const COOKIE = 'doc_session';
 
 export function proxy(req: NextRequest) {
     const { pathname } = req.nextUrl;
+
+    // Never guard internal API routes — they are used by same-origin auth proxies.
+    if (pathname.startsWith('/api/')) {
+        return NextResponse.next();
+    }
+
     const hasSession = req.cookies.has(COOKIE);
     const isPublic = PUBLIC.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 
