@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from '@/components/ui';
@@ -16,6 +16,13 @@ const STATUS_LABELS: Record<DocumentStatus, string> = {
     LOCKED: 'Locked',
 };
 
+function getErrorMessage(error: unknown, fallback: string) {
+    const message = (error as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message;
+
+    return typeof message === 'string' && message.trim() ? message : fallback;
+}
+
 export default function DocumentsPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -26,9 +33,18 @@ export default function DocumentsPage() {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             const res = await listDocuments({
                 page,
@@ -36,10 +52,20 @@ export default function DocumentsPage() {
                 search: search || undefined,
                 status: statusFilter || undefined,
             });
+            if (!isMountedRef.current) return;
             setItems(res.items);
             setTotal(res.total);
-        } catch { toast.error('Failed to load documents.'); }
-        finally { setLoading(false); }
+        } catch (error: unknown) {
+            if (!isMountedRef.current) return;
+            const message = getErrorMessage(
+                error,
+                'Failed to load documents.',
+            );
+            setLoadError(message);
+            toast.error(message);
+        } finally {
+            if (isMountedRef.current) setLoading(false);
+        }
     }, [page, search, statusFilter]);
 
     useEffect(() => { void load(); }, [load]);
@@ -112,6 +138,25 @@ export default function DocumentsPage() {
                             backgroundSize: '200% 100%', animation: 'shimmer 1.5s ease infinite'
                         }} />
                     ))}
+                </div>
+            ) : loadError ? (
+                <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: '28px 24px', display: 'grid', gap: 14, textAlign: 'center' }}>
+                    <div>
+                        <p style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                            Unable to load your documents
+                        </p>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                            {loadError}
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <button onClick={() => void load()} className="btn-primary" style={{ fontSize: 12 }}>
+                            Try again
+                        </button>
+                        <Link href="/documents/new?type=RICH_TEXT" className="btn-ghost" style={{ textDecoration: 'none', fontSize: 12 }}>
+                            Create a document
+                        </Link>
+                    </div>
                 </div>
             ) : items.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '80px 24px' }}>
