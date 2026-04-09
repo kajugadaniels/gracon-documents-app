@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui';
 import { lockDocument, type DocumentDetail } from '@/api/documents.api';
 
 const SIG_API = process.env.NEXT_PUBLIC_SIGNATURE_API_URL ?? 'http://localhost:3002/api/v1';
