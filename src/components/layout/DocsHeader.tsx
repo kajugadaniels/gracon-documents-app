@@ -2,15 +2,16 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/auth.store';
+import type { SessionUser } from '@/app/(protected)/layout';
+import { APP_URL } from '@/lib/session';
 
-export function DocsHeader() {
+export function DocsHeader({ user }: { user: SessionUser }) {
     const router = useRouter();
-    const { user, clearAuth } = useAuthStore();
 
     function logout() {
-        clearAuth();
-        router.replace('/login');
+        document.cookie = 'g360_at=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'g360_rt=; path=/; max-age=0; SameSite=Lax';
+        window.location.href = `${APP_URL}/logout`;
     }
 
     return (
@@ -51,7 +52,7 @@ export function DocsHeader() {
                 </Link>
 
                 <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                    {user ? `${user.postNames} ${user.surName}`.trim() : ''}
+                    {`${user.postNames} ${user.surName}`.trim()}
                 </span>
 
                 <button onClick={logout} className="btn-ghost" style={{ padding: '6px 16px', fontSize: 12 }}>
