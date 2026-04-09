@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui';
 import { listTemplates, createDocument, type Template } from '@/api/documents.api';
 
 const CATEGORY_LABELS: Record<string, string> = {
