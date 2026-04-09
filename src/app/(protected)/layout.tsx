@@ -254,7 +254,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     if (!user) return null;
 
-    const showHeader = pathname !== '/documents';
+    const showHeader = !/^\/documents\/[^/]+\/edit$/.test(pathname);
 
     return (
         <UserContext.Provider value={user}>
