@@ -1,5 +1,17 @@
 import { authClient } from '@/api/client';
-import type { UserProfile } from '@/lib/store/auth.store';
+
+interface LoginUser {
+    userId: string;
+    email: string;
+    phoneNumber: string | null;
+    imageUrl: string | null;
+    surName: string;
+    postNames: string;
+    sex: string;
+    isIdVerified: boolean;
+    idVerifiedAt: string | null;
+    createdAt: string;
+}
 
 export interface LoginPayload {
     email: string;
@@ -13,7 +25,7 @@ export interface LoginResponse {
     data: {
         accessToken: string;
         refreshToken: string;
-        user: UserProfile;
+        user: LoginUser;
     };
 }
 
