@@ -8,12 +8,13 @@
  * These cookies are readable here because both apps run on the same
  * host (localhost in dev, same root domain in production).
  *
- * All token refresh operations go through app/app's /api/refresh route
- * to keep cookie management in one place.
+ * Session refresh/profile reads go through same-origin proxy routes
+ * in app/documents, which forward the shared cookies to app/app.
  */
 
 export const APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL ?? 'http://localhost:4000';
 export const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:4002';
+const SESSION_API_BASE = '/api';
 
 /**
  * Reads the access token from the shared cookie.
@@ -42,9 +43,9 @@ export function redirectToLogin(intendedPath = '/documents'): void {
  */
 export async function refreshAccessToken(): Promise<string | null> {
     try {
-        const res = await fetch(`${APP_URL}/api/refresh`, {
+        const res = await fetch(`${SESSION_API_BASE}/refresh`, {
             method: 'POST',
-            credentials: 'include', // sends the g360_rt cookie
+            credentials: 'include',
         });
         if (!res.ok) return null;
         const data = await res.json();
@@ -60,7 +61,7 @@ export async function refreshAccessToken(): Promise<string | null> {
  */
 export async function fetchCurrentUser() {
     try {
-        const res = await fetch(`${APP_URL}/api/me`, {
+        const res = await fetch(`${SESSION_API_BASE}/me`, {
             credentials: 'include',
             cache: 'no-store',
         });
