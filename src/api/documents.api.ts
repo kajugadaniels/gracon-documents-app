@@ -48,6 +48,31 @@ export interface Folder {
     subFolders: Folder[];
 }
 
+const pendingGetRequests = new Map<string, Promise<unknown>>();
+
+function buildGetRequestKey(path: string, params?: unknown) {
+    return `${path}::${JSON.stringify(params ?? null)}`;
+}
+
+async function getDeduped<T>(path: string, params?: unknown): Promise<T> {
+    const key = buildGetRequestKey(path, params);
+    const pending = pendingGetRequests.get(key);
+
+    if (pending) {
+        return pending as Promise<T>;
+    }
+
+    const request = apiClient
+        .get<T>(path, { params })
+        .then((res) => res.data)
+        .finally(() => {
+            pendingGetRequests.delete(key);
+        });
+
+    pendingGetRequests.set(key, request as Promise<unknown>);
+    return request;
+}
+
 // ─── Documents ────────────────────────────────────────────────────────────────
 
 export async function createDocument(data: {
@@ -69,18 +94,14 @@ export async function listDocuments(params: {
     page?: number;
     limit?: number;
 }): Promise<{ total: number; page: number; limit: number; items: DocumentSummary[] }> {
-    const res = await apiClient.get('/documents', { params });
-    return res.data;
+    return getDeduped('/documents', params);
 }
 
 export async function getDocument(
     id: string,
     includeContent = true,
 ): Promise<DocumentDetail> {
-    const res = await apiClient.get(`/documents/${id}`, {
-        params: { includeContent },
-    });
-    return res.data;
+    return getDeduped(`/documents/${id}`, { includeContent });
 }
 
 export async function autosaveDocument(
