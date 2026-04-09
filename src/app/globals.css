@@ -313,6 +313,9 @@ body {
 .document-paper-sheet__body--editor {
   padding: 0;
 }
+.document-paper-sheet__after-content {
+  padding: 0 clamp(30px, 6vw, 76px) clamp(56px, 7vw, 84px);
+}
 .document-paper-sheet__eyebrow {
   font-size: 11px;
   font-weight: 700;
@@ -371,6 +374,10 @@ body {
   min-height: calc(var(--paper-height) - 184px);
   margin: 0;
   padding: 8px clamp(30px, 6vw, 76px) clamp(70px, 8vw, 104px);
+}
+.tiptap-editor.tiptap-editor-paper-signed .ProseMirror {
+  min-height: 0;
+  padding-bottom: 24px;
 }
 .tiptap-editor .ProseMirror {
   max-width:   var(--editor-max-width);
@@ -495,6 +502,12 @@ body {
 
   .document-paper-sheet__body--editor {
     padding: 0;
+  }
+
+  .document-paper-sheet__after-content {
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 28px;
   }
 
   .document-paper-sheet__footer-bar {
