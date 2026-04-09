@@ -1353,19 +1353,30 @@ body {
 .ded-avatar-menu__item--danger:hover { background: var(--color-error-subtle); color: var(--color-error); }
 
 /* ── Formatting toolbar row ── */
+/*
+ * overflow-x: auto must NOT be on the toolbar itself — it would create a
+ * clipping context that hides the absolutely-positioned picker dropdowns.
+ * Instead the toolbar is overflow: visible and an inner scroll wrapper
+ * handles horizontal scroll on narrow viewports.
+ */
 .ded-toolbar {
+  background: #f8f9fa;
+  border-top: 1px solid rgba(0,0,0,0.1);
+  min-height: 42px;
+  overflow: visible;
+  position: relative;
+}
+.ded-toolbar__inner {
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 5px 14px 6px;
-  background: #f8f9fa;
-  border-top: 1px solid rgba(0,0,0,0.1);
   overflow-x: auto;
+  overflow-y: visible;
   scrollbar-width: none;
   flex-wrap: nowrap;
-  min-height: 42px;
 }
-.ded-toolbar::-webkit-scrollbar { display: none; }
+.ded-toolbar__inner::-webkit-scrollbar { display: none; }
 
 /* Toolbar button */
 .ded-tb-btn {
