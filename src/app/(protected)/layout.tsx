@@ -21,21 +21,132 @@ export interface SessionUser {
 const UserContext = createContext<SessionUser | null>(null);
 export function useSessionUser() { return useContext(UserContext); }
 
+function isSessionUser(value: unknown): value is SessionUser {
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
+
+    const candidate = value as Record<string, unknown>;
+
+    return (
+        typeof candidate.userId === 'string'
+        && typeof candidate.email === 'string'
+        && typeof candidate.surName === 'string'
+        && typeof candidate.postNames === 'string'
+        && typeof candidate.sex === 'string'
+        && typeof candidate.isIdVerified === 'boolean'
+        && typeof candidate.createdAt === 'string'
+        && (typeof candidate.phoneNumber === 'string' || candidate.phoneNumber === null)
+        && (typeof candidate.imageUrl === 'string' || candidate.imageUrl === null)
+        && (typeof candidate.idVerifiedAt === 'string' || candidate.idVerifiedAt === null)
+    );
+}
+
+function normalizeSessionUser(value: unknown): SessionUser | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+
+    if (isSessionUser(value)) {
+        return value;
+    }
+
+    const candidate = value as {
+        id?: unknown;
+        email?: unknown;
+        phoneNumber?: unknown;
+        isIdVerified?: unknown;
+        idVerifiedAt?: unknown;
+        createdAt?: unknown;
+        profileImageUrl?: unknown;
+        citizenIdentity?: {
+            surName?: unknown;
+            postNames?: unknown;
+            sex?: unknown;
+        } | null;
+    };
+
+    if (
+        typeof candidate.id !== 'string'
+        || typeof candidate.email !== 'string'
+        || typeof candidate.isIdVerified !== 'boolean'
+        || typeof candidate.createdAt !== 'string'
+        || (typeof candidate.phoneNumber !== 'string' && candidate.phoneNumber !== null && candidate.phoneNumber !== undefined)
+        || (typeof candidate.idVerifiedAt !== 'string' && candidate.idVerifiedAt !== null && candidate.idVerifiedAt !== undefined)
+        || (typeof candidate.profileImageUrl !== 'string' && candidate.profileImageUrl !== null && candidate.profileImageUrl !== undefined)
+    ) {
+        return null;
+    }
+
+    return {
+        userId: candidate.id,
+        email: candidate.email,
+        phoneNumber: candidate.phoneNumber ?? null,
+        imageUrl: candidate.profileImageUrl ?? null,
+        surName:
+            typeof candidate.citizenIdentity?.surName === 'string'
+                ? candidate.citizenIdentity.surName
+                : '',
+        postNames:
+            typeof candidate.citizenIdentity?.postNames === 'string'
+                ? candidate.citizenIdentity.postNames
+                : '',
+        sex:
+            typeof candidate.citizenIdentity?.sex === 'string'
+                ? candidate.citizenIdentity.sex
+                : '',
+        isIdVerified: candidate.isIdVerified,
+        idVerifiedAt: candidate.idVerifiedAt ?? null,
+        createdAt: candidate.createdAt,
+    };
+}
+
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<SessionUser | null>(null);
     const [loading, setLoading] = useState(true);
+    const [sessionError, setSessionError] = useState<string | null>(null);
+    const [retryKey, setRetryKey] = useState(0);
 
     useEffect(() => {
-        fetchCurrentUser().then((u) => {
-            if (!u) {
-                redirectToLogin(window.location.pathname);
+        let ignore = false;
+
+        setLoading(true);
+        setSessionError(null);
+
+        fetchCurrentUser().then((result) => {
+            if (ignore) return;
+
+            if (result.status === 'authenticated') {
+                const normalizedUser = normalizeSessionUser(result.user);
+
+                if (!normalizedUser) {
+                    setSessionError('The authentication service returned an unexpected user profile.');
+                    setLoading(false);
+                    return;
+                }
+
+                setUser(normalizedUser);
+                setLoading(false);
                 return;
             }
 
-            setUser(u?.data ?? u);
+            setUser(null);
+
+            if (result.status === 'unauthenticated') {
+                const intendedPath =
+                    `${window.location.pathname}${window.location.search}${window.location.hash}`;
+                redirectToLogin(intendedPath);
+                return;
+            }
+
+            setSessionError(result.message);
             setLoading(false);
         });
-    }, []);
+
+        return () => {
+            ignore = true;
+        };
+    }, [retryKey]);
 
     if (loading) {
         return (
@@ -57,6 +168,84 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                         animation: 'btn-spin 0.7s linear infinite',
                     }}
                 />
+            </div>
+        );
+    }
+
+    if (sessionError) {
+        return (
+            <div
+                style={{
+                    minHeight: '100dvh',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '24px',
+                }}
+            >
+                <div
+                    className="glass-strong animate-scale-in"
+                    style={{
+                        width: '100%',
+                        maxWidth: 460,
+                        borderRadius: 'var(--radius-xl)',
+                        padding: 32,
+                        display: 'grid',
+                        gap: 18,
+                        textAlign: 'center',
+                    }}
+                >
+                    <div>
+                        <p
+                            style={{
+                                margin: '0 0 8px',
+                                fontSize: 20,
+                                fontWeight: 700,
+                                color: 'var(--color-text-primary)',
+                            }}
+                        >
+                            Unable to restore your session
+                        </p>
+                        <p
+                            style={{
+                                margin: 0,
+                                fontSize: 13,
+                                color: 'var(--color-text-secondary)',
+                                lineHeight: 1.6,
+                            }}
+                        >
+                            {sessionError}
+                        </p>
+                    </div>
+
+                    <div
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            gap: 10,
+                            flexWrap: 'wrap',
+                        }}
+                    >
+                        <button
+                            onClick={() => setRetryKey((value) => value + 1)}
+                            className="btn-primary"
+                            style={{ minWidth: 140 }}
+                        >
+                            Try again
+                        </button>
+                        <button
+                            onClick={() => {
+                                const intendedPath =
+                                    `${window.location.pathname}${window.location.search}${window.location.hash}`;
+                                redirectToLogin(intendedPath);
+                            }}
+                            className="btn-ghost"
+                            style={{ minWidth: 140 }}
+                        >
+                            Sign in again
+                        </button>
+                    </div>
+                </div>
             </div>
         );
     }
