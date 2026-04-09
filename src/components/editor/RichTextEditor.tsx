@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
+import { TextStyle, FontFamily, FontSize } from '@tiptap/extension-text-style';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
@@ -18,6 +19,10 @@ import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
 interface RichTextEditorProps {
     initialContent?: Record<string, unknown> | null;
     onContentChange?: (content: Record<string, unknown>, wordCount: number) => void;
+    /** Called once when the Tiptap editor instance is ready. Use to lift editor up to the page. */
+    onEditorReady?: (editor: Editor) => void;
+    /** When true, suppresses the built-in EditorToolbar (external toolbar takes over). */
+    hideToolbar?: boolean;
     readOnly?: boolean;
     placeholder?: string;
     paperMode?: boolean;
@@ -35,6 +40,8 @@ interface RichTextEditorProps {
 export function RichTextEditor({
     initialContent,
     onContentChange,
+    onEditorReady,
+    hideToolbar = false,
     readOnly = false,
     placeholder = 'Start writing your document…',
     paperMode = false,
@@ -45,14 +52,19 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
     const onChangeRef = useRef(onContentChange);
     onChangeRef.current = onContentChange;
+    const onEditorReadyRef = useRef(onEditorReady);
+    onEditorReadyRef.current = onEditorReady;
 
     const editor = useEditor({
         immediatelyRender: false,
         extensions: [
             StarterKit.configure({
-                heading: { levels: [1, 2, 3] },
+                heading: { levels: [1, 2, 3, 4, 5, 6] },
                 codeBlock: { languageClassPrefix: 'language-' },
             }),
+            TextStyle,
+            FontFamily,
+            FontSize,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Table.configure({ resizable: true }),
             TableRow,
@@ -68,6 +80,9 @@ export function RichTextEditor({
             const json = e.getJSON();
             const wordCount = e.storage.characterCount.words() as number;
             onChangeRef.current?.(json as Record<string, unknown>, wordCount);
+        },
+        onCreate: ({ editor: e }) => {
+            onEditorReadyRef.current?.(e);
         },
     });
 
@@ -94,7 +109,7 @@ export function RichTextEditor({
 
         return (
             <div className={paperEditorClassName}>
-                {!readOnly && <EditorToolbar editor={editor} paperMode />}
+                {!readOnly && !hideToolbar && <EditorToolbar editor={editor} paperMode />}
                 <DocumentPaperSheet
                     className="document-paper-sheet--editor"
                     bodyClassName="document-paper-sheet__body--editor"
@@ -117,7 +132,7 @@ export function RichTextEditor({
 
     return (
         <div className="tiptap-editor">
-            {!readOnly && <EditorToolbar editor={editor} />}
+            {!readOnly && !hideToolbar && <EditorToolbar editor={editor} />}
             <EditorContent editor={editor} />
         </div>
     );
