@@ -24,7 +24,10 @@ export interface DocumentSignatureSnapshot {
     imageUrl: string | null;
     mimeType: string | null;
     sizeBytes: number | null;
-    alignment: 'LEFT' | 'CENTER' | 'RIGHT' | null;
+    /** Normalized horizontal position of the strip (0.0 = left edge, 1.0 = right edge). */
+    x: number | null;
+    /** Normalized vertical position of the strip (0.0 = top, 1.0 = bottom). */
+    y: number | null;
     signedAt: string | null;
     lockedAt: string | null;
 }
@@ -157,12 +160,26 @@ export async function lockDocument(
 
 export async function updateSignatureLayout(
     id: string,
-    alignment: 'LEFT' | 'CENTER' | 'RIGHT',
+    position: { x: number; y: number },
 ): Promise<DocumentSummary & { signatureSnapshot: DocumentSignatureSnapshot | null }> {
-    const res = await apiClient.patch(`/documents/${id}/signature-layout`, {
-        alignment,
-    });
+    const res = await apiClient.patch(`/documents/${id}/signature-layout`, position);
     return res.data;
+}
+
+/**
+ * Triggers a PDF export for a locked document and initiates a browser download.
+ * The PDF places the signature strip at the same normalized x/y as the HTML render.
+ */
+export async function exportDocumentAsPdf(id: string, title: string): Promise<void> {
+    const res = await apiClient.get(`/documents/${id}/export/pdf`, {
+        responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data as Blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${title.replace(/[^a-zA-Z0-9-_]/g, '_')}-signed.pdf`;
+    anchor.click();
+    URL.revokeObjectURL(url);
 }
 
 export async function deleteDocument(id: string): Promise<{ deleted: boolean }> {
