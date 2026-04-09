@@ -12,6 +12,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import Highlight from '@tiptap/extension-highlight';
 import { useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
 
 interface RichTextEditorProps {
@@ -23,6 +24,7 @@ interface RichTextEditorProps {
     paperTitle?: string;
     paperStatus?: string;
     pageNumber?: number;
+    afterContent?: ReactNode;
 }
 
 export function RichTextEditor({
@@ -34,6 +36,7 @@ export function RichTextEditor({
     paperTitle = 'Document',
     paperStatus,
     pageNumber = 1,
+    afterContent,
 }: RichTextEditorProps) {
     const onChangeRef = useRef(onContentChange);
     onChangeRef.current = onContentChange;
@@ -80,9 +83,12 @@ export function RichTextEditor({
             : readOnly
                 ? 'Read-only document'
                 : 'Editable draft';
+        const paperEditorClassName = afterContent
+            ? 'tiptap-editor tiptap-editor-paper tiptap-editor-paper-signed'
+            : 'tiptap-editor tiptap-editor-paper';
 
         return (
-            <div className="tiptap-editor tiptap-editor-paper">
+            <div className={paperEditorClassName}>
                 {!readOnly && <EditorToolbar editor={editor} paperMode />}
                 <DocumentPaperSheet
                     className="document-paper-sheet--editor"
@@ -98,6 +104,11 @@ export function RichTextEditor({
                     )}
                 >
                     <EditorContent editor={editor} />
+                    {afterContent && (
+                        <div className="document-paper-sheet__after-content">
+                            {afterContent}
+                        </div>
+                    )}
                 </DocumentPaperSheet>
             </div>
         );
