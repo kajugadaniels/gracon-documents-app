@@ -4,9 +4,7 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input, Card } from '@/components/ui';
 import { loginApi } from '@/api/auth/login.api';
-
-const MAIN_APP_URL =
-    process.env.NEXT_PUBLIC_MAIN_APP_URL ?? 'http://localhost:4000';
+import { APP_URL, normalizeDocsPath } from '@/lib/session';
 
 interface LoginErrors {
     email?: string;
@@ -17,7 +15,7 @@ export function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const nextPath = searchParams.get('next') ?? '/documents';
+    const nextPath = normalizeDocsPath(searchParams.get('next'));
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -60,21 +58,13 @@ export function LoginForm() {
                 email: email.toLowerCase().trim(),
                 password,
             });
-            const { accessToken, refreshToken } = response.data.data;
-
-            const maxAge = 60 * 60 * 24 * 30;
-            document.cookie = `g360_at=${accessToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
-            document.cookie = `g360_rt=${refreshToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
 
             if (response.data.tokenType === 'limited') {
-                window.location.href = `${MAIN_APP_URL}/verify-identity`;
+                window.location.href = `${APP_URL}/verify-identity`;
                 return;
             }
 
-            document.cookie =
-                `doc_session=1; path=/; SameSite=Strict; max-age=${60 * 60 * 24 * 30}`;
-
-            router.push(nextPath);
+            router.replace(nextPath);
         } catch (error: unknown) {
             const message =
                 (error as { response?: { data?: { message?: string } } })
@@ -194,7 +184,7 @@ export function LoginForm() {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <a
-                            href={`${MAIN_APP_URL}/forgot-password`}
+                            href={`${APP_URL}/forgot-password`}
                             style={{
                                 fontSize: 12,
                                 color: 'var(--color-text-muted)',
@@ -228,7 +218,7 @@ export function LoginForm() {
                 >
                     Don&apos;t have an account?{' '}
                     <a
-                        href={`${MAIN_APP_URL}/register`}
+                        href={`${APP_URL}/register`}
                         style={{
                             color: 'var(--color-primary)',
                             fontWeight: 500,
