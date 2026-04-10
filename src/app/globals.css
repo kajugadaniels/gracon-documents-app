@@ -1644,6 +1644,16 @@ body {
   padding: 4px 0;
   z-index: 9999;
 }
+.ded-menu__dropdown--submenu {
+  top: -5px;
+  left: calc(100% - 6px);
+  min-width: 192px;
+  border-radius: 10px;
+  box-shadow: 0 16px 34px rgba(22,16,58,0.12);
+}
+.ded-menu__submenu {
+  position: relative;
+}
 .ded-menu__item {
   display: flex;
   align-items: center;
@@ -1661,6 +1671,15 @@ body {
 }
 .ded-menu__item:hover:not(:disabled) { background: rgba(91,35,255,0.06); }
 .ded-menu__item:disabled { opacity: 0.42; cursor: default; }
+.ded-menu__item--submenu {
+  color: #25233a;
+}
+.ded-menu__submenu-caret {
+  font-size: 16px;
+  line-height: 1;
+  color: #7f7898;
+  flex-shrink: 0;
+}
 .ded-menu__shortcut {
   font-size: 11.5px;
   color: var(--color-text-muted);
