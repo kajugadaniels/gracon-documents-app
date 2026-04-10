@@ -17,6 +17,7 @@ export interface PaginationBreak {
 
 export interface PaginationMetrics {
     pageHeight: number;
+    pageBodyHeight: number;
     pageGap: number;
     paddingTop: number;
     paddingBottom: number;
@@ -74,7 +75,7 @@ function measureBlockHeight(block: HTMLElement) {
 function countCurrentPageSpan(usedHeight: number, metrics: PaginationMetrics) {
     const usableHeight = Math.max(
         1,
-        metrics.pageHeight - metrics.paddingTop - metrics.paddingBottom,
+        metrics.pageBodyHeight - metrics.paddingTop - metrics.paddingBottom,
     );
     const consumedHeight = Math.max(0, usedHeight - metrics.paddingTop);
     return Math.max(1, Math.ceil(consumedHeight / usableHeight));
@@ -139,7 +140,7 @@ export function measurePaginationBreaks(
         return { breaks: [] as PaginationBreak[], pageCount: 1 };
     }
 
-    const pageBottom = metrics.pageHeight - metrics.paddingBottom;
+    const pageBottom = metrics.pageBodyHeight - metrics.paddingBottom;
     const breaks: PaginationBreak[] = [];
     let currentPage = 1;
     let usedHeight = metrics.paddingTop;
