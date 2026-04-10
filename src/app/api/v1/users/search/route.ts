@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/users/search?q=...&mode=email|id
+ * GET /api/v1/users/search?q=...&mode=email|platformId|citizenId
  *
  * Proxy to the documents service user-search endpoint.
  * Forwards the Authorization header so the documents service can validate the
