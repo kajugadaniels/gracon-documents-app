@@ -1,15 +1,15 @@
 /**
  * DeleteDocumentDialog
  *
- * Minimal confirmation dialog shown before permanently deleting a document.
- * Rendered inside a backdrop overlay; traps focus and closes on Escape.
- * The confirm button shows a loading state while the delete request is in flight.
+ * Confirmation dialog shown before permanently deleting a document.
+ * Closes on Escape or backdrop click. Confirm button enters a loading
+ * state while the delete request is in flight.
  */
 'use client';
 
 import { useEffect, useRef } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Delete04Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import { Delete04Icon } from '@hugeicons/core-free-icons';
 
 interface DeleteDocumentDialogProps {
     docTitle: string;
@@ -19,8 +19,8 @@ interface DeleteDocumentDialogProps {
 }
 
 /**
- * Confirmation dialog for document deletion.
- * Closes on Escape key press or backdrop click.
+ * Renders a centered confirmation dialog with a blurred backdrop.
+ * The cancel button is auto-focused — safe default for destructive actions.
  */
 export function DeleteDocumentDialog({
     docTitle,
@@ -30,12 +30,12 @@ export function DeleteDocumentDialog({
 }: DeleteDocumentDialogProps) {
     const cancelRef = useRef<HTMLButtonElement>(null);
 
-    // Focus the cancel button on mount — safe default for destructive dialogs.
+    // Auto-focus cancel on open — the safe default for destructive dialogs.
     useEffect(() => {
         cancelRef.current?.focus();
     }, []);
 
-    // Close on Escape key.
+    // Close on Escape unless a delete is already in flight.
     useEffect(() => {
         function handleKey(e: KeyboardEvent) {
             if (e.key === 'Escape' && !deleting) onCancel();
@@ -53,23 +53,27 @@ export function DeleteDocumentDialog({
             aria-labelledby="delete-dialog-title"
         >
             <div className="delete-dialog">
+                {/* Top accent stripe */}
+                <div className="delete-dialog__stripe" aria-hidden="true" />
+
                 {/* Icon */}
-                <div className="delete-dialog__icon-wrap">
-                    <HugeiconsIcon icon={Delete04Icon} size={22} color="var(--color-error)" />
+                <div className="delete-dialog__icon-wrap" aria-hidden="true">
+                    <HugeiconsIcon icon={Delete04Icon} size={24} color="#fff" />
                 </div>
 
-                {/* Heading */}
+                {/* Copy */}
                 <h2 id="delete-dialog-title" className="delete-dialog__title">
-                    Delete document?
+                    Delete this document?
                 </h2>
-
-                {/* Document name */}
-                <p className="delete-dialog__doc-name">{docTitle}</p>
-
-                {/* Warning */}
-                <p className="delete-dialog__warning">
-                    This action cannot be undone.
+                <p className="delete-dialog__doc-name" title={docTitle}>
+                    {docTitle}
                 </p>
+                <p className="delete-dialog__warning">
+                    This will permanently remove the document and cannot be undone.
+                </p>
+
+                {/* Divider */}
+                <div className="delete-dialog__divider" aria-hidden="true" />
 
                 {/* Actions */}
                 <div className="delete-dialog__actions">
@@ -77,21 +81,26 @@ export function DeleteDocumentDialog({
                         ref={cancelRef}
                         onClick={onCancel}
                         disabled={deleting}
-                        className="btn-ghost delete-dialog__cancel-btn"
+                        className="delete-dialog__cancel-btn"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={onConfirm}
                         disabled={deleting}
-                        className="btn-danger delete-dialog__confirm-btn"
+                        className="delete-dialog__confirm-btn"
                     >
                         {deleting ? (
-                            <span className="delete-dialog__spinner" aria-hidden="true" />
+                            <>
+                                <span className="delete-dialog__spinner" aria-hidden="true" />
+                                Deleting…
+                            </>
                         ) : (
-                            <HugeiconsIcon icon={Delete04Icon} size={14} color="currentColor" />
+                            <>
+                                <HugeiconsIcon icon={Delete04Icon} size={14} color="currentColor" />
+                                Delete
+                            </>
                         )}
-                        {deleting ? 'Deleting…' : 'Delete'}
                     </button>
                 </div>
             </div>
