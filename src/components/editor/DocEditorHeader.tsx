@@ -19,7 +19,8 @@ import {
 } from '@hugeicons/core-free-icons';
 import { useSessionUser } from '@/app/(protected)/layout';
 import { APP_URL } from '@/lib/session';
-import type { DocumentDetail } from '@/api/documents.api';
+import { createDocument, type DocumentDetail } from '@/api/documents.api';
+import { toast } from '@/components/ui';
 import type { MenuItem } from '@/constants';
 import {
     FILE_MENU_ITEMS, EDIT_MENU_ITEMS, VIEW_MENU_ITEMS, INSERT_MENU_ITEMS,
@@ -155,6 +156,27 @@ export function DocEditorHeader({
     onFinalise, onExportPdf, onViewSignature,
 }: DocEditorHeaderProps) {
     const handleAction = useCallback((actionId: string) => {
+        // File actions that don't require the editor run first.
+        if (actionId === 'file:new') {
+            // Open a blank tab synchronously (inside the user gesture) so popup
+            // blockers don't interfere, then redirect once the API responds.
+            const newTab = window.open('', '_blank');
+            createDocument({ type: 'RICH_TEXT' })
+                .then((doc) => {
+                    if (newTab) {
+                        newTab.location.href = `/documents/${doc.id}/edit`;
+                    } else {
+                        // Popup was blocked — fall back to a link the user can click.
+                        toast.error('Popup blocked. Please allow popups and try again.');
+                    }
+                })
+                .catch(() => {
+                    newTab?.close();
+                    toast.error('Failed to create document.');
+                });
+            return;
+        }
+
         if (!editor) return;
         const chain = editor.chain().focus();
         switch (actionId) {
