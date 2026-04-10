@@ -28,6 +28,7 @@ import {
 } from '@/api/documents.api';
 import { toast } from '@/components/ui';
 import { importDocxToTiptap } from '@/lib/import-docx';
+import { saveRenderedDocumentAs } from '@/lib/export-document';
 import type { MenuItem } from '@/constants';
 import {
     FILE_MENU_ITEMS, EDIT_MENU_ITEMS, VIEW_MENU_ITEMS, INSERT_MENU_ITEMS,
@@ -56,33 +57,91 @@ function MenuDropdown({
     onAction: (actionId: string) => void;
 }) {
     const [open, setOpen] = useState(false);
+    const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        const handler = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+        const handler = (e: MouseEvent) => {
+            if (!ref.current?.contains(e.target as Node)) {
+                setOpen(false);
+                setOpenSubmenu(null);
+            }
+        };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
     return (
         <div ref={ref} className="ded-menu">
             <button className={`ded-menu__trigger${open ? ' ded-menu__trigger--open' : ''}`}
-                onClick={() => setOpen(v => !v)}>
+                onClick={() => {
+                    setOpen((value) => {
+                        const nextValue = !value;
+                        if (!nextValue) setOpenSubmenu(null);
+                        return nextValue;
+                    });
+                }}>
                 {label}
             </button>
             {open && (
                 <div className="ded-menu__dropdown">
                     {items.map((item, i) => item.type === 'divider'
                         ? <div key={i} className="ded-menu__divider" />
-                        : (
+                        : item.type === 'submenu'
+                            ? (
+                                <div
+                                    key={`${item.label}-${i}`}
+                                    className="ded-menu__submenu"
+                                    onMouseEnter={() => !item.disabled && setOpenSubmenu(item.label)}
+                                    onMouseLeave={() => {
+                                        setOpenSubmenu((current) => current === item.label ? null : current);
+                                    }}
+                                >
+                                    <button
+                                        disabled={item.disabled}
+                                        className="ded-menu__item ded-menu__item--submenu"
+                                        onMouseEnter={() => !item.disabled && setOpenSubmenu(item.label)}
+                                        onFocus={() => !item.disabled && setOpenSubmenu(item.label)}
+                                        aria-haspopup="menu"
+                                        aria-expanded={openSubmenu === item.label}
+                                    >
+                                        <span>{item.label}</span>
+                                        <span className="ded-menu__submenu-caret" aria-hidden="true">›</span>
+                                    </button>
+                                    {openSubmenu === item.label && (
+                                        <div className="ded-menu__dropdown ded-menu__dropdown--submenu">
+                                            {item.items.map((subItem) => (
+                                                <button
+                                                    key={subItem.actionId}
+                                                    disabled={subItem.disabled}
+                                                    className="ded-menu__item"
+                                                    onClick={() => {
+                                                        onAction(subItem.actionId);
+                                                        setOpen(false);
+                                                        setOpenSubmenu(null);
+                                                    }}
+                                                >
+                                                    <span>{subItem.label}</span>
+                                                    {subItem.shortcut && <span className="ded-menu__shortcut">{subItem.shortcut}</span>}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                            : (
                             <button
                                 key={item.actionId}
                                 disabled={item.disabled}
                                 className="ded-menu__item"
-                                onClick={() => { onAction(item.actionId); setOpen(false); }}
+                                onClick={() => {
+                                    onAction(item.actionId);
+                                    setOpen(false);
+                                    setOpenSubmenu(null);
+                                }}
                             >
                                 <span>{item.label}</span>
                                 {item.shortcut && <span className="ded-menu__shortcut">{item.shortcut}</span>}
                             </button>
-                        )
+                            )
                     )}
                 </div>
             )}
@@ -149,9 +208,7 @@ interface DocEditorHeaderProps {
     isReadOnly: boolean;
     isLocked: boolean;
     isFinalised: boolean;
-    exportingPdf: boolean;
     onFinalise: () => void;
-    onExportPdf: () => void;
     onViewSignature: () => void;
 }
 
@@ -159,12 +216,13 @@ interface DocEditorHeaderProps {
 export function DocEditorHeader({
     editor, doc, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
-    isReadOnly, isLocked, isFinalised, exportingPdf,
-    onFinalise, onExportPdf, onViewSignature,
+    isReadOnly, isLocked, isFinalised,
+    onFinalise, onViewSignature,
 }: DocEditorHeaderProps) {
     const router = useRouter();
     const [importing, setImporting] = useState(false);
     const [copying, setCopying] = useState(false);
+    const [savingAs, setSavingAs] = useState<'pdf' | 'docx' | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -278,11 +336,41 @@ export function DocEditorHeader({
             return;
         }
 
+        if (actionId === 'file:save-as-pdf' || actionId === 'file:save-as-docx') {
+            if (savingAs) return;
+
+            const format = actionId === 'file:save-as-pdf' ? 'pdf' : 'docx';
+            setSavingAs(format);
+
+            Promise.resolve()
+                .then(async () => {
+                    if (editingTitle) {
+                        await Promise.resolve(onTitleSave());
+                    }
+
+                    const sheetEl = document.querySelector('.document-paper-sheet') as HTMLElement | null;
+                    if (!sheetEl) {
+                        throw new Error('Could not find the rendered document to export.');
+                    }
+
+                    await saveRenderedDocumentAs(format, title.trim() || doc.title, sheetEl);
+                    toast.success(`Saved as ${format.toUpperCase()}`);
+                })
+                .catch((error: unknown) => {
+                    const message = error instanceof Error ? error.message : `Failed to save as ${format.toUpperCase()}.`;
+                    toast.error(message);
+                })
+                .finally(() => {
+                    setSavingAs(null);
+                });
+
+            return;
+        }
+
         if (!editor) return;
         const chain = editor.chain().focus();
         switch (actionId) {
             case 'file:print':    window.print(); break;
-            case 'file:export-pdf': onExportPdf(); break;
             case 'edit:undo':    chain.undo().run(); break;
             case 'edit:redo':    chain.redo().run(); break;
             case 'edit:select-all': chain.selectAll().run(); break;
@@ -304,10 +392,11 @@ export function DocEditorHeader({
         editor,
         importing,
         isReadOnly,
-        onExportPdf,
         onTitleEditStart,
         onTitleSave,
         router,
+        savingAs,
+        title,
     ]);
 
     const saveLabel = saveStatus === 'saving' ? 'Saving…'
@@ -402,14 +491,9 @@ export function DocEditorHeader({
                         </button>
                     )}
                     {isLocked && (
-                        <>
-                            <button onClick={onExportPdf} disabled={exportingPdf} className="ded-action-btn">
-                                {exportingPdf ? 'Exporting…' : 'Download PDF'}
-                            </button>
-                            <button onClick={onViewSignature} className="ded-action-btn">
-                                View signature
-                            </button>
-                        </>
+                        <button onClick={onViewSignature} className="ded-action-btn">
+                            View signature
+                        </button>
                     )}
 
                     <button className="ded-share-btn" disabled title="Share (coming soon)">
