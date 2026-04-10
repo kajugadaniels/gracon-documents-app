@@ -11,8 +11,14 @@ export const FILE_MENU_ITEMS: MenuItem[] = [
     { type: 'action', label: 'Rename',           actionId: 'file:rename' },
     { type: 'action', label: 'Make a copy',      actionId: 'file:copy' },
     { type: 'divider' },
-    { type: 'action', label: 'Download',         actionId: 'file:download' },
-    { type: 'action', label: 'Export as PDF',    actionId: 'file:export-pdf' },
+    {
+        type: 'submenu',
+        label: 'Save as',
+        items: [
+            { type: 'action', label: 'Save as PDF', actionId: 'file:save-as-pdf' },
+            { type: 'action', label: 'Save as DOCX', actionId: 'file:save-as-docx' },
+        ],
+    },
     { type: 'divider' },
     { type: 'action', label: 'Version history',  actionId: 'file:history', disabled: true },
     { type: 'divider' },
