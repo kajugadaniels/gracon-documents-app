@@ -2,21 +2,23 @@
  * DocumentCard
  *
  * Google Docs-style portrait thumbnail card for a single document.
- * Shows a fake-content preview, status badge, hover action overlay,
- * and a persistent star button for toggling the document as a favourite.
+ * Hover overlay exposes an Open action and a two-step delete button —
+ * first click arms the button (confirming state), second click executes.
+ * The armed state auto-resets after 3 seconds if not confirmed.
  */
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { StarIcon } from '@hugeicons/core-free-icons';
+import { StarIcon, Delete04Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import type { DocumentSummary, DocumentStatus } from '@/api/documents.api';
 
 export const STATUS_LABELS: Record<DocumentStatus, string> = {
-    DRAFT: 'Draft',
+    DRAFT:     'Draft',
     FINALISED: 'Finalised',
-    SIGNED: 'Signed',
-    LOCKED: 'Locked',
+    SIGNED:    'Signed',
+    LOCKED:    'Locked',
 };
 
 /** Converts an ISO timestamp into a human-readable relative time string. */
@@ -39,12 +41,85 @@ interface DocumentCardProps {
     onToggleStar: (id: string) => void;
 }
 
+/** Auto-reset duration (ms) for the armed delete confirm state. */
+const CONFIRM_TIMEOUT_MS = 3_000;
+
+/**
+ * Two-step delete button: first click arms it, second click confirms.
+ * Arms state resets automatically after CONFIRM_TIMEOUT_MS of inactivity.
+ */
+function DeleteButton({ docId, docTitle, onDelete }: {
+    docId: string;
+    docTitle: string;
+    onDelete: (id: string, title: string) => void;
+}) {
+    const [armed, setArmed] = useState(false);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+    }, []);
+
+    function handleClick(e: React.MouseEvent) {
+        e.stopPropagation();
+        if (!armed) {
+            setArmed(true);
+            timerRef.current = setTimeout(() => setArmed(false), CONFIRM_TIMEOUT_MS);
+        } else {
+            if (timerRef.current) clearTimeout(timerRef.current);
+            setArmed(false);
+            onDelete(docId, docTitle);
+        }
+    }
+
+    function handleCancel(e: React.MouseEvent) {
+        e.stopPropagation();
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setArmed(false);
+    }
+
+    if (armed) {
+        return (
+            <div className="doc-card__delete-armed">
+                <button
+                    onClick={handleClick}
+                    className="doc-card__delete-confirm-btn"
+                    aria-label={`Confirm delete ${docTitle}`}
+                >
+                    <HugeiconsIcon icon={Delete04Icon} size={13} color="currentColor" />
+                    Confirm
+                </button>
+                <button
+                    onClick={handleCancel}
+                    className="doc-card__delete-cancel-btn"
+                    aria-label="Cancel delete"
+                >
+                    <HugeiconsIcon icon={Cancel01Icon} size={12} color="currentColor" />
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <button
+            onClick={handleClick}
+            className="doc-card__delete-btn"
+            aria-label={`Delete ${docTitle}`}
+            title="Delete"
+        >
+            <HugeiconsIcon icon={Delete04Icon} size={15} color="currentColor" />
+        </button>
+    );
+}
+
 /**
  * Renders a single document as a portrait-thumbnail card.
- * The star button is always visible and toggles the favourite state.
- * The hover overlay reveals Open / Delete actions.
+ * The star button is always visible when active; appears on card hover otherwise.
+ * The hover overlay reveals Open and Delete actions.
  */
 export function DocumentCard({ doc, starred, onDelete, onToggleStar }: DocumentCardProps) {
+    const canDelete = doc.status === 'DRAFT' || doc.status === 'FINALISED';
+
     return (
         <div className="doc-card doc-card--rich-text">
             {/* ── Thumbnail ── */}
@@ -72,32 +147,22 @@ export function DocumentCard({ doc, starred, onDelete, onToggleStar }: DocumentC
                     <Link
                         href={`/documents/${doc.id}/edit`}
                         className="btn-primary"
-                        style={{ textDecoration: 'none', padding: '8px 18px', fontSize: 12 }}
+                        style={{ textDecoration: 'none', padding: '8px 20px', fontSize: 12 }}
                     >
                         {doc.status === 'LOCKED' ? 'View' : 'Open'}
                     </Link>
-                    {(doc.status === 'DRAFT' || doc.status === 'FINALISED') && (
-                        <button
-                            onClick={() => onDelete(doc.id, doc.title)}
-                            className="btn-icon"
-                            style={{
-                                color: 'var(--color-error)',
-                                borderColor: 'var(--color-error-border)',
-                                background: 'rgba(255,255,255,0.9)',
-                                fontSize: 12,
-                                padding: '7px 10px',
-                            }}
-                            aria-label={`Delete ${doc.title}`}
-                        >
-                            Delete
-                        </button>
+                    {canDelete && (
+                        <DeleteButton
+                            docId={doc.id}
+                            docTitle={doc.title}
+                            onDelete={onDelete}
+                        />
                     )}
                 </div>
             </div>
 
             {/* ── Card body ── */}
             <div className="doc-card__body">
-                {/* Title row: title + star button */}
                 <div className="doc-card__title-row">
                     <p className="doc-card__title">{doc.title}</p>
                     <button
