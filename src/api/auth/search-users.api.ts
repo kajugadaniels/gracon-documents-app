@@ -1,7 +1,7 @@
 /**
  * search-users.api.ts
  *
- * Searches active, verified users by a partial email string.
+ * Searches active, verified users by email, platform ID, or citizen ID.
  * Used by the Share dialog to look up collaborators before adding them.
  *
  * Calls the documents service (/api/v1/users/search) — not the auth service.
@@ -19,12 +19,14 @@ export interface UserSearchResult {
     surName: string | null;
     postNames: string | null;
     imageUrl: string | null;
+    matchedBy: 'EMAIL' | 'PLATFORM_ID' | 'CITIZEN_ID';
 }
 
 /**
- * Returns users whose email contains the provided query string.
+ * Returns users whose email contains the provided query string or whose
+ * platform/citizen ID exactly matches it.
  *
- * @param q  Partial email — must be at least 5 characters.
+ * @param q  Partial email, or a full platform/citizen ID — must be at least 5 characters.
  * @returns  Array of matching user summaries.
  */
 export async function searchUsers(q: string): Promise<UserSearchResult[]> {
