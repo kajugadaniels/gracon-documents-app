@@ -878,6 +878,141 @@ body {
   color: var(--color-text-primary);
 }
 
+/* ── Danger button ── */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-error);
+  border: none;
+  cursor: pointer;
+  transition: background 150ms ease, box-shadow 150ms ease, transform 80ms ease;
+  box-shadow: 0 2px 0 0 #991b1b, 0 4px 12px rgba(220,38,38,0.30);
+}
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+  box-shadow: 0 3px 0 0 #7f1d1d, 0 6px 16px rgba(220,38,38,0.38);
+}
+.btn-danger:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 0 #7f1d1d, 0 2px 6px rgba(220,38,38,0.20);
+}
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Delete confirmation dialog ── */
+.delete-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: delete-dialog-fade-in 180ms ease;
+}
+@keyframes delete-dialog-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.delete-dialog {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: var(--radius-xl);
+  padding: 32px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  text-align: center;
+  animation: delete-dialog-slide-up 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.50);
+}
+@keyframes delete-dialog-slide-up {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+.delete-dialog__icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--color-error-subtle);
+  border: 1px solid var(--color-error-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+.delete-dialog__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 10px;
+  line-height: 1.2;
+}
+.delete-dialog__doc-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: var(--radius-md);
+  padding: 7px 14px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0 0 12px;
+}
+.delete-dialog__warning {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0 0 24px;
+}
+.delete-dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.delete-dialog__cancel-btn {
+  flex: 1;
+  justify-content: center;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+.delete-dialog__confirm-btn {
+  flex: 1;
+  justify-content: center;
+}
+.delete-dialog__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: delete-dialog-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes delete-dialog-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Card body ── */
 .doc-card__body {
   padding: 14px 16px 16px;
