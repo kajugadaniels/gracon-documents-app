@@ -19,4 +19,12 @@ export interface MenuItemDivider {
     type: 'divider';
 }
 
-export type MenuItem = MenuItemAction | MenuItemDivider;
+/** A hoverable submenu that opens to the right of its parent menu item. */
+export interface MenuItemSubmenu {
+    type: 'submenu';
+    label: string;
+    items: MenuItemAction[];
+    disabled?: boolean;
+}
+
+export type MenuItem = MenuItemAction | MenuItemDivider | MenuItemSubmenu;
