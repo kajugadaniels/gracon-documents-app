@@ -2095,6 +2095,35 @@ body {
   margin: 16px 0 0;
 }
 
+.share-dialog__mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 16px 20px 0;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f4f1ff;
+}
+
+.share-dialog__mode-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.share-dialog__mode-btn--active {
+  background: #ffffff;
+  color: #5b23ff;
+  box-shadow: 0 1px 3px rgba(22,16,58,0.08);
+}
+
 /* Search input */
 .share-dialog__search-wrap {
   position: relative;
