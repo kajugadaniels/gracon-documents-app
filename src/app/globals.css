@@ -588,16 +588,25 @@ body {
 }
 .docs-header__search-icon {
   position: absolute;
-  left: 15px;
-  font-size: 16px;
+  left: 14px;
+  display: flex;
+  align-items: center;
   color: var(--color-text-muted);
   pointer-events: none;
   z-index: 1;
-  line-height: 1;
+  transition: color 200ms ease;
+}
+.docs-search-icon--searching {
+  animation: docs-search-pulse 0.8s ease infinite alternate;
+}
+@keyframes docs-search-pulse {
+  from { opacity: 0.5; }
+  to   { opacity: 1;   }
 }
 .docs-header__search .input-glass {
   height: 44px;
   padding-left: 42px;
+  padding-right: 40px;
   border-radius: 9999px;
   font-size: 14px;
   background: var(--color-primary-subtle);
@@ -608,6 +617,36 @@ body {
   background: rgba(255,255,255,0.98);
   border-color: var(--color-border-focus);
   box-shadow: 0 0 0 3px rgba(91,35,255,0.10);
+}
+/* Hides browser's native clear (×) button in type="search" */
+.docs-header__search .input-glass::-webkit-search-cancel-button { display: none; }
+.docs-header__search .input-glass::-ms-clear { display: none; }
+/* Clear button */
+.docs-header__search-clear {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.08);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+  flex-shrink: 0;
+}
+.docs-header__search-clear:hover {
+  background: rgba(0,0,0,0.14);
+  color: var(--color-text-primary);
+}
+/* Mobile search overlay */
+.docs-header__mobile-search {
+  padding: 10px 16px;
+  border-top: 1px solid var(--color-border);
+  background: rgba(255,255,255,0.98);
 }
 .docs-header__actions {
   display: flex;
@@ -759,6 +798,85 @@ body {
   transition: opacity 150ms ease;
 }
 .doc-card:hover .doc-card__hover-actions { opacity: 1; }
+
+/* ── Delete button — idle state ── */
+.doc-card__delete-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(220,38,38,0.25);
+  background: rgba(255,255,255,0.92);
+  color: var(--color-error);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, transform 120ms ease, box-shadow 150ms ease;
+  flex-shrink: 0;
+}
+.doc-card__delete-btn:hover {
+  background: var(--color-error-subtle);
+  border-color: var(--color-error-border);
+  box-shadow: 0 0 0 4px rgba(220,38,38,0.10);
+  transform: scale(1.08);
+}
+.doc-card__delete-btn:active { transform: scale(0.94); }
+
+/* ── Delete button — armed / confirming state ── */
+.doc-card__delete-armed {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: doc-card-delete-arm-in 160ms cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes doc-card-delete-arm-in {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.doc-card__delete-confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-error);
+  background: var(--color-error);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.20), 0 4px 10px rgba(220,38,38,0.30);
+  animation: doc-card-delete-pulse 1.2s ease infinite;
+  transition: background 120ms, box-shadow 120ms;
+}
+.doc-card__delete-confirm-btn:hover {
+  background: #b91c1c;
+  box-shadow: 0 0 0 4px rgba(220,38,38,0.28), 0 6px 14px rgba(220,38,38,0.36);
+}
+@keyframes doc-card-delete-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(220,38,38,0.20), 0 4px 10px rgba(220,38,38,0.30); }
+  50%       { box-shadow: 0 0 0 6px rgba(220,38,38,0.10), 0 4px 10px rgba(220,38,38,0.30); }
+}
+.doc-card__delete-cancel-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.92);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+  flex-shrink: 0;
+}
+.doc-card__delete-cancel-btn:hover {
+  background: rgba(0,0,0,0.08);
+  color: var(--color-text-primary);
+}
 
 /* ── Card body ── */
 .doc-card__body {
