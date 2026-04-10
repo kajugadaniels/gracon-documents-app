@@ -273,28 +273,6 @@ body {
   gap: var(--paper-gap);
   padding: 0 0 48px;
 }
-.document-paged-editor {
-  position: relative;
-  width: min(100%, var(--paper-width));
-  margin: 0 auto;
-}
-.document-paged-editor__pages {
-  position: relative;
-  display: grid;
-  gap: var(--paper-gap);
-}
-.document-paged-editor__surface {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: 100%;
-  overflow: hidden;
-}
-.document-page-break-spacer {
-  display: block;
-  width: 100%;
-  pointer-events: none;
-}
 .document-paper-sheet {
   width: min(100%, var(--paper-width));
   min-height: var(--paper-height);
@@ -334,15 +312,6 @@ body {
 }
 .document-paper-sheet__body--editor {
   padding: 0;
-}
-.document-paper-sheet--page-shell {
-  min-height: var(--paper-height);
-}
-.document-paper-sheet__body--page-shell {
-  padding: 0;
-}
-.document-paper-sheet__page-fill {
-  min-height: calc(var(--paper-height) - 56px);
 }
 .document-paper-sheet__after-content {
   padding: 0 clamp(30px, 6vw, 76px) clamp(56px, 7vw, 84px);
@@ -397,14 +366,10 @@ body {
 }
 .tiptap-editor.tiptap-editor-paper .ProseMirror {
   max-width: none;
-  width: 100%;
-  min-height: 100%;
+  min-height: calc(var(--paper-height) - 148px);
   margin: 0;
   padding: var(--editor-page-padding-top) var(--editor-page-padding-x) var(--editor-page-padding-bottom);
   background: transparent;
-  box-sizing: border-box;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 .tiptap-editor.tiptap-editor-paper-signed .ProseMirror {
   min-height: 0;
@@ -517,10 +482,6 @@ body {
   }
 
   .document-paper-sheet__body--editor {
-    padding: 0;
-  }
-
-  .document-paper-sheet__body--page-shell {
     padding: 0;
   }
 
