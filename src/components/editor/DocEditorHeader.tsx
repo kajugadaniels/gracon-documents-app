@@ -168,13 +168,16 @@ export function DocEditorHeader({
      */
     const handleFileImport = useCallback(async (file: File) => {
         setImporting(true);
+        const importToastId = toast.loading('Importing document…');
         try {
             const { content, title: suggestedTitle } = await importDocxToTiptap(file);
             const importedDoc = await createDocument({ type: 'RICH_TEXT', title: suggestedTitle });
             await autosaveDocument(importedDoc.id, content);
+            toast.dismiss(importToastId);
             toast.success(`"${suggestedTitle}" imported`);
             router.push('/documents');
         } catch (err: unknown) {
+            toast.dismiss(importToastId);
             const message = err instanceof Error ? err.message : 'Failed to import document.';
             toast.error(message);
         } finally {
