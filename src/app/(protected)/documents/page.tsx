@@ -15,10 +15,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from '@/components/ui';
 import {
+    autosaveDocument,
+    createDocument,
     listDocuments, deleteDocument,
     type DocumentSummary, type DocumentStatus,
 } from '@/api/documents.api';
 import { useStarred } from '@/lib/hooks/useStarred';
+import { importDocxToTiptap } from '@/lib/import-docx';
 import {
     DocumentCard, DocumentsFilters, DeleteDocumentDialog,
     type StatusFilter, type SortOption,
@@ -67,7 +70,9 @@ export default function DocumentsPage() {
     const [starredOnly, setStarredOnly] = useState(false);
     const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
     const [deleting,    setDeleting]    = useState(false);
+    const [importing,   setImporting]   = useState(false);
     const latestLoadRef = useRef(0);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { starredIds, isStarred, toggleStar } = useStarred();
 
@@ -146,10 +151,42 @@ export default function DocumentsPage() {
         if (before !== after) router.push(after);
     }
 
+    async function handleImport(file: File) {
+        setImporting(true);
+        const importToastId = toast.loading('Importing document…');
+
+        try {
+            const { content, title } = await importDocxToTiptap(file);
+            const doc = await createDocument({ type: 'RICH_TEXT', title });
+            await autosaveDocument(doc.id, content);
+            toast.dismiss(importToastId);
+            toast.success(`"${title}" imported`);
+            router.push(`/documents/${doc.id}/edit`);
+        } catch (error: unknown) {
+            toast.dismiss(importToastId);
+            const message = getErrorMessage(error, 'Failed to import document.');
+            toast.error(message);
+        } finally {
+            setImporting(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    }
+
     const totalPages = Math.max(1, Math.ceil(total / 20));
 
     return (
         <div className="animate-fade-up">
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx,.doc"
+                style={{ display: 'none' }}
+                onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void handleImport(file);
+                }}
+            />
+
             {/* ── Quick-create strip ── */}
             <div className="docs-create-strip">
                 <p className="docs-create-strip__label">Create new</p>
@@ -165,6 +202,44 @@ export default function DocumentsPage() {
                         </div>
                         <span className="docs-create-item__label">Blank document</span>
                     </Link>
+
+                    <button
+                        type="button"
+                        className="docs-create-item"
+                        aria-label="Import document from your device"
+                        disabled={importing}
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        <div className="docs-create-item__thumb">
+                            <div className="docs-create-item__accent docs-create-item__accent--import" />
+                            <div
+                                style={{
+                                    width: 34,
+                                    height: 34,
+                                    borderRadius: '50%',
+                                    border: '1px solid rgba(5,150,105,0.22)',
+                                    background: 'rgba(5,150,105,0.08)',
+                                    color: 'var(--color-success)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '10px auto 8px',
+                                    fontSize: 18,
+                                    fontWeight: 700,
+                                }}
+                                aria-hidden="true"
+                            >
+                                {importing ? '…' : '↓'}
+                            </div>
+                            <div className="docs-create-item__line docs-create-item__line--h" style={{ width: '72%' }} />
+                            <div className="docs-create-item__line" style={{ width: '100%' }} />
+                            <div className="docs-create-item__line" style={{ width: '84%' }} />
+                            <div className="docs-create-item__line" style={{ width: '68%' }} />
+                        </div>
+                        <span className="docs-create-item__label">
+                            {importing ? 'Importing…' : 'Import document'}
+                        </span>
+                    </button>
                 </div>
             </div>
 
