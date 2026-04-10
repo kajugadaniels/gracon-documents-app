@@ -1,17 +1,19 @@
 /**
  * search-users.api.ts
  *
- * Searches active, verified users by email, platform ID, or citizen ID.
+ * Searches active, verified users by email or exact numeric ID.
  * Used by the Share dialog to look up collaborators before adding them.
  *
  * Calls the documents service (/api/v1/users/search) — not the auth service.
  * The endpoint is protected by VerifiedUserGuard; a valid full JWT is required.
  *
- * The query must be at least 5 characters — enforced by both this function
- * and the documents service endpoint.
+ * Email search requires at least 5 characters. Numeric-ID search requires the
+ * full Platform ID (11 digits) or Citizen ID (16 digits).
  */
 
 import { apiClient } from '@/api/client';
+
+export type UserSearchMode = 'email' | 'id';
 
 export interface UserSearchResult {
     id: string;
@@ -23,15 +25,18 @@ export interface UserSearchResult {
 }
 
 /**
- * Returns users whose email contains the provided query string or whose
- * platform/citizen ID exactly matches it.
+ * Returns users by either partial email or exact numeric ID, depending on mode.
  *
- * @param q  Partial email, or a full platform/citizen ID — must be at least 5 characters.
+ * @param q  Query string appropriate for the selected mode.
+ * @param mode  Explicit search mode selected by the user.
  * @returns  Array of matching user summaries.
  */
-export async function searchUsers(q: string): Promise<UserSearchResult[]> {
+export async function searchUsers(
+    q: string,
+    mode: UserSearchMode,
+): Promise<UserSearchResult[]> {
     const res = await apiClient.get<UserSearchResult[]>('/users/search', {
-        params: { q },
+        params: { q, mode },
     });
     return res.data;
 }
