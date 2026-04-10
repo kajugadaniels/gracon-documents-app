@@ -137,6 +137,11 @@ export async function updateDocumentMeta(
     return res.data;
 }
 
+export async function copyDocument(id: string): Promise<DocumentSummary> {
+    const res = await apiClient.post(`/documents/${id}/copy`);
+    return res.data;
+}
+
 export async function finaliseDocument(
     id: string,
     note?: string,
