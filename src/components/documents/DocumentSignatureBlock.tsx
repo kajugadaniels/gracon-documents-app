@@ -124,8 +124,13 @@ export function DocumentSignatureBlock({
         resizeObserver.observe(cardEl);
 
         const paperEl = overlayEl.closest('.document-paper-sheet');
-        const contentEl = paperEl?.querySelector('.ProseMirror');
+        const pagedEditorEl = overlayEl.closest('.document-paged-editor');
+        const contentEl = (
+            pagedEditorEl?.querySelector('.ProseMirror')
+            ?? paperEl?.querySelector('.ProseMirror')
+        ) as HTMLElement | null;
         if (paperEl instanceof HTMLElement) resizeObserver.observe(paperEl);
+        if (pagedEditorEl instanceof HTMLElement) resizeObserver.observe(pagedEditorEl);
         if (contentEl instanceof HTMLElement) resizeObserver.observe(contentEl);
 
         window.addEventListener('resize', recompute);
