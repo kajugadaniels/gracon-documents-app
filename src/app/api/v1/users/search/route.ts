@@ -1,10 +1,10 @@
 /**
- * GET /api/v1/users/search?q=...
+ * GET /api/v1/users/search?q=...&mode=email|id
  *
  * Proxy to the documents service user-search endpoint.
  * Forwards the Authorization header so the documents service can validate the
  * token via its VerifiedUserGuard.
- * Query param `q` is passed through unchanged — validation happens at the service.
+ * Query params are passed through unchanged — validation happens at the service.
  */
 
 const DOCS_SERVICE_BASE =
@@ -14,9 +14,11 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const q = searchParams.get('q') ?? '';
+        const mode = searchParams.get('mode') ?? '';
 
         const upstreamUrl = new URL(`${DOCS_SERVICE_BASE}/users/search`);
         upstreamUrl.searchParams.set('q', q);
+        upstreamUrl.searchParams.set('mode', mode);
 
         const response = await fetch(upstreamUrl.toString(), {
             method: 'GET',
