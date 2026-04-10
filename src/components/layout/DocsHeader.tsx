@@ -1,17 +1,23 @@
 /**
  * DocsHeader
  *
- * Google Docs-style sticky header. Single compact bar with logo, prominent
- * search, action buttons, and user avatar. Navigation tabs rendered below
- * as a minimal underline strip — active tab uses a primary-colour bottom border.
+ * Google Docs-style sticky header with a debounced live search input.
+ * Typing triggers a search after 350 ms of inactivity — the query is written
+ * to the URL so the documents page reacts via its existing searchParams hook.
+ * A clear button and loading indicator are shown inside the input.
  */
 'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Search01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import type { SessionUser } from '@/app/(protected)/layout';
 import { APP_URL } from '@/lib/session';
+
+/** Debounce delay in ms before the search query is pushed to the URL. */
+const SEARCH_DEBOUNCE_MS = 350;
 
 const NAV_ITEMS = [
     {
@@ -37,15 +43,68 @@ const NAV_ITEMS = [
 ] as const;
 
 export function DocsHeader({ user }: { user: SessionUser }) {
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const [query, setQuery] = useState(searchParams.get('search') ?? '');
+    const router        = useRouter();
+    const pathname      = usePathname();
+    const searchParams  = useSearchParams();
+
+    const [query,            setQuery]            = useState(searchParams.get('search') ?? '');
+    const [searching,        setSearching]        = useState(false);
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Keep local query in sync when URL params change externally (e.g. nav away and back).
     useEffect(() => {
         setQuery(searchParams.get('search') ?? '');
     }, [searchParams]);
+
+    // Clean up any pending debounce on unmount.
+    useEffect(() => () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+    }, []);
+
+    /** Handles every keystroke: updates UI instantly, debounces the URL push. */
+    function handleSearchChange(value: string) {
+        setQuery(value);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+
+        debounceRef.current = setTimeout(() => {
+            pushSearch(value);
+        }, SEARCH_DEBOUNCE_MS);
+    }
+
+    /** Pushes a search value to the URL, only if it actually differs. */
+    function pushSearch(value: string) {
+        const params = new URLSearchParams(searchParams.toString());
+        const trimmed = value.trim();
+        const before = params.toString();
+
+        if (trimmed) params.set('search', trimmed);
+        else params.delete('search');
+
+        if (params.toString() === before) return; // nothing changed
+
+        setSearching(true);
+        const target = pathname !== '/documents' ? '/documents' : pathname;
+        router.push(`${target}${params.toString() ? `?${params.toString()}` : ''}`);
+        // Brief visual feedback — the page will re-render once data loads.
+        setTimeout(() => setSearching(false), 600);
+    }
+
+    /** Clears the search input and URL param immediately. */
+    function clearSearch() {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        setQuery('');
+        pushSearch('');
+    }
+
+    /** Allows pressing Enter to push immediately without waiting for the debounce. */
+    function handleFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        pushSearch(query);
+        setMobileSearchOpen(false);
+    }
 
     function logout() {
         document.cookie = 'g360_at=; path=/; max-age=0; SameSite=Lax';
@@ -53,25 +112,8 @@ export function DocsHeader({ user }: { user: SessionUser }) {
         window.location.href = `${APP_URL}/logout`;
     }
 
-    function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        const value = query.trim();
-        const params = new URLSearchParams(searchParams.toString());
-        if (value) params.set('search', value); else params.delete('search');
-        const target = pathname !== '/documents' ? '/documents' : pathname;
-        router.push(`${target}${params.toString() ? `?${params.toString()}` : ''}`);
-    }
-
-    function clearSearch() {
-        setQuery('');
-        const params = new URLSearchParams(searchParams.toString());
-        params.delete('search');
-        router.push(`/documents${params.toString() ? `?${params.toString()}` : ''}`);
-    }
-
-    const initials =
-        `${user.postNames?.[0] ?? ''}${user.surName?.[0] ?? ''}`.toUpperCase() || 'U';
-    const status = searchParams.get('status');
+    const initials = `${user.postNames?.[0] ?? ''}${user.surName?.[0] ?? ''}`.toUpperCase() || 'U';
+    const status   = searchParams.get('status');
 
     return (
         <header className="docs-header">
@@ -86,22 +128,40 @@ export function DocsHeader({ user }: { user: SessionUser }) {
                     </div>
                 </Link>
 
-                {/* Search — hidden on mobile, toggled by button */}
+                {/* Search */}
                 <form
-                    onSubmit={submitSearch}
+                    onSubmit={handleFormSubmit}
                     className="docs-header__search"
                     role="search"
                     aria-label="Search documents"
                 >
-                    <span className="docs-header__search-icon" aria-hidden>⌕</span>
+                    <span className="docs-header__search-icon" aria-hidden="true">
+                        <HugeiconsIcon
+                            icon={Search01Icon}
+                            size={16}
+                            color="currentColor"
+                            className={searching ? 'docs-search-icon--searching' : ''}
+                        />
+                    </span>
                     <input
                         type="search"
                         placeholder="Search documents…"
                         className="input-glass"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={(e) => handleSearchChange(e.target.value)}
                         aria-label="Search documents"
+                        autoComplete="off"
                     />
+                    {query && (
+                        <button
+                            type="button"
+                            onClick={clearSearch}
+                            className="docs-header__search-clear"
+                            aria-label="Clear search"
+                        >
+                            <HugeiconsIcon icon={Cancel01Icon} size={14} color="currentColor" />
+                        </button>
+                    )}
                 </form>
 
                 {/* Right-side actions */}
@@ -112,7 +172,7 @@ export function DocsHeader({ user }: { user: SessionUser }) {
                         onClick={() => setMobileSearchOpen((v) => !v)}
                         aria-label="Search"
                     >
-                        ⌕
+                        <HugeiconsIcon icon={Search01Icon} size={17} color="currentColor" />
                     </button>
 
                     <Link
@@ -157,28 +217,30 @@ export function DocsHeader({ user }: { user: SessionUser }) {
 
             {/* ── Mobile search overlay ── */}
             {mobileSearchOpen && (
-                <div
-                    style={{
-                        padding: '10px 16px',
-                        borderTop: '1px solid var(--color-border)',
-                        background: 'rgba(255,255,255,0.98)',
-                    }}
-                >
-                    <form onSubmit={(e) => { submitSearch(e); setMobileSearchOpen(false); }} style={{ display: 'flex', gap: 8 }}>
+                <div className="docs-header__mobile-search">
+                    <form onSubmit={handleFormSubmit} style={{ display: 'flex', gap: 8 }}>
                         <div style={{ flex: 1, position: 'relative' }}>
-                            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: 'var(--color-text-muted)', pointerEvents: 'none' }}>⌕</span>
+                            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)', pointerEvents: 'none' }}>
+                                <HugeiconsIcon icon={Search01Icon} size={16} color="currentColor" />
+                            </span>
                             <input
                                 type="search"
                                 placeholder="Search documents…"
                                 className="input-glass"
                                 value={query}
-                                onChange={(e) => setQuery(e.target.value)}
+                                onChange={(e) => handleSearchChange(e.target.value)}
                                 autoFocus
+                                autoComplete="off"
                                 style={{ paddingLeft: 40, height: 44, borderRadius: 9999, fontSize: 14 }}
                             />
                         </div>
                         {query && (
-                            <button type="button" onClick={() => { clearSearch(); setMobileSearchOpen(false); }} className="btn-ghost" style={{ padding: '9px 14px', fontSize: 12, flexShrink: 0 }}>
+                            <button
+                                type="button"
+                                onClick={() => { clearSearch(); setMobileSearchOpen(false); }}
+                                className="btn-ghost"
+                                style={{ padding: '9px 14px', fontSize: 12, flexShrink: 0 }}
+                            >
                                 Clear
                             </button>
                         )}
