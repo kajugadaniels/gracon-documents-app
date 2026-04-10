@@ -116,6 +116,32 @@ function WarningIcon() {
     );
 }
 
+function LoadingIcon() {
+    return (
+        <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            style={{ flexShrink: 0 }}
+        >
+            <circle
+                cx="12"
+                cy="12"
+                r="8"
+                stroke="rgba(196,181,253,0.28)"
+                strokeWidth="2.5"
+            />
+            <path
+                d="M12 4a8 8 0 0 1 8 8"
+                stroke="#c4b5fd"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+}
+
 function CloseButton({ toastId }: { toastId: string | number }) {
     return (
         <button
@@ -344,4 +370,22 @@ export const toast = {
             ),
             { duration: options.duration ?? 4500 },
         ),
+
+    loading: (title: string, options: ToastOptions = {}) =>
+        sonnerToast.custom(
+            (id) => (
+                <ToastContent
+                    id={id}
+                    icon={<LoadingIcon />}
+                    title={title}
+                    description={options.description}
+                    accentColor="#c4b5fd"
+                    accentGlow="rgba(196,181,253,0.14)"
+                    accentBorder="rgba(196,181,253,0.24)"
+                />
+            ),
+            { duration: options.duration ?? 60000 },
+        ),
+
+    dismiss: (toastId?: string | number) => sonnerToast.dismiss(toastId),
 };
