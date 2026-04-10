@@ -2266,6 +2266,20 @@ body {
   text-overflow: ellipsis;
 }
 
+.share-dialog__user-match {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(91,35,255,0.08);
+  color: #5b23ff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
 /* Selected check */
 .share-dialog__check {
   flex-shrink: 0;
