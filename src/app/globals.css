@@ -883,10 +883,11 @@ body {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  /* Covers the full viewport — very light tint so the blur carries all the weight */
-  background: rgba(7, 7, 26, 0.28);
-  backdrop-filter: blur(12px) saturate(1.2);
-  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  /* Soft light veil — separates the dialog without darkening the workspace. */
+  background:
+    radial-gradient(circle at top, rgba(255,255,255,0.78), rgba(245,244,252,0.86) 52%, rgba(238,237,247,0.92) 100%);
+  backdrop-filter: blur(10px) saturate(1.05);
+  -webkit-backdrop-filter: blur(10px) saturate(1.05);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -902,16 +903,16 @@ body {
 .delete-dialog {
   position: relative;
   width: 100%;
-  max-width: 400px;
-  background: #ffffff;
-  border-radius: 20px;
+  max-width: 388px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,249,255,0.98) 100%);
+  border: 1px solid rgba(17,24,39,0.08);
+  border-radius: 18px;
   overflow: hidden;
   text-align: center;
   animation: delete-dialog-slide-up 230ms cubic-bezier(0.34, 1.40, 0.64, 1);
   box-shadow:
-    0 2px 0 rgba(0,0,0,0.06),
-    0 16px 48px rgba(0, 0, 0, 0.22),
-    0 4px 16px rgba(0, 0, 0, 0.10);
+    0 20px 44px rgba(32, 24, 62, 0.12),
+    0 6px 16px rgba(32, 24, 62, 0.06);
 }
 @keyframes delete-dialog-slide-up {
   from { opacity: 0; transform: translateY(18px) scale(0.97); }
