@@ -14,7 +14,8 @@ import CharacterCount from '@tiptap/extension-character-count';
 import Highlight from '@tiptap/extension-highlight';
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
+import { PaginationExtension } from './document-pagination';
+import { PaginatedPaperCanvas } from './PaginatedPaperCanvas';
 
 interface RichTextEditorProps {
     initialContent?: Record<string, unknown> | null;
@@ -73,6 +74,7 @@ export function RichTextEditor({
             Highlight.configure({ multicolor: false }),
             Placeholder.configure({ placeholder }),
             CharacterCount,
+            PaginationExtension,
         ],
         content: initialContent ?? { type: 'doc', content: [{ type: 'paragraph' }] },
         editable: !readOnly,
@@ -98,34 +100,14 @@ export function RichTextEditor({
     if (!editor) return null;
 
     if (paperMode) {
-        const footerLabel = paperStatus
-            ? `${paperStatus.toLowerCase()} document`
-            : readOnly
-                ? 'Read-only document'
-                : 'Editable draft';
-        const paperEditorClassName = overlayContent
-            ? 'tiptap-editor tiptap-editor-paper tiptap-editor-paper-signed'
-            : 'tiptap-editor tiptap-editor-paper';
-
         return (
-            <div className={paperEditorClassName}>
+            <div className="tiptap-editor tiptap-editor-paper">
                 {!readOnly && !hideToolbar && <EditorToolbar editor={editor} paperMode />}
-                <DocumentPaperSheet
-                    className="document-paper-sheet--editor"
-                    bodyClassName="document-paper-sheet__body--editor"
-                    eyebrow={readOnly ? 'Locked page' : ''}
-                    title={paperTitle}
-                    meta={<span className="document-paper-sheet__page-tag">Page {pageNumber}</span>}
-                    footer={(
-                        <div className="document-paper-sheet__footer-bar">
-                            <span>{footerLabel}</span>
-                            <span>Page {pageNumber}</span>
-                        </div>
-                    )}
-                    overlay={overlayContent}
-                >
-                    <EditorContent editor={editor} />
-                </DocumentPaperSheet>
+                <PaginatedPaperCanvas
+                    editor={editor}
+                    paperStatus={paperStatus ?? (readOnly ? 'READ_ONLY' : undefined)}
+                    overlayContent={overlayContent}
+                />
             </div>
         );
     }
