@@ -40,9 +40,12 @@ function readPaginationMetrics(
 ): PaginationMetrics {
     const contentStyles = window.getComputedStyle(contentEl);
     const pageStyles = window.getComputedStyle(pagesEl);
+    const pageBodyEl = firstPageEl.querySelector('.document-paper-sheet__body') as HTMLElement | null;
 
     return {
         pageHeight: firstPageEl.getBoundingClientRect().height,
+        pageBodyHeight: pageBodyEl?.getBoundingClientRect().height
+            ?? firstPageEl.getBoundingClientRect().height,
         pageGap: readPixelValue(pageStyles.rowGap),
         paddingTop: readPixelValue(contentStyles.paddingTop),
         paddingBottom: readPixelValue(contentStyles.paddingBottom),
