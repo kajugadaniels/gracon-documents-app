@@ -58,7 +58,7 @@ export function DeleteDocumentDialog({
 
                 {/* Icon */}
                 <div className="delete-dialog__icon-wrap" aria-hidden="true">
-                    <HugeiconsIcon icon={Delete04Icon} size={24} color="#fff" />
+                    <HugeiconsIcon icon={Delete04Icon} size={24} color="#dc2626" />
                 </div>
 
                 {/* Copy */}
