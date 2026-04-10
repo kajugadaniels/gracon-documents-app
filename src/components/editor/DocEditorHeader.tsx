@@ -20,7 +20,12 @@ import {
 } from '@hugeicons/core-free-icons';
 import { useSessionUser } from '@/app/(protected)/layout';
 import { APP_URL } from '@/lib/session';
-import { createDocument, autosaveDocument, type DocumentDetail } from '@/api/documents.api';
+import {
+    createDocument,
+    autosaveDocument,
+    copyDocument,
+    type DocumentDetail,
+} from '@/api/documents.api';
 import { toast } from '@/components/ui';
 import { importDocxToTiptap } from '@/lib/import-docx';
 import type { MenuItem } from '@/constants';
@@ -138,7 +143,7 @@ interface DocEditorHeaderProps {
     editingTitle: boolean;
     title: string;
     onTitleChange: (v: string) => void;
-    onTitleSave: () => void;
+    onTitleSave: () => void | Promise<void>;
     onTitleEditStart: () => void;
     onTitleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
     isReadOnly: boolean;
@@ -159,6 +164,7 @@ export function DocEditorHeader({
 }: DocEditorHeaderProps) {
     const router = useRouter();
     const [importing, setImporting] = useState(false);
+    const [copying, setCopying] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -232,6 +238,46 @@ export function DocEditorHeader({
             return;
         }
 
+        if (actionId === 'file:copy') {
+            if (copying) return;
+
+            setCopying(true);
+
+            Promise.resolve()
+                .then(async () => {
+                    if (editingTitle) {
+                        await Promise.resolve(onTitleSave());
+                    }
+
+                    if (doc.status === 'DRAFT' && editor) {
+                        const latestContent = editor.getJSON() as Record<string, unknown>;
+                        const latestWordCount =
+                            (editor.storage.characterCount?.words?.() as number | undefined)
+                            ?? doc.wordCount;
+
+                        await autosaveDocument(doc.id, latestContent, latestWordCount);
+                    }
+
+                    const copied = await copyDocument(doc.id);
+                    toast.success(`Created "${copied.title}"`);
+                    router.push(`/documents/${copied.id}/edit`);
+                })
+                .catch((error: unknown) => {
+                    const message = (error as { response?: { data?: { message?: string } } })
+                        ?.response?.data?.message;
+                    toast.error(
+                        typeof message === 'string' && message.trim()
+                            ? message
+                            : 'Failed to make a copy.',
+                    );
+                })
+                .finally(() => {
+                    setCopying(false);
+                });
+
+            return;
+        }
+
         if (!editor) return;
         const chain = editor.chain().focus();
         switch (actionId) {
@@ -249,7 +295,20 @@ export function DocEditorHeader({
             case 'insert:table':   chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); break;
             case 'insert:hr':      chain.setHorizontalRule().run(); break;
         }
-    }, [editor, importing, isReadOnly, onExportPdf, onTitleEditStart]);
+    }, [
+        copying,
+        doc.id,
+        doc.status,
+        doc.wordCount,
+        editingTitle,
+        editor,
+        importing,
+        isReadOnly,
+        onExportPdf,
+        onTitleEditStart,
+        onTitleSave,
+        router,
+    ]);
 
     const saveLabel = saveStatus === 'saving' ? 'Saving…'
         : saveStatus === 'saved' ? 'All changes saved'
