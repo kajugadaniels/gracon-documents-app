@@ -160,6 +160,13 @@ export function DocEditorHeader({
     const router = useRouter();
     const [importing, setImporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const titleInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (!editingTitle || !titleInputRef.current) return;
+        titleInputRef.current.focus();
+        titleInputRef.current.select();
+    }, [editingTitle]);
 
     /**
      * Handles a .docx file selected via the hidden file input.
@@ -216,6 +223,15 @@ export function DocEditorHeader({
             return;
         }
 
+        if (actionId === 'file:rename') {
+            if (isReadOnly) {
+                toast.warning('This document cannot be renamed right now.');
+                return;
+            }
+            onTitleEditStart();
+            return;
+        }
+
         if (!editor) return;
         const chain = editor.chain().focus();
         switch (actionId) {
@@ -233,7 +249,7 @@ export function DocEditorHeader({
             case 'insert:table':   chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); break;
             case 'insert:hr':      chain.setHorizontalRule().run(); break;
         }
-    }, [editor, onExportPdf, importing]);
+    }, [editor, importing, isReadOnly, onExportPdf, onTitleEditStart]);
 
     const saveLabel = saveStatus === 'saving' ? 'Saving…'
         : saveStatus === 'saved' ? 'All changes saved'
@@ -276,11 +292,11 @@ export function DocEditorHeader({
                         <div className="ded-doc-identity__info">
                             {editingTitle ? (
                                 <input
+                                    ref={titleInputRef}
                                     value={title}
                                     onChange={e => onTitleChange(e.target.value)}
                                     onBlur={onTitleSave}
                                     onKeyDown={onTitleKeyDown}
-                                    autoFocus
                                     className="ded-title-input"
                                 />
                             ) : (
