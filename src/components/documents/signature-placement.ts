@@ -72,11 +72,7 @@ export function measureConstraints(
     const maxX = Math.max(0, (overlayRect.width - cardRect.width) / overlayRect.width);
     const maxY = Math.max(0, (overlayRect.height - cardRect.height) / overlayRect.height);
     const paperEl = overlayEl.closest('.document-paper-sheet');
-    const pagedEditorEl = overlayEl.closest('.document-paged-editor');
-    const contentEl = (
-        pagedEditorEl?.querySelector('.ProseMirror')
-        ?? paperEl?.querySelector('.ProseMirror')
-    ) as HTMLElement | null;
+    const contentEl = paperEl?.querySelector('.ProseMirror') as HTMLElement | null;
 
     let minY = 0;
     if (contentEl) {
