@@ -63,6 +63,9 @@
   --editor-line-height:      1.8;
   --editor-font-size:        15px;
   --editor-max-width:        780px;
+  --editor-page-padding-x:   96px;
+  --editor-page-padding-top: 72px;
+  --editor-page-padding-bottom: 96px;
   --paper-width:             816px;
   --paper-height:            1056px;
   --paper-gap:               20px;
@@ -270,6 +273,26 @@ body {
   gap: var(--paper-gap);
   padding: 0 0 48px;
 }
+.document-paged-editor {
+  position: relative;
+  width: min(100%, var(--paper-width));
+  margin: 0 auto;
+}
+.document-paged-editor__pages {
+  position: relative;
+  display: grid;
+  gap: var(--paper-gap);
+}
+.document-paged-editor__surface {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.document-page-break-spacer {
+  display: block;
+  width: 100%;
+  pointer-events: none;
+}
 .document-paper-sheet {
   width: min(100%, var(--paper-width));
   min-height: var(--paper-height);
@@ -309,6 +332,15 @@ body {
 }
 .document-paper-sheet__body--editor {
   padding: 0;
+}
+.document-paper-sheet--page-shell {
+  min-height: var(--paper-height);
+}
+.document-paper-sheet__body--page-shell {
+  padding: 0;
+}
+.document-paper-sheet__page-fill {
+  min-height: calc(var(--paper-height) - 56px);
 }
 .document-paper-sheet__after-content {
   padding: 0 clamp(30px, 6vw, 76px) clamp(56px, 7vw, 84px);
@@ -363,9 +395,10 @@ body {
 }
 .tiptap-editor.tiptap-editor-paper .ProseMirror {
   max-width: none;
-  min-height: calc(var(--paper-height) - 148px);
+  min-height: 100%;
   margin: 0;
-  padding: 72px 96px 96px;
+  padding: var(--editor-page-padding-top) var(--editor-page-padding-x) var(--editor-page-padding-bottom);
+  background: transparent;
 }
 .tiptap-editor.tiptap-editor-paper-signed .ProseMirror {
   min-height: 0;
@@ -448,6 +481,12 @@ body {
 }
 
 @media (max-width: 900px) {
+  :root {
+    --editor-page-padding-x: 24px;
+    --editor-page-padding-top: 32px;
+    --editor-page-padding-bottom: 48px;
+  }
+
   .document-paper-sheet {
     width: 100%;
     min-height: auto;
@@ -470,6 +509,10 @@ body {
     padding: 0;
   }
 
+  .document-paper-sheet__body--page-shell {
+    padding: 0;
+  }
+
   .document-paper-sheet__after-content {
     padding-left: 24px;
     padding-right: 24px;
@@ -482,10 +525,10 @@ body {
 
   .tiptap-editor.tiptap-editor-paper .ProseMirror {
     min-height: 70dvh;
-    padding-left: 24px;
-    padding-right: 24px;
-    padding-top: 32px;
-    padding-bottom: 48px;
+    padding-left: var(--editor-page-padding-x);
+    padding-right: var(--editor-page-padding-x);
+    padding-top: var(--editor-page-padding-top);
+    padding-bottom: var(--editor-page-padding-bottom);
   }
 }
 
