@@ -11,6 +11,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Editor } from '@tiptap/react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -156,45 +157,24 @@ export function DocEditorHeader({
     isReadOnly, isLocked, isFinalised, exportingPdf,
     onFinalise, onExportPdf, onViewSignature,
 }: DocEditorHeaderProps) {
+    const router = useRouter();
     const [importing, setImporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const pendingImportTabRef = useRef<Window | null>(null);
-
-    /**
-     * Opens a same-origin placeholder tab synchronously from a direct user
-     * gesture so popup blockers allow later navigation to the editor.
-     */
-    const openPlaceholderTab = useCallback(() => {
-        const loadingUrl = new URL('/documents', window.location.origin).toString();
-        return window.open(loadingUrl, '_blank');
-    }, []);
 
     /**
      * Handles a .docx file selected via the hidden file input.
      * Converts the file to TipTap JSON, creates a new document, saves the
-     * content, then opens the result in a new tab.
-     *
-     * The tab is opened synchronously inside the file input onChange event so
-     * popup blockers treat it as a direct user gesture.
+     * content, then returns the user to the documents list to open it there.
      */
     const handleFileImport = useCallback(async (file: File) => {
         setImporting(true);
-        const newTab = pendingImportTabRef.current;
-        pendingImportTabRef.current = null;
         try {
             const { content, title: suggestedTitle } = await importDocxToTiptap(file);
-            const newDoc = await createDocument({ type: 'RICH_TEXT', title: suggestedTitle });
-            await autosaveDocument(newDoc.id, content);
-            toast.success(`"${suggestedTitle}" imported — opening in new tab`);
-            if (newTab) {
-                newTab.location.replace(
-                    new URL(`/documents/${newDoc.id}/edit`, window.location.origin).toString(),
-                );
-            } else {
-                toast.error('Popup blocked. Please allow popups and try again.');
-            }
+            const importedDoc = await createDocument({ type: 'RICH_TEXT', title: suggestedTitle });
+            await autosaveDocument(importedDoc.id, content);
+            toast.success(`"${suggestedTitle}" imported`);
+            router.push('/documents');
         } catch (err: unknown) {
-            newTab?.close();
             const message = err instanceof Error ? err.message : 'Failed to import document.';
             toast.error(message);
         } finally {
@@ -202,27 +182,15 @@ export function DocEditorHeader({
             // Reset so the same file can be re-selected if needed.
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
-    }, []);
-
-    /**
-     * Closes the placeholder tab if the user opened the file picker but did
-     * not actually choose a file to import.
-     */
-    const closePendingImportTabIfUnused = useCallback(() => {
-        const pendingTab = pendingImportTabRef.current;
-        if (!pendingTab) return;
-        const selectedFiles = fileInputRef.current?.files;
-        if (selectedFiles && selectedFiles.length > 0) return;
-        pendingTab.close();
-        pendingImportTabRef.current = null;
-    }, []);
+    }, [router]);
 
     const handleAction = useCallback((actionId: string) => {
         // File actions that don't require the editor run first.
         if (actionId === 'file:new') {
             // Open a same-origin placeholder tab synchronously so popup
             // blockers do not interfere, then replace it with the new editor.
-            const newTab = openPlaceholderTab();
+            const loadingUrl = new URL('/documents', window.location.origin).toString();
+            const newTab = window.open(loadingUrl, '_blank');
             createDocument({ type: 'RICH_TEXT' })
                 .then((doc) => {
                     if (newTab) {
@@ -241,14 +209,7 @@ export function DocEditorHeader({
         }
 
         if (actionId === 'file:open') {
-            if (!importing) {
-                pendingImportTabRef.current?.close();
-                pendingImportTabRef.current = openPlaceholderTab();
-                window.setTimeout(() => {
-                    window.addEventListener('focus', closePendingImportTabIfUnused, { once: true });
-                }, 0);
-                fileInputRef.current?.click();
-            }
+            if (!importing) fileInputRef.current?.click();
             return;
         }
 
@@ -269,7 +230,7 @@ export function DocEditorHeader({
             case 'insert:table':   chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); break;
             case 'insert:hr':      chain.setHorizontalRule().run(); break;
         }
-    }, [editor, onExportPdf, importing, openPlaceholderTab, closePendingImportTabIfUnused]);
+    }, [editor, onExportPdf, importing]);
 
     const saveLabel = saveStatus === 'saving' ? 'Saving…'
         : saveStatus === 'saved' ? 'All changes saved'
