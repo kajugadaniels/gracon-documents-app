@@ -172,7 +172,6 @@ export function DocEditorToolbar({ editor }: { editor: Editor }) {
     const inTable = editor.isActive('table');
     return (
         <div className="ded-toolbar">
-        <div className="ded-toolbar__inner">
             <TbBtn onClick={() => editor.chain().focus().undo().run()} title="Undo (⌘Z)" disabled={!editor.can().undo()}>
                 <HugeiconsIcon icon={UndoIcon} size={15} />
             </TbBtn>
@@ -270,7 +269,6 @@ export function DocEditorToolbar({ editor }: { editor: Editor }) {
             <TbBtn onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} title="Clear formatting">
                 <HugeiconsIcon icon={EraserIcon} size={15} />
             </TbBtn>
-        </div>
         </div>
     );
 }
