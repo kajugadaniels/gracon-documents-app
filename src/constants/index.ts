@@ -1,7 +1,7 @@
 /**
  * Barrel export for all editor constants.
  */
-export type { MenuItem, MenuItemAction, MenuItemDivider } from './types';
+export type { MenuItem, MenuItemAction, MenuItemDivider, MenuItemSubmenu } from './types';
 export { GOOGLE_FONTS, FONT_SIZES, loadGoogleFont } from './google-fonts';
 export type { GoogleFont } from './google-fonts';
 export { FILE_MENU_ITEMS } from './file-menu';
