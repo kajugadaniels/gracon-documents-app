@@ -2,13 +2,15 @@
  * DocumentsPage
  *
  * Google Docs-style listing page. Shows a quick-create strip at the top,
- * a compact status-filter chip row, then a responsive portrait-thumbnail grid.
- * All document actions (open, delete) are surfaced via a hover overlay on
- * each card thumbnail — keeping the resting state clean and scannable.
+ * an enhanced filter bar (status tabs, starred tab, sort selector), and a
+ * responsive portrait-thumbnail card grid.
+ *
+ * Starred documents are bookmarked client-side via localStorage — no backend
+ * endpoint required. Sorting is applied client-side on the fetched page.
  */
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from '@/components/ui';
@@ -16,34 +18,56 @@ import {
     listDocuments, deleteDocument,
     type DocumentSummary, type DocumentStatus,
 } from '@/api/documents.api';
+import { useStarred } from '@/lib/hooks/useStarred';
+import {
+    DocumentCard, DocumentsFilters,
+    type StatusFilter, type SortOption,
+} from '@/components/pages/documents';
 
-const STATUS_LABELS: Record<DocumentStatus, string> = {
-    DRAFT: 'Draft',
-    FINALISED: 'Finalised',
-    SIGNED: 'Signed',
-    LOCKED: 'Locked',
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const FILTER_TABS = [null, 'DRAFT', 'FINALISED', 'LOCKED'] as const;
-
-function getErrorMessage(error: unknown, fallback: string) {
+function getErrorMessage(error: unknown, fallback: string): string {
     const message = (error as { response?: { data?: { message?: string } } })
         ?.response?.data?.message;
     return typeof message === 'string' && message.trim() ? message : fallback;
 }
 
+/**
+ * Sorts a document array by the selected sort option.
+ * Returns a new array — never mutates the input.
+ */
+function sortDocuments(items: DocumentSummary[], sort: SortOption): DocumentSummary[] {
+    const copy = [...items];
+    switch (sort) {
+        case 'recent':
+            return copy.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        case 'oldest':
+            return copy.sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+        case 'name-asc':
+            return copy.sort((a, b) => a.title.localeCompare(b.title));
+        case 'name-desc':
+            return copy.sort((a, b) => b.title.localeCompare(a.title));
+    }
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function DocumentsPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const search = searchParams.get('search') ?? '';
+    const search       = searchParams.get('search') ?? '';
     const statusFilter = searchParams.get('status') as DocumentStatus | null;
 
-    const [items, setItems] = useState<DocumentSummary[]>([]);
-    const [total, setTotal] = useState(0);
-    const [page, setPage] = useState(1);
-    const [loading, setLoading] = useState(true);
+    const [items,     setItems]     = useState<DocumentSummary[]>([]);
+    const [total,     setTotal]     = useState(0);
+    const [page,      setPage]      = useState(1);
+    const [loading,   setLoading]   = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [sort,      setSort]      = useState<SortOption>('recent');
+    const [starredOnly, setStarredOnly] = useState(false);
     const latestLoadRef = useRef(0);
+
+    const { starredIds, isStarred, toggleStar } = useStarred();
 
     const load = useCallback(async () => {
         const requestId = ++latestLoadRef.current;
@@ -53,9 +77,10 @@ export default function DocumentsPage() {
             const res = await listDocuments({
                 page,
                 limit: 20,
-                type: 'RICH_TEXT',
+                type:   'RICH_TEXT',
                 search: search || undefined,
-                status: statusFilter || undefined,
+                // When starredOnly is on we load all docs then filter client-side
+                status: (!starredOnly && statusFilter) ? statusFilter : undefined,
             });
             if (requestId !== latestLoadRef.current) return;
             setItems(res.items);
@@ -68,12 +93,25 @@ export default function DocumentsPage() {
         } finally {
             if (requestId === latestLoadRef.current) setLoading(false);
         }
-    }, [page, search, statusFilter]);
+    }, [page, search, statusFilter, starredOnly]);
 
     useEffect(() => {
         void load();
         return () => { latestLoadRef.current += 1; };
     }, [load]);
+
+    /** Items after applying client-side starred filter + sort. */
+    const visibleItems = useMemo(() => {
+        const filtered = starredOnly
+            ? items.filter((d) => starredIds.has(d.id))
+            : items;
+        return sortDocuments(filtered, sort);
+    }, [items, sort, starredOnly, starredIds]);
+
+    const starredCount = useMemo(
+        () => items.filter((d) => starredIds.has(d.id)).length,
+        [items, starredIds],
+    );
 
     async function handleDelete(id: string, title: string) {
         if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
@@ -81,13 +119,19 @@ export default function DocumentsPage() {
             await deleteDocument(id);
             toast.success('Document deleted.');
             void load();
-        } catch { toast.error('Failed to delete document.'); }
+        } catch {
+            toast.error('Failed to delete document.');
+        }
     }
 
-    function setStatusFilter(s: string | null) {
+    function handleStatusChange(s: StatusFilter) {
         const url = new URL(window.location.href);
-        if (s) url.searchParams.set('status', s); else url.searchParams.delete('status');
-        router.push(url.pathname + url.search);
+        const before = url.pathname + url.search;
+        if (s) url.searchParams.set('status', s);
+        else   url.searchParams.delete('status');
+        const after = url.pathname + url.search;
+        // Only push if the URL actually changed — a no-op push resets local state.
+        if (before !== after) router.push(after);
     }
 
     const totalPages = Math.max(1, Math.ceil(total / 20));
@@ -113,24 +157,18 @@ export default function DocumentsPage() {
             </div>
 
             {/* ── Filters bar ── */}
-            <div className="docs-filters">
-                <div className="docs-filters__tabs" role="tablist" aria-label="Filter by status">
-                    {FILTER_TABS.map((s) => (
-                        <button
-                            key={s ?? 'all'}
-                            role="tab"
-                            aria-selected={statusFilter === s}
-                            onClick={() => setStatusFilter(s)}
-                            className={`docs-filter-tab${statusFilter === s ? ' docs-filter-tab--active' : ''}`}
-                        >
-                            {s ? STATUS_LABELS[s as DocumentStatus] : 'All'}
-                        </button>
-                    ))}
-                </div>
-                <p className="docs-filters__count">
-                    {loading ? '' : `${total} ${statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() + ' ' : ''}document${total !== 1 ? 's' : ''}${search ? ` matching "${search}"` : ''}`}
-                </p>
-            </div>
+            <DocumentsFilters
+                statusFilter={statusFilter}
+                starredOnly={starredOnly}
+                starredCount={starredCount}
+                sort={sort}
+                total={starredOnly ? visibleItems.length : total}
+                loading={loading}
+                search={search}
+                onStatusChange={handleStatusChange}
+                onStarredChange={setStarredOnly}
+                onSortChange={setSort}
+            />
 
             {/* ── Document grid ── */}
             {loading ? (
@@ -152,7 +190,7 @@ export default function DocumentsPage() {
                         <Link href="/documents/new" className="btn-ghost" style={{ textDecoration: 'none', fontSize: 12 }}>Create a document</Link>
                     </div>
                 </div>
-            ) : items.length === 0 ? (
+            ) : visibleItems.length === 0 ? (
                 <div className="docs-empty">
                     <div className="docs-empty__icon">
                         <div className="docs-empty__icon-stripe" />
@@ -162,16 +200,24 @@ export default function DocumentsPage() {
                         <div className="docs-empty__icon-line" style={{ width: '90%' }} />
                     </div>
                     <p className="docs-empty__heading">
-                        {search ? 'No results found' : statusFilter ? `No ${STATUS_LABELS[statusFilter].toLowerCase()} documents` : 'No documents yet'}
+                        {starredOnly
+                            ? 'No starred documents'
+                            : search
+                                ? 'No results found'
+                                : statusFilter
+                                    ? `No ${statusFilter.toLowerCase()} documents`
+                                    : 'No documents yet'}
                     </p>
                     <p className="docs-empty__sub">
-                        {search
-                            ? `No documents match "${search}"`
-                            : statusFilter
-                                ? 'Documents with this status will appear here.'
-                                : 'Create your first document to get started.'}
+                        {starredOnly
+                            ? 'Star a document to add it to your favourites.'
+                            : search
+                                ? `No documents match "${search}"`
+                                : statusFilter
+                                    ? 'Documents with this status will appear here.'
+                                    : 'Create your first document to get started.'}
                     </p>
-                    {!search && !statusFilter && (
+                    {!search && !statusFilter && !starredOnly && (
                         <Link href="/documents/new" className="btn-primary" style={{ textDecoration: 'none' }}>
                             Create document
                         </Link>
@@ -179,100 +225,26 @@ export default function DocumentsPage() {
                 </div>
             ) : (
                 <div className="docs-grid">
-                    {items.map((doc) => (
-                        <DocumentCard key={doc.id} doc={doc} onDelete={handleDelete} />
+                    {visibleItems.map((doc) => (
+                        <DocumentCard
+                            key={doc.id}
+                            doc={doc}
+                            starred={isStarred(doc.id)}
+                            onDelete={handleDelete}
+                            onToggleStar={toggleStar}
+                        />
                     ))}
                 </div>
             )}
 
             {/* ── Pagination ── */}
-            {totalPages > 1 && (
+            {!starredOnly && totalPages > 1 && (
                 <div className="docs-pagination">
                     <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="btn-ghost" style={{ padding: '8px 16px', fontSize: 12 }}>← Prev</button>
                     <span className="docs-pagination__label">Page {page} of {totalPages}</span>
                     <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-ghost" style={{ padding: '8px 16px', fontSize: 12 }}>Next →</button>
                 </div>
             )}
-        </div>
-    );
-}
-
-// ─── Document Card ─────────────────────────────────────────────────────────────
-
-/** Google Docs-style portrait card with fake-content thumbnail and hover actions. */
-function DocumentCard({ doc, onDelete }: { doc: DocumentSummary; onDelete: (id: string, t: string) => void }) {
-    const timeAgo = (date: string) => {
-        const diff = Date.now() - new Date(date).getTime();
-        const mins  = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        const days  = Math.floor(diff / 86400000);
-        if (mins < 1)  return 'Just now';
-        if (mins < 60) return `${mins}m ago`;
-        if (hours < 24) return `${hours}h ago`;
-        return `${days}d ago`;
-    };
-
-    return (
-        <div className="doc-card doc-card--rich-text">
-            {/* Thumbnail */}
-            <div className="doc-card__thumb">
-                <div className="doc-card__thumb-accent" />
-                <div className="doc-card__thumb-lines">
-                    <div className="doc-card__line doc-card__line--h1" />
-                    <div className="doc-card__line doc-card__line--full" />
-                    <div className="doc-card__line doc-card__line--long" />
-                    <div className="doc-card__line doc-card__line--full" />
-                    <div className="doc-card__line doc-card__line--med" />
-                    <div className="doc-card__line doc-card__line--full" />
-                    <div className="doc-card__line doc-card__line--short" />
-                </div>
-
-                <div className="doc-card__badge-wrap">
-                    <span className={`badge badge-${doc.status.toLowerCase()}`}>{STATUS_LABELS[doc.status]}</span>
-                </div>
-
-                {/* Hover action overlay */}
-                <div className="doc-card__hover-actions">
-                    <Link
-                        href={`/documents/${doc.id}/edit`}
-                        className="btn-primary"
-                        style={{ textDecoration: 'none', padding: '8px 18px', fontSize: 12 }}
-                    >
-                        {doc.status === 'LOCKED' ? 'View' : 'Open'}
-                    </Link>
-                    {(doc.status === 'DRAFT' || doc.status === 'FINALISED') && (
-                        <button
-                            onClick={() => onDelete(doc.id, doc.title)}
-                            className="btn-icon"
-                            style={{ color: 'var(--color-error)', borderColor: 'var(--color-error-border)', background: 'rgba(255,255,255,0.9)' }}
-                            aria-label={`Delete ${doc.title}`}
-                        >
-                            🗑
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Body */}
-            <div className="doc-card__body">
-                <p className="doc-card__title">{doc.title}</p>
-                <div className="doc-card__meta">
-                    <span>{timeAgo(doc.updatedAt)}</span>
-                    {doc.wordCount > 0 && (
-                        <>
-                            <span className="doc-card__meta-dot" />
-                            <span>{doc.wordCount.toLocaleString()} words</span>
-                        </>
-                    )}
-                </div>
-                {doc.tags.length > 0 && (
-                    <div className="doc-card__tags">
-                        {doc.tags.slice(0, 3).map((tag) => (
-                            <span key={tag} className="doc-card__tag">{tag}</span>
-                        ))}
-                    </div>
-                )}
-            </div>
         </div>
     );
 }
