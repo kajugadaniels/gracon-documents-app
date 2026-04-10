@@ -35,6 +35,8 @@ import {
     FORMAT_MENU_ITEMS, TOOLS_MENU_ITEMS, EXTENSIONS_MENU_ITEMS, HELP_MENU_ITEMS,
 } from '@/constants';
 import { DocEditorToolbar } from './DocEditorToolbar';
+import { ShareDocumentDialog } from './ShareDocumentDialog';
+import type { UserSearchResult } from '@/api/auth/search-users.api';
 
 const MENU_BAR = [
     { label: 'File',       items: FILE_MENU_ITEMS },
@@ -222,6 +224,7 @@ export function DocEditorHeader({
     const router = useRouter();
     const [importing, setImporting] = useState(false);
     const [copying, setCopying] = useState(false);
+    const [shareOpen, setShareOpen] = useState(false);
     const [savingAs, setSavingAs] = useState<'pdf' | 'docx' | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
@@ -496,7 +499,11 @@ export function DocEditorHeader({
                         </button>
                     )}
 
-                    <button className="ded-share-btn" disabled title="Share (coming soon)">
+                    <button
+                        className="ded-share-btn"
+                        onClick={() => setShareOpen(true)}
+                        title="Share document"
+                    >
                         <HugeiconsIcon icon={Share01Icon} size={15} />
                         <span>Share</span>
                     </button>
@@ -507,6 +514,17 @@ export function DocEditorHeader({
 
             {/* ── Row 2: formatting toolbar ── */}
             {editor && !isReadOnly && <DocEditorToolbar editor={editor} />}
+
+            {/* ── Share dialog ── */}
+            {shareOpen && (
+                <ShareDocumentDialog
+                    docTitle={doc.title}
+                    onSelectUser={(_user: UserSearchResult) => {
+                        // Sharing logic wired here in a future iteration.
+                    }}
+                    onClose={() => setShareOpen(false)}
+                />
+            )}
         </div>
     );
 }
