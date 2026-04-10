@@ -17,7 +17,6 @@ import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
-    exportDocumentAsPdf,
     type DocumentDetail,
 } from '@/api/documents.api';
 
@@ -41,7 +40,6 @@ export default function EditDocumentPage() {
     const [title, setTitle] = useState('');
     const [showSigning, setShowSigning] = useState(false);
     const [retryKey, setRetryKey] = useState(0);
-    const [exportingPdf, setExportingPdf] = useState(false);
     const [editor, setEditor] = useState<Editor | null>(null);
 
     const contentRef = useRef<Record<string, unknown> | null>(null);
@@ -127,14 +125,6 @@ export default function EditDocumentPage() {
         }
     }
 
-    async function handleExportPdf() {
-        if (!doc) return;
-        setExportingPdf(true);
-        try { await exportDocumentAsPdf(doc.id, doc.title); }
-        catch { toast.error('Failed to export PDF. Please try again.'); }
-        finally { setExportingPdf(false); }
-    }
-
     // ── Loading state ────────────────────────────────────────────────────────
     if (loading) {
         return (
@@ -213,9 +203,7 @@ export default function EditDocumentPage() {
                 isReadOnly={isReadOnly}
                 isLocked={isLocked}
                 isFinalised={isFinalised}
-                exportingPdf={exportingPdf}
                 onFinalise={handleFinalise}
-                onExportPdf={handleExportPdf}
                 onViewSignature={() => setShowSigning(true)}
             />
 
