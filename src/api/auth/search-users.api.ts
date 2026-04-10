@@ -4,11 +4,14 @@
  * Searches active, verified users by a partial email string.
  * Used by the Share dialog to look up collaborators before adding them.
  *
+ * Calls the documents service (/api/v1/users/search) — not the auth service.
+ * The endpoint is protected by VerifiedUserGuard; a valid full JWT is required.
+ *
  * The query must be at least 5 characters — enforced by both this function
- * and the auth service endpoint.
+ * and the documents service endpoint.
  */
 
-import { authClient } from '@/api/client';
+import { apiClient } from '@/api/client';
 
 export interface UserSearchResult {
     id: string;
@@ -25,7 +28,7 @@ export interface UserSearchResult {
  * @returns  Array of matching user summaries.
  */
 export async function searchUsers(q: string): Promise<UserSearchResult[]> {
-    const res = await authClient.get<UserSearchResult[]>('/users/search', {
+    const res = await apiClient.get<UserSearchResult[]>('/users/search', {
         params: { q },
     });
     return res.data;
