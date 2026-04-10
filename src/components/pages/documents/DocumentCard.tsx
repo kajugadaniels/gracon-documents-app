@@ -2,16 +2,14 @@
  * DocumentCard
  *
  * Google Docs-style portrait thumbnail card for a single document.
- * Hover overlay exposes an Open action and a two-step delete button —
- * first click arms the button (confirming state), second click executes.
- * The armed state auto-resets after 3 seconds if not confirmed.
+ * Hover overlay exposes an Open action and a delete button.
+ * Clicking delete raises onDelete — the parent renders the confirmation dialog.
  */
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { StarIcon, Delete04Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import { StarIcon, Delete04Icon } from '@hugeicons/core-free-icons';
 import type { DocumentSummary, DocumentStatus } from '@/api/documents.api';
 
 export const STATUS_LABELS: Record<DocumentStatus, string> = {
@@ -39,77 +37,6 @@ interface DocumentCardProps {
     starred: boolean;
     onDelete: (id: string, title: string) => void;
     onToggleStar: (id: string) => void;
-}
-
-/** Auto-reset duration (ms) for the armed delete confirm state. */
-const CONFIRM_TIMEOUT_MS = 3_000;
-
-/**
- * Two-step delete button: first click arms it, second click confirms.
- * Arms state resets automatically after CONFIRM_TIMEOUT_MS of inactivity.
- */
-function DeleteButton({ docId, docTitle, onDelete }: {
-    docId: string;
-    docTitle: string;
-    onDelete: (id: string, title: string) => void;
-}) {
-    const [armed, setArmed] = useState(false);
-    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    useEffect(() => () => {
-        if (timerRef.current) clearTimeout(timerRef.current);
-    }, []);
-
-    function handleClick(e: React.MouseEvent) {
-        e.stopPropagation();
-        if (!armed) {
-            setArmed(true);
-            timerRef.current = setTimeout(() => setArmed(false), CONFIRM_TIMEOUT_MS);
-        } else {
-            if (timerRef.current) clearTimeout(timerRef.current);
-            setArmed(false);
-            onDelete(docId, docTitle);
-        }
-    }
-
-    function handleCancel(e: React.MouseEvent) {
-        e.stopPropagation();
-        if (timerRef.current) clearTimeout(timerRef.current);
-        setArmed(false);
-    }
-
-    if (armed) {
-        return (
-            <div className="doc-card__delete-armed">
-                <button
-                    onClick={handleClick}
-                    className="doc-card__delete-confirm-btn"
-                    aria-label={`Confirm delete ${docTitle}`}
-                >
-                    <HugeiconsIcon icon={Delete04Icon} size={13} color="currentColor" />
-                    Confirm
-                </button>
-                <button
-                    onClick={handleCancel}
-                    className="doc-card__delete-cancel-btn"
-                    aria-label="Cancel delete"
-                >
-                    <HugeiconsIcon icon={Cancel01Icon} size={12} color="currentColor" />
-                </button>
-            </div>
-        );
-    }
-
-    return (
-        <button
-            onClick={handleClick}
-            className="doc-card__delete-btn"
-            aria-label={`Delete ${docTitle}`}
-            title="Delete"
-        >
-            <HugeiconsIcon icon={Delete04Icon} size={15} color="currentColor" />
-        </button>
-    );
 }
 
 /**
@@ -152,11 +79,14 @@ export function DocumentCard({ doc, starred, onDelete, onToggleStar }: DocumentC
                         {doc.status === 'LOCKED' ? 'View' : 'Open'}
                     </Link>
                     {canDelete && (
-                        <DeleteButton
-                            docId={doc.id}
-                            docTitle={doc.title}
-                            onDelete={onDelete}
-                        />
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(doc.id, doc.title); }}
+                            className="doc-card__delete-btn"
+                            aria-label={`Delete ${doc.title}`}
+                            title="Delete"
+                        >
+                            <HugeiconsIcon icon={Delete04Icon} size={15} color="currentColor" />
+                        </button>
                     )}
                 </div>
             </div>
