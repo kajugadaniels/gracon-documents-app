@@ -19,8 +19,9 @@ import {
 } from '@hugeicons/core-free-icons';
 import { useSessionUser } from '@/app/(protected)/layout';
 import { APP_URL } from '@/lib/session';
-import { createDocument, type DocumentDetail } from '@/api/documents.api';
+import { createDocument, autosaveDocument, type DocumentDetail } from '@/api/documents.api';
 import { toast } from '@/components/ui';
+import { importDocxToTiptap } from '@/lib/import-docx';
 import type { MenuItem } from '@/constants';
 import {
     FILE_MENU_ITEMS, EDIT_MENU_ITEMS, VIEW_MENU_ITEMS, INSERT_MENU_ITEMS,
@@ -155,6 +156,44 @@ export function DocEditorHeader({
     isReadOnly, isLocked, isFinalised, exportingPdf,
     onFinalise, onExportPdf, onViewSignature,
 }: DocEditorHeaderProps) {
+    const [importing, setImporting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    /**
+     * Handles a .docx file selected via the hidden file input.
+     * Converts the file to TipTap JSON, creates a new document, saves the
+     * content, then opens the result in a new tab.
+     *
+     * The tab is opened synchronously inside the file input onChange event so
+     * popup blockers treat it as a direct user gesture.
+     */
+    const handleFileImport = useCallback(async (file: File) => {
+        setImporting(true);
+        // Open the tab synchronously inside the change event before any awaits.
+        const newTab = window.open('', '_blank');
+        try {
+            const { content, title: suggestedTitle } = await importDocxToTiptap(file);
+            const newDoc = await createDocument({ type: 'RICH_TEXT', title: suggestedTitle });
+            await autosaveDocument(newDoc.id, content);
+            toast.success(`"${suggestedTitle}" imported — opening in new tab`);
+            if (newTab) {
+                newTab.location.replace(
+                    new URL(`/documents/${newDoc.id}/edit`, window.location.origin).toString(),
+                );
+            } else {
+                toast.error('Popup blocked. Please allow popups and try again.');
+            }
+        } catch (err: unknown) {
+            newTab?.close();
+            const message = err instanceof Error ? err.message : 'Failed to import document.';
+            toast.error(message);
+        } finally {
+            setImporting(false);
+            // Reset so the same file can be re-selected if needed.
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    }, []);
+
     const handleAction = useCallback((actionId: string) => {
         // File actions that don't require the editor run first.
         if (actionId === 'file:new') {
@@ -179,6 +218,11 @@ export function DocEditorHeader({
             return;
         }
 
+        if (actionId === 'file:open') {
+            if (!importing) fileInputRef.current?.click();
+            return;
+        }
+
         if (!editor) return;
         const chain = editor.chain().focus();
         switch (actionId) {
@@ -196,7 +240,7 @@ export function DocEditorHeader({
             case 'insert:table':   chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); break;
             case 'insert:hr':      chain.setHorizontalRule().run(); break;
         }
-    }, [editor, onExportPdf]);
+    }, [editor, onExportPdf, importing]);
 
     const saveLabel = saveStatus === 'saving' ? 'Saving…'
         : saveStatus === 'saved' ? 'All changes saved'
@@ -205,6 +249,26 @@ export function DocEditorHeader({
 
     return (
         <div className="ded-header">
+            {/* Hidden file input — triggered by File → Open */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx,.doc"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleFileImport(file);
+                }}
+            />
+
+            {/* ── Import progress banner ── */}
+            {importing && (
+                <div className="ded-import-banner" role="status" aria-live="polite">
+                    <span className="ded-import-banner__spinner" aria-hidden="true" />
+                    Importing document…
+                </div>
+            )}
+
             {/* ── Row 1: menu bar ── */}
             <div className="ded-menubar">
                 {/* Left cluster */}
