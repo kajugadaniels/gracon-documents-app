@@ -3,47 +3,20 @@
 /**
  * Login form for the documents workspace.
  *
- * The next-path normalization is kept local so the page stays deploy-safe even
- * if session utilities change independently.
+ * Successful sign-in performs a full navigation to the documents index so the
+ * protected shell rehydrates against the freshly written session cookies.
  */
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input, Card } from '@/components/ui';
 import { loginApi } from '@/api/auth/login.api';
-import { APP_URL, DOCS_URL } from '@/lib/session';
+import { APP_URL } from '@/lib/session';
 
 interface LoginErrors {
     email?: string;
     password?: string;
 }
 
-function normalizeNextPath(path: string | null | undefined): string {
-    if (!path) return '/documents';
-
-    if (path.startsWith('/')) {
-        return path;
-    }
-
-    try {
-        const docsOrigin = new URL(DOCS_URL).origin;
-        const url = new URL(path);
-
-        if (url.origin === docsOrigin) {
-            return `${url.pathname}${url.search}${url.hash}`;
-        }
-    } catch {
-        // Ignore malformed absolute URLs and fall back to the documents index.
-    }
-
-    return '/documents';
-}
-
 export function LoginForm() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-
-    const nextPath = normalizeNextPath(searchParams.get('next'));
-
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState<LoginErrors>({});
@@ -91,7 +64,7 @@ export function LoginForm() {
                 return;
             }
 
-            router.replace(nextPath);
+            window.location.href = '/documents';
         } catch (error: unknown) {
             const message =
                 (error as { response?: { data?: { message?: string } } })
