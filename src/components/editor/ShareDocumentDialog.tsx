@@ -2,7 +2,7 @@
  * ShareDocumentDialog
  *
  * Modal for sharing a document with other users.
- * Provides a debounced email-search input — results appear after the user
+ * Provides a debounced user-search input — results appear after the user
  * has typed at least 5 characters. Selecting a result highlights the row.
  *
  * Sharing logic is intentionally deferred — the component exposes the
@@ -50,6 +50,17 @@ function getDisplayName(user: UserSearchResult): string {
  * Google Docs-style share dialog with live user search.
  * The parent controls open/close state — unmounting the component closes it.
  */
+function getMatchLabel(user: UserSearchResult): string {
+    switch (user.matchedBy) {
+        case 'PLATFORM_ID':
+            return 'Matched by Platform ID';
+        case 'CITIZEN_ID':
+            return 'Matched by Citizen ID';
+        default:
+            return 'Matched by email';
+    }
+}
+
 export function ShareDocumentDialog({
     docTitle,
     onSelectUser,
@@ -178,11 +189,11 @@ export function ShareDocumentDialog({
                         type="text"
                         value={query}
                         onChange={(e) => handleQueryChange(e.target.value)}
-                        placeholder="Search by email address…"
+                        placeholder="Search by email, platform ID, or citizen ID…"
                         className="share-dialog__search-input"
                         autoComplete="off"
                         spellCheck={false}
-                        aria-label="Search users by email"
+                        aria-label="Search users by email, platform ID, or citizen ID"
                         aria-describedby="share-search-hint"
                     />
                     {query.length > 0 && (
@@ -200,7 +211,7 @@ export function ShareDocumentDialog({
                 <div className="share-dialog__body">
                     {showHint && (
                         <p id="share-search-hint" className="share-dialog__hint">
-                            Type at least {MIN_QUERY_LEN} characters to search
+                            Type at least {MIN_QUERY_LEN} characters to search by email, platform ID, or citizen ID
                         </p>
                     )}
 
@@ -240,6 +251,9 @@ export function ShareDocumentDialog({
                                             <span className="share-dialog__user-email">
                                                 {user.email}
                                             </span>
+                                            <span className="share-dialog__user-match">
+                                                {getMatchLabel(user)}
+                                            </span>
                                         </div>
 
                                         {/* Selected checkmark */}
@@ -260,7 +274,7 @@ export function ShareDocumentDialog({
                     {/* Idle state — nothing typed yet */}
                     {!query && (
                         <p className="share-dialog__idle">
-                            Enter an email address to find someone to share with
+                            Enter an email, platform ID, or citizen ID to find someone to share with
                         </p>
                     )}
                 </div>
