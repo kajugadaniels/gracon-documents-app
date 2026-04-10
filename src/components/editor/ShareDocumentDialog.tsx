@@ -13,7 +13,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Cancel01Icon, Search01Icon, Share01Icon } from '@hugeicons/core-free-icons';
-import { searchUsers, type UserSearchResult } from '@/api/auth/search-users.api';
+import {
+    searchUsers,
+    type UserSearchMode,
+    type UserSearchResult,
+} from '@/api/auth/search-users.api';
 
 interface ShareDocumentDialogProps {
     docTitle: string;
@@ -26,6 +30,8 @@ const DEBOUNCE_MS = 350;
 
 /** Minimum query length before a search is triggered. */
 const MIN_QUERY_LEN = 5;
+const PLATFORM_ID_LENGTH = 11;
+const CITIZEN_ID_LENGTH = 16;
 
 /**
  * Returns the initials for a user result — two letters max.
@@ -66,6 +72,7 @@ export function ShareDocumentDialog({
     onSelectUser,
     onClose,
 }: ShareDocumentDialogProps) {
+    const [searchMode, setSearchMode]   = useState<UserSearchMode>('email');
     const [query, setQuery]             = useState('');
     const [results, setResults]         = useState<UserSearchResult[]>([]);
     const [selectedId, setSelectedId]   = useState<string | null>(null);
@@ -91,15 +98,21 @@ export function ShareDocumentDialog({
         return () => window.removeEventListener('keydown', handleKey);
     }, [onClose]);
 
-    const runSearch = useCallback(async (q: string) => {
+    const runSearch = useCallback(async (q: string, mode: UserSearchMode) => {
         setLoading(true);
         setSearchError(null);
         try {
-            const data = await searchUsers(q);
+            const data = await searchUsers(q, mode);
             setResults(data);
             setHasSearched(true);
-        } catch {
-            setSearchError('Search failed. Please try again.');
+        } catch (error: unknown) {
+            const message = (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message;
+            setSearchError(
+                typeof message === 'string' && message.trim()
+                    ? message
+                    : 'Search failed. Please try again.',
+            );
             setResults([]);
         } finally {
             setLoading(false);
@@ -107,13 +120,19 @@ export function ShareDocumentDialog({
     }, []);
 
     function handleQueryChange(value: string) {
-        setQuery(value);
+        const nextValue = searchMode === 'id' ? value.replace(/\D+/g, '') : value;
+        setQuery(nextValue);
         setSelectedId(null);
 
         // Cancel any pending debounce.
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
-        if (value.trim().length < MIN_QUERY_LEN) {
+        const trimmed = nextValue.trim();
+        const hasEnoughCharacters = searchMode === 'email'
+            ? trimmed.length >= MIN_QUERY_LEN
+            : trimmed.length === PLATFORM_ID_LENGTH || trimmed.length === CITIZEN_ID_LENGTH;
+
+        if (!hasEnoughCharacters) {
             setResults([]);
             setHasSearched(false);
             setSearchError(null);
@@ -121,8 +140,19 @@ export function ShareDocumentDialog({
         }
 
         debounceTimer.current = setTimeout(() => {
-            void runSearch(value.trim());
+            void runSearch(trimmed, searchMode);
         }, DEBOUNCE_MS);
+    }
+
+    function handleSearchModeChange(mode: UserSearchMode) {
+        setSearchMode(mode);
+        setQuery('');
+        setResults([]);
+        setSelectedId(null);
+        setHasSearched(false);
+        setSearchError(null);
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        inputRef.current?.focus();
     }
 
     // Cleanup timer on unmount.
@@ -135,9 +165,20 @@ export function ShareDocumentDialog({
         onSelectUser(user);
     }
 
-    const showHint    = query.length > 0 && query.trim().length < MIN_QUERY_LEN;
+    const trimmedQuery = query.trim();
+    const showHint = searchMode === 'email'
+        ? query.length > 0 && trimmedQuery.length < MIN_QUERY_LEN
+        : query.length > 0
+            && trimmedQuery.length !== PLATFORM_ID_LENGTH
+            && trimmedQuery.length !== CITIZEN_ID_LENGTH;
     const showEmpty   = hasSearched && !loading && results.length === 0 && !searchError;
     const showResults = results.length > 0;
+    const searchPlaceholder = searchMode === 'email'
+        ? 'Search by email address…'
+        : 'Enter full Platform ID or Citizen ID…';
+    const searchAriaLabel = searchMode === 'email'
+        ? 'Search users by email'
+        : 'Search users by full platform ID or citizen ID';
 
     return (
         <div
@@ -176,6 +217,27 @@ export function ShareDocumentDialog({
                 {/* ── Divider ── */}
                 <div className="share-dialog__divider" aria-hidden="true" />
 
+                <div className="share-dialog__mode-switch" role="tablist" aria-label="Search mode">
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={searchMode === 'email'}
+                        className={`share-dialog__mode-btn${searchMode === 'email' ? ' share-dialog__mode-btn--active' : ''}`}
+                        onClick={() => handleSearchModeChange('email')}
+                    >
+                        Email
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={searchMode === 'id'}
+                        className={`share-dialog__mode-btn${searchMode === 'id' ? ' share-dialog__mode-btn--active' : ''}`}
+                        onClick={() => handleSearchModeChange('id')}
+                    >
+                        Numeric ID
+                    </button>
+                </div>
+
                 {/* ── Search input ── */}
                 <div className="share-dialog__search-wrap">
                     <div className="share-dialog__search-icon" aria-hidden="true">
@@ -189,12 +251,13 @@ export function ShareDocumentDialog({
                         type="text"
                         value={query}
                         onChange={(e) => handleQueryChange(e.target.value)}
-                        placeholder="Search by email, platform ID, or citizen ID…"
+                        placeholder={searchPlaceholder}
                         className="share-dialog__search-input"
                         autoComplete="off"
                         spellCheck={false}
-                        aria-label="Search users by email, platform ID, or citizen ID"
+                        aria-label={searchAriaLabel}
                         aria-describedby="share-search-hint"
+                        inputMode={searchMode === 'id' ? 'numeric' : 'email'}
                     />
                     {query.length > 0 && (
                         <button
@@ -211,7 +274,9 @@ export function ShareDocumentDialog({
                 <div className="share-dialog__body">
                     {showHint && (
                         <p id="share-search-hint" className="share-dialog__hint">
-                            Type at least {MIN_QUERY_LEN} characters to search by email, platform ID, or citizen ID
+                            {searchMode === 'email'
+                                ? `Type at least ${MIN_QUERY_LEN} characters to search by email`
+                                : `Enter the full Platform ID (${PLATFORM_ID_LENGTH} digits) or Citizen ID (${CITIZEN_ID_LENGTH} digits)`}
                         </p>
                     )}
 
@@ -274,7 +339,9 @@ export function ShareDocumentDialog({
                     {/* Idle state — nothing typed yet */}
                     {!query && (
                         <p className="share-dialog__idle">
-                            Enter an email, platform ID, or citizen ID to find someone to share with
+                            {searchMode === 'email'
+                                ? 'Enter an email address to find someone to share with'
+                                : `Enter the full Platform ID (${PLATFORM_ID_LENGTH} digits) or Citizen ID (${CITIZEN_ID_LENGTH} digits) to find someone to share with`}
                         </p>
                     )}
                 </div>
