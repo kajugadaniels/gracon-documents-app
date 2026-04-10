@@ -2,8 +2,8 @@
  * ShareDocumentDialog
  *
  * Modal for sharing a document with other users.
- * Provides a debounced user-search input — results appear after the user
- * has typed at least 5 characters. Selecting a result highlights the row.
+ * Provides a debounced user-search input with explicit email, platform-ID,
+ * and citizen-ID modes. Selecting a result highlights the row.
  *
  * Sharing logic is intentionally deferred — the component exposes the
  * selected user via `onSelectUser` for the parent to wire up later.
@@ -32,6 +32,52 @@ const DEBOUNCE_MS = 350;
 const MIN_QUERY_LEN = 5;
 const PLATFORM_ID_LENGTH = 11;
 const CITIZEN_ID_LENGTH = 16;
+
+function isNumericSearchMode(mode: UserSearchMode): boolean {
+    return mode === 'platformId' || mode === 'citizenId';
+}
+
+function getRequiredLength(mode: UserSearchMode): number | null {
+    if (mode === 'platformId') return PLATFORM_ID_LENGTH;
+    if (mode === 'citizenId') return CITIZEN_ID_LENGTH;
+    return null;
+}
+
+function getSearchPlaceholder(mode: UserSearchMode): string {
+    if (mode === 'platformId') return 'Enter full Platform ID…';
+    if (mode === 'citizenId') return 'Enter full Citizen ID…';
+    return 'Search by email address…';
+}
+
+function getSearchAriaLabel(mode: UserSearchMode): string {
+    if (mode === 'platformId') return 'Search users by full platform ID';
+    if (mode === 'citizenId') return 'Search users by full citizen ID';
+    return 'Search users by email';
+}
+
+function getSearchHint(mode: UserSearchMode): string {
+    if (mode === 'platformId') {
+        return `Enter the full Platform ID (${PLATFORM_ID_LENGTH} digits)`;
+    }
+
+    if (mode === 'citizenId') {
+        return `Enter the full Citizen ID (${CITIZEN_ID_LENGTH} digits)`;
+    }
+
+    return `Type at least ${MIN_QUERY_LEN} characters to search by email`;
+}
+
+function getIdleCopy(mode: UserSearchMode): string {
+    if (mode === 'platformId') {
+        return `Enter the full Platform ID (${PLATFORM_ID_LENGTH} digits) to find someone to share with`;
+    }
+
+    if (mode === 'citizenId') {
+        return `Enter the full Citizen ID (${CITIZEN_ID_LENGTH} digits) to find someone to share with`;
+    }
+
+    return 'Enter an email address to find someone to share with';
+}
 
 /**
  * Returns the initials for a user result — two letters max.
@@ -120,7 +166,9 @@ export function ShareDocumentDialog({
     }, []);
 
     function handleQueryChange(value: string) {
-        const nextValue = searchMode === 'id' ? value.replace(/\D+/g, '') : value;
+        const nextValue = isNumericSearchMode(searchMode)
+            ? value.replace(/\D+/g, '')
+            : value;
         setQuery(nextValue);
         setSelectedId(null);
 
@@ -128,9 +176,10 @@ export function ShareDocumentDialog({
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
         const trimmed = nextValue.trim();
+        const requiredLength = getRequiredLength(searchMode);
         const hasEnoughCharacters = searchMode === 'email'
             ? trimmed.length >= MIN_QUERY_LEN
-            : trimmed.length === PLATFORM_ID_LENGTH || trimmed.length === CITIZEN_ID_LENGTH;
+            : trimmed.length === requiredLength;
 
         if (!hasEnoughCharacters) {
             setResults([]);
@@ -168,17 +217,11 @@ export function ShareDocumentDialog({
     const trimmedQuery = query.trim();
     const showHint = searchMode === 'email'
         ? query.length > 0 && trimmedQuery.length < MIN_QUERY_LEN
-        : query.length > 0
-            && trimmedQuery.length !== PLATFORM_ID_LENGTH
-            && trimmedQuery.length !== CITIZEN_ID_LENGTH;
+        : query.length > 0 && trimmedQuery.length !== getRequiredLength(searchMode);
     const showEmpty   = hasSearched && !loading && results.length === 0 && !searchError;
     const showResults = results.length > 0;
-    const searchPlaceholder = searchMode === 'email'
-        ? 'Search by email address…'
-        : 'Enter full Platform ID or Citizen ID…';
-    const searchAriaLabel = searchMode === 'email'
-        ? 'Search users by email'
-        : 'Search users by full platform ID or citizen ID';
+    const searchPlaceholder = getSearchPlaceholder(searchMode);
+    const searchAriaLabel = getSearchAriaLabel(searchMode);
 
     return (
         <div
@@ -230,11 +273,20 @@ export function ShareDocumentDialog({
                     <button
                         type="button"
                         role="tab"
-                        aria-selected={searchMode === 'id'}
-                        className={`share-dialog__mode-btn${searchMode === 'id' ? ' share-dialog__mode-btn--active' : ''}`}
-                        onClick={() => handleSearchModeChange('id')}
+                        aria-selected={searchMode === 'platformId'}
+                        className={`share-dialog__mode-btn${searchMode === 'platformId' ? ' share-dialog__mode-btn--active' : ''}`}
+                        onClick={() => handleSearchModeChange('platformId')}
                     >
-                        Numeric ID
+                        Platform ID
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={searchMode === 'citizenId'}
+                        className={`share-dialog__mode-btn${searchMode === 'citizenId' ? ' share-dialog__mode-btn--active' : ''}`}
+                        onClick={() => handleSearchModeChange('citizenId')}
+                    >
+                        Citizen ID
                     </button>
                 </div>
 
@@ -257,7 +309,7 @@ export function ShareDocumentDialog({
                         spellCheck={false}
                         aria-label={searchAriaLabel}
                         aria-describedby="share-search-hint"
-                        inputMode={searchMode === 'id' ? 'numeric' : 'email'}
+                        inputMode={isNumericSearchMode(searchMode) ? 'numeric' : 'email'}
                     />
                     {query.length > 0 && (
                         <button
@@ -274,9 +326,7 @@ export function ShareDocumentDialog({
                 <div className="share-dialog__body">
                     {showHint && (
                         <p id="share-search-hint" className="share-dialog__hint">
-                            {searchMode === 'email'
-                                ? `Type at least ${MIN_QUERY_LEN} characters to search by email`
-                                : `Enter the full Platform ID (${PLATFORM_ID_LENGTH} digits) or Citizen ID (${CITIZEN_ID_LENGTH} digits)`}
+                            {getSearchHint(searchMode)}
                         </p>
                     )}
 
@@ -339,9 +389,7 @@ export function ShareDocumentDialog({
                     {/* Idle state — nothing typed yet */}
                     {!query && (
                         <p className="share-dialog__idle">
-                            {searchMode === 'email'
-                                ? 'Enter an email address to find someone to share with'
-                                : `Enter the full Platform ID (${PLATFORM_ID_LENGTH} digits) or Citizen ID (${CITIZEN_ID_LENGTH} digits) to find someone to share with`}
+                            {getIdleCopy(searchMode)}
                         </p>
                     )}
                 </div>
