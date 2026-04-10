@@ -15,7 +15,7 @@ import type { Editor } from '@tiptap/react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
     ArrowLeft01Icon, StarIcon, FolderOpenIcon,
-    Share01Icon, Comment01Icon, Clock01Icon, Logout01Icon, UserCircleIcon,
+    Share01Icon, Comment01Icon, Clock01Icon, Logout01Icon,
 } from '@hugeicons/core-free-icons';
 import { useSessionUser } from '@/app/(protected)/layout';
 import { APP_URL } from '@/lib/session';
@@ -158,15 +158,17 @@ export function DocEditorHeader({
     const handleAction = useCallback((actionId: string) => {
         // File actions that don't require the editor run first.
         if (actionId === 'file:new') {
-            // Open a blank tab synchronously (inside the user gesture) so popup
-            // blockers don't interfere, then redirect once the API responds.
-            const newTab = window.open('', '_blank');
+            // Open a same-origin placeholder tab synchronously so popup
+            // blockers do not interfere, then replace it with the new editor.
+            const loadingUrl = new URL('/documents', window.location.origin).toString();
+            const newTab = window.open(loadingUrl, '_blank');
             createDocument({ type: 'RICH_TEXT' })
                 .then((doc) => {
                     if (newTab) {
-                        newTab.location.href = `/documents/${doc.id}/edit`;
+                        newTab.location.replace(
+                            new URL(`/documents/${doc.id}/edit`, window.location.origin).toString(),
+                        );
                     } else {
-                        // Popup was blocked — fall back to a link the user can click.
                         toast.error('Popup blocked. Please allow popups and try again.');
                     }
                 })
