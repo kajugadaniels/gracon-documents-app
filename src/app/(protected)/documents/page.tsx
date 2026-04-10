@@ -20,7 +20,7 @@ import {
 } from '@/api/documents.api';
 import { useStarred } from '@/lib/hooks/useStarred';
 import {
-    DocumentCard, DocumentsFilters,
+    DocumentCard, DocumentsFilters, DeleteDocumentDialog,
     type StatusFilter, type SortOption,
 } from '@/components/pages/documents';
 
@@ -63,8 +63,10 @@ export default function DocumentsPage() {
     const [page,      setPage]      = useState(1);
     const [loading,   setLoading]   = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const [sort,      setSort]      = useState<SortOption>('recent');
+    const [sort,        setSort]        = useState<SortOption>('recent');
     const [starredOnly, setStarredOnly] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+    const [deleting,    setDeleting]    = useState(false);
     const latestLoadRef = useRef(0);
 
     const { starredIds, isStarred, toggleStar } = useStarred();
@@ -113,14 +115,24 @@ export default function DocumentsPage() {
         [items, starredIds],
     );
 
-    async function handleDelete(id: string, title: string) {
-        if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    /** Opens the confirmation dialog — no API call yet. */
+    function handleDeleteRequest(id: string, title: string) {
+        setPendingDelete({ id, title });
+    }
+
+    /** Called when the user confirms deletion in the dialog. */
+    async function handleDeleteConfirm() {
+        if (!pendingDelete) return;
+        setDeleting(true);
         try {
-            await deleteDocument(id);
+            await deleteDocument(pendingDelete.id);
+            setPendingDelete(null);
             toast.success('Document deleted.');
             void load();
         } catch {
             toast.error('Failed to delete document.');
+        } finally {
+            setDeleting(false);
         }
     }
 
@@ -230,7 +242,7 @@ export default function DocumentsPage() {
                             key={doc.id}
                             doc={doc}
                             starred={isStarred(doc.id)}
-                            onDelete={handleDelete}
+                            onDelete={handleDeleteRequest}
                             onToggleStar={toggleStar}
                         />
                     ))}
@@ -244,6 +256,16 @@ export default function DocumentsPage() {
                     <span className="docs-pagination__label">Page {page} of {totalPages}</span>
                     <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-ghost" style={{ padding: '8px 16px', fontSize: 12 }}>Next →</button>
                 </div>
+            )}
+
+            {/* ── Delete confirmation dialog ── */}
+            {pendingDelete && (
+                <DeleteDocumentDialog
+                    docTitle={pendingDelete.title}
+                    deleting={deleting}
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={() => { if (!deleting) setPendingDelete(null); }}
+                />
             )}
         </div>
     );
