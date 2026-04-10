@@ -169,8 +169,10 @@ export function DocEditorHeader({
      */
     const handleFileImport = useCallback(async (file: File) => {
         setImporting(true);
-        // Open the tab synchronously inside the change event before any awaits.
-        const newTab = window.open('', '_blank');
+        // Open a same-origin placeholder tab synchronously before any awaits so
+        // popup blockers treat the final editor tab as a direct user action.
+        const loadingUrl = new URL('/documents', window.location.origin).toString();
+        const newTab = window.open(loadingUrl, '_blank');
         try {
             const { content, title: suggestedTitle } = await importDocxToTiptap(file);
             const newDoc = await createDocument({ type: 'RICH_TEXT', title: suggestedTitle });
