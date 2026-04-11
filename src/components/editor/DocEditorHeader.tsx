@@ -36,7 +36,6 @@ import {
 } from '@/constants';
 import { DocEditorToolbar } from './DocEditorToolbar';
 import { ShareDocumentDialog } from './ShareDocumentDialog';
-import type { UserSearchResult } from '@/api/auth/search-users.api';
 
 const MENU_BAR = [
     { label: 'File',       items: FILE_MENU_ITEMS },
@@ -518,10 +517,8 @@ export function DocEditorHeader({
             {/* ── Share dialog ── */}
             {shareOpen && (
                 <ShareDocumentDialog
+                    documentId={doc.id}
                     docTitle={doc.title}
-                    onSelectUser={(_user: UserSearchResult) => {
-                        // Sharing logic wired here in a future iteration.
-                    }}
                     onClose={() => setShareOpen(false)}
                 />
             )}
