@@ -9,6 +9,21 @@ export type CollaboratorInvitationStatus =
     | 'DECLINED'
     | 'REVOKED'
     | 'EXPIRED';
+export type DocumentAccessAuditEvent =
+    | 'INVITE_CREATED'
+    | 'INVITE_EMAIL_QUEUED'
+    | 'INVITE_EMAIL_SENT'
+    | 'INVITE_EMAIL_FAILED'
+    | 'INVITE_OPENED'
+    | 'AUTH_REQUIRED'
+    | 'LOGIN_COMPLETED'
+    | 'IDENTITY_VERIFICATION_REQUIRED'
+    | 'IDENTITY_VERIFICATION_PASSED'
+    | 'IDENTITY_VERIFICATION_FAILED'
+    | 'INVITE_ACCEPTED'
+    | 'INVITE_DECLINED'
+    | 'INVITE_REVOKED'
+    | 'PERMISSIONS_UPDATED';
 export type CollaboratorPermission =
     | 'READ'
     | 'COMMENT'
@@ -62,6 +77,30 @@ export interface DocumentAccessListResponse {
     documentId: string;
     title: string;
     collaborators: DocumentCollaboratorAccess[];
+}
+
+export interface DocumentAccessAuditUser {
+    id: string;
+    email: string;
+    displayName: string;
+}
+
+export interface DocumentAccessAuditEntry {
+    id: string;
+    eventType: DocumentAccessAuditEvent;
+    fromPermissions: CollaboratorPermission[];
+    toPermissions: CollaboratorPermission[];
+    invitationStatus: CollaboratorInvitationStatus | null;
+    metadata: Record<string, string | number | boolean | null> | null;
+    createdAt: string;
+    actor: DocumentAccessAuditUser | null;
+    target: DocumentAccessAuditUser | null;
+}
+
+export interface DocumentAccessAuditResponse {
+    documentId: string;
+    title: string;
+    events: DocumentAccessAuditEntry[];
 }
 
 export interface DocumentSummary {
@@ -318,6 +357,16 @@ export async function resendDocumentInvitation(
     collaboratorId: string,
 ): Promise<DocumentCollaboratorAccess & { emailStatus: 'sent' | 'failed' }> {
     const res = await apiClient.post(`/documents/${id}/access/${collaboratorId}/resend`);
+    return res.data;
+}
+
+export async function getDocumentAccessAuditLog(
+    id: string,
+    limit = 50,
+): Promise<DocumentAccessAuditResponse> {
+    const res = await apiClient.get(`/documents/${id}/access/audit`, {
+        params: { limit },
+    });
     return res.data;
 }
 
