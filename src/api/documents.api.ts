@@ -64,6 +64,13 @@ export interface Folder {
     subFolders: Folder[];
 }
 
+export type CollaboratorPermission =
+    | 'READ'
+    | 'COMMENT'
+    | 'SIGN'
+    | 'EDIT'
+    | 'MANAGE_ACCESS';
+
 const pendingGetRequests = new Map<string, Promise<unknown>>();
 
 function buildGetRequestKey(path: string, params?: unknown) {
@@ -202,6 +209,25 @@ export async function restoreVersion(
     versionNumber: number,
 ): Promise<{ restored: boolean; versionNumber: number }> {
     const res = await apiClient.post(`/documents/${id}/versions/${versionNumber}/restore`);
+    return res.data;
+}
+
+export async function shareDocumentAccess(
+    id: string,
+    data: {
+        userId: string;
+        permissions: CollaboratorPermission[];
+        note?: string;
+        expiresInDays?: number;
+    },
+): Promise<{
+    id: string;
+    userId: string;
+    permissions: CollaboratorPermission[];
+    invitationStatus: string;
+    emailStatus: 'sent' | 'failed' | 'not_required';
+}> {
+    const res = await apiClient.post(`/documents/${id}/access`, data);
     return res.data;
 }
 
