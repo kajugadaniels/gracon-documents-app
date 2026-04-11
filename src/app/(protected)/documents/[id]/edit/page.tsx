@@ -13,6 +13,7 @@ import type { Editor } from '@tiptap/react';
 import { toast } from '@/components/ui';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
+import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import {
@@ -46,6 +47,7 @@ export default function EditDocumentPage() {
     const [editingTitle, setEditingTitle] = useState(false);
     const [title, setTitle] = useState('');
     const [showSigning, setShowSigning] = useState(false);
+    const [commentsOpen, setCommentsOpen] = useState(false);
     const [retryKey, setRetryKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
 
@@ -186,6 +188,7 @@ export default function EditDocumentPage() {
     }
 
     const canEdit = hasDocumentPermission(doc, 'EDIT');
+    const canComment = hasDocumentPermission(doc, 'COMMENT');
     const canManageAccess = hasDocumentPermission(doc, 'MANAGE_ACCESS');
     const canRunOwnerWorkflow = doc.access?.isOwner ?? true;
     const isReadOnly = doc.status !== 'DRAFT' || !canEdit;
@@ -234,7 +237,9 @@ export default function EditDocumentPage() {
                 isLocked={isLocked}
                 isFinalised={isFinalised}
                 canShare={canManageAccess}
+                canComment={canComment}
                 canRunOwnerWorkflow={canRunOwnerWorkflow}
+                onOpenComments={() => setCommentsOpen(true)}
                 onFinalise={handleFinalise}
                 onViewSignature={() => setShowSigning(true)}
             />
@@ -264,6 +269,15 @@ export default function EditDocumentPage() {
                     />
                 </div>
             </div>
+
+            <DocumentCommentsPanel
+                documentId={doc.id}
+                editor={editor}
+                canComment={canComment}
+                canResolve={doc.access?.isOwner ?? true}
+                open={commentsOpen}
+                onClose={() => setCommentsOpen(false)}
+            />
 
             {/* ── Signing modal ── */}
             {showSigning && doc.contentHash && (
