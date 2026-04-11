@@ -140,6 +140,7 @@ export function PaginatedEditorCanvas({
 }: PaginatedEditorCanvasProps) {
     const [editor, setEditor] = useState<Editor | null>(null);
     const [pageCount, setPageCount] = useState(1);
+    // Guards against re-triggering repagination while a pagination transaction is in flight.
     const paginatingRef = useRef(false);
 
     // ── Lift editor instance up ───────────────────────────────────────────────
@@ -187,7 +188,10 @@ export function PaginatedEditorCanvas({
             });
         }
 
-        function schedule() {
+        function schedule(props: { transaction: { getMeta: (k: string) => unknown } }) {
+            // Ignore transactions dispatched by the pagination algorithm itself
+            // to prevent an infinite update → repaginate → update loop.
+            if (props.transaction.getMeta(PAGINATION_META)) return;
             if (timer) clearTimeout(timer);
             timer = setTimeout(repaginate, 500);
         }
