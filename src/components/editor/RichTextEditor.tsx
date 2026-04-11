@@ -34,6 +34,7 @@ interface RichTextEditorProps {
     paperTitle?: string;
     paperStatus?: string;
     pageNumber?: number;
+    pageCount?: number;
     /**
      * Rendered as an absolutely-positioned overlay that fills the paper sheet.
      * Used for the draggable signature block so it can be placed anywhere on
@@ -54,13 +55,20 @@ export function RichTextEditor({
     paperTitle = 'Document',
     paperStatus,
     pageNumber = 1,
+    pageCount = 1,
     overlayContent,
     commentAnchors = [],
 }: RichTextEditorProps) {
     const onChangeRef = useRef(onContentChange);
-    onChangeRef.current = onContentChange;
     const onEditorReadyRef = useRef(onEditorReady);
-    onEditorReadyRef.current = onEditorReady;
+
+    useEffect(() => {
+        onChangeRef.current = onContentChange;
+    }, [onContentChange]);
+
+    useEffect(() => {
+        onEditorReadyRef.current = onEditorReady;
+    }, [onEditorReady]);
 
     const editor = useEditor({
         immediatelyRender: false,
@@ -120,6 +128,9 @@ export function RichTextEditor({
         const paperEditorClassName = overlayContent
             ? 'tiptap-editor tiptap-editor-paper tiptap-editor-paper-signed'
             : 'tiptap-editor tiptap-editor-paper';
+        const pageLabel = pageCount > 1
+            ? `Page ${pageNumber} of ${pageCount}`
+            : `Page ${pageNumber}`;
 
         return (
             <div className={paperEditorClassName}>
@@ -129,11 +140,11 @@ export function RichTextEditor({
                     bodyClassName="document-paper-sheet__body--editor"
                     eyebrow={readOnly ? 'Locked page' : ''}
                     title={paperTitle}
-                    meta={<span className="document-paper-sheet__page-tag">Page {pageNumber}</span>}
+                    meta={<span className="document-paper-sheet__page-tag">{pageLabel}</span>}
                     footer={(
                         <div className="document-paper-sheet__footer-bar">
                             <span>{footerLabel}</span>
-                            <span>Page {pageNumber}</span>
+                            <span>{pageLabel}</span>
                         </div>
                     )}
                     overlay={overlayContent}
