@@ -388,6 +388,19 @@ export function DocEditorHeader({
             case 'format:clear':     chain.clearNodes().unsetAllMarks().run(); break;
             case 'insert:table':   chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); break;
             case 'insert:hr':      chain.setHorizontalRule().run(); break;
+            case 'insert:page-break': {
+                // Compute spacer height from the cursor block's position in the page cycle.
+                const { from } = editor.state.selection;
+                const domPos = editor.view.domAtPos(from);
+                let node: globalThis.Node | null =
+                    domPos.node instanceof Text ? domPos.node.parentNode : domPos.node;
+                const pm = editor.view.dom;
+                while (node && node.parentNode !== pm) node = node.parentNode;
+                const blockTop = node instanceof HTMLElement ? node.offsetTop : 0;
+                const spacer = 1080 - (blockTop % 1080) + 96;
+                editor.commands.insertPageBreak(spacer, false);
+                break;
+            }
         }
     }, [
         copying,
