@@ -59,7 +59,17 @@ function removeExportOnlyUi(rootEl: HTMLElement) {
 
 function createExportSheet(sourceSheetEl: HTMLElement) {
     const hostEl = document.createElement('div');
-    const sheetEl = sourceSheetEl.cloneNode(true) as HTMLElement;
+    const sourceWrapperEl = sourceSheetEl.closest('.tiptap-editor-paper');
+    const exportRootEl = sourceWrapperEl instanceof HTMLElement
+        ? sourceWrapperEl.cloneNode(true) as HTMLElement
+        : sourceSheetEl.cloneNode(true) as HTMLElement;
+    const sheetEl = exportRootEl.matches('.document-paper-sheet')
+        ? exportRootEl
+        : exportRootEl.querySelector('.document-paper-sheet');
+
+    if (!(sheetEl instanceof HTMLElement)) {
+        throw new Error('Could not prepare the rendered document for export.');
+    }
 
     hostEl.setAttribute('data-document-export-host', 'true');
     hostEl.style.position = 'fixed';
@@ -69,9 +79,9 @@ function createExportSheet(sourceSheetEl: HTMLElement) {
     hostEl.style.pointerEvents = 'none';
     hostEl.style.zIndex = '-1';
 
-    removeExportOnlyUi(sheetEl);
+    removeExportOnlyUi(exportRootEl);
     applyExportPaperGeometry(sheetEl);
-    hostEl.appendChild(sheetEl);
+    hostEl.appendChild(exportRootEl);
     document.body.appendChild(hostEl);
 
     return {
