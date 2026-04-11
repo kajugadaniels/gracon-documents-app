@@ -20,6 +20,7 @@ import {
     type UserSearchResult,
 } from '@/api/auth/search-users.api';
 import {
+    getDocumentAccessList,
     shareDocumentAccess,
     type CollaboratorPermission,
 } from '@/api/documents.api';
@@ -221,6 +222,23 @@ export function ShareDocumentDialog({
     const [activityCount,      setActivityCount]      = useState(0);
     const [accessRefreshKey,   setAccessRefreshKey]   = useState(0);
     const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+
+    // ── Existing access map (userId → 'active' | 'pending') ──
+    // Used to mark search results so the owner knows who already has access.
+    const [existingAccess, setExistingAccess] = useState<Map<string, 'active' | 'pending'>>(new Map());
+
+    useEffect(() => {
+        getDocumentAccessList(documentId)
+            .then(({ collaborators }) => {
+                const map = new Map<string, 'active' | 'pending'>();
+                for (const c of collaborators) {
+                    if (c.isActive && c.invitationStatus === 'ACCEPTED') map.set(c.userId, 'active');
+                    else if (c.invitationStatus === 'PENDING') map.set(c.userId, 'pending');
+                }
+                setExistingAccess(map);
+            })
+            .catch(() => { /* silent — badge is cosmetic; API rejects duplicates anyway */ });
+    }, [documentId, accessRefreshKey]);
 
     // ── Search state ──
     const [searchMode,  setSearchMode]  = useState<UserSearchMode>('email');
@@ -479,14 +497,22 @@ export function ShareDocumentDialog({
                             {showResults && (
                                 <ul className="share-dialog__results" role="listbox" aria-label="Search results">
                                     {results.map((user) => {
-                                        const isSelected = selectedId === user.id;
+                                        const isSelected  = selectedId === user.id;
+                                        const accessStatus = existingAccess.get(user.id);
+                                        const hasAccess   = Boolean(accessStatus);
+                                        const className   = [
+                                            'share-dialog__result',
+                                            isSelected && 'share-dialog__result--selected',
+                                            hasAccess  && 'share-dialog__result--has-access',
+                                        ].filter(Boolean).join(' ');
                                         return (
                                             <li
                                                 key={user.id}
                                                 role="option"
                                                 aria-selected={isSelected}
-                                                className={`share-dialog__result${isSelected ? ' share-dialog__result--selected' : ''}`}
-                                                onClick={() => handleSelectUser(user)}
+                                                aria-disabled={hasAccess}
+                                                className={className}
+                                                onClick={() => { if (!hasAccess) handleSelectUser(user); }}
                                             >
                                                 <div className="share-dialog__avatar" aria-hidden="true">
                                                     {user.imageUrl
@@ -499,7 +525,12 @@ export function ShareDocumentDialog({
                                                     <span className="share-dialog__user-email">{user.email}</span>
                                                     <span className="share-dialog__user-match">{getMatchLabel(user)}</span>
                                                 </div>
-                                                {isSelected && (
+                                                {accessStatus && (
+                                                    <span className={`share-dialog__access-badge share-dialog__access-badge--${accessStatus}`}>
+                                                        {accessStatus === 'active' ? 'Has access' : 'Invite pending'}
+                                                    </span>
+                                                )}
+                                                {isSelected && !hasAccess && (
                                                     <div className="share-dialog__check" aria-hidden="true">
                                                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                                             <circle cx="8" cy="8" r="8" fill="var(--color-primary)" />
