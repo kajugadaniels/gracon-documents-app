@@ -21,6 +21,7 @@ import {
     type CollaboratorPermission,
 } from '@/api/documents.api';
 import { toast } from '@/components/ui';
+import { ShareDocumentAuditLog } from './ShareDocumentAuditLog';
 import { ShareDocumentAccessManager } from './ShareDocumentAccessManager';
 
 interface ShareDocumentDialogProps {
@@ -63,7 +64,7 @@ const SHARE_PERMISSION_OPTIONS: Array<{
         description: 'Can invite and update collaborators',
     },
 ];
-const ACCESS_TABS = ['invite', 'people'] as const;
+const ACCESS_TABS = ['invite', 'people', 'activity'] as const;
 type AccessTab = (typeof ACCESS_TABS)[number];
 
 function isNumericSearchMode(mode: UserSearchMode): boolean {
@@ -155,6 +156,8 @@ export function ShareDocumentDialog({
     const [activeTab, setActiveTab]       = useState<AccessTab>('invite');
     const [accessCount, setAccessCount] = useState(0);
     const [accessRefreshKey, setAccessRefreshKey] = useState(0);
+    const [activityCount, setActivityCount] = useState(0);
+    const [activityRefreshKey, setActivityRefreshKey] = useState(0);
     const [searchMode, setSearchMode]   = useState<UserSearchMode>('email');
     const [query, setQuery]             = useState('');
     const [results, setResults]         = useState<UserSearchResult[]>([]);
@@ -303,6 +306,7 @@ export function ShareDocumentDialog({
             setSharePermissions(['READ']);
             setNote('');
             setAccessRefreshKey((value) => value + 1);
+            setActivityRefreshKey((value) => value + 1);
             setActiveTab('people');
         } catch (error: unknown) {
             const message = (error as { response?: { data?: { message?: string } } })
@@ -385,6 +389,20 @@ export function ShareDocumentDialog({
                             <span className="share-dialog__tab-count">{accessCount}</span>
                         )}
                     </button>
+                    {canGrantManageAccess && (
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={activeTab === 'activity'}
+                            className={`share-dialog__tab${activeTab === 'activity' ? ' share-dialog__tab--active' : ''}`}
+                            onClick={() => setActiveTab('activity')}
+                        >
+                            Activity
+                            {activityCount > 0 && (
+                                <span className="share-dialog__tab-count">{activityCount}</span>
+                            )}
+                        </button>
+                    )}
                 </div>
 
                 {activeTab === 'invite' && (
@@ -714,6 +732,17 @@ export function ShareDocumentDialog({
                             canGrantManageAccess={canGrantManageAccess}
                             refreshKey={accessRefreshKey}
                             onCountChange={setAccessCount}
+                            onActivityRecorded={() => setActivityRefreshKey((value) => value + 1)}
+                        />
+                    </div>
+                )}
+
+                {canGrantManageAccess && activeTab === 'activity' && (
+                    <div className="share-dialog__body share-dialog__body--access">
+                        <ShareDocumentAuditLog
+                            documentId={documentId}
+                            refreshKey={activityRefreshKey}
+                            onCountChange={setActivityCount}
                         />
                     </div>
                 )}
@@ -721,7 +750,9 @@ export function ShareDocumentDialog({
                 {/* ── Footer ── */}
                 <div className="share-dialog__footer">
                     <p className="share-dialog__footer-note">
-                        {activeTab === 'people'
+                        {activeTab === 'activity'
+                            ? 'This is an owner-only audit view. Sensitive network details stay server-side.'
+                            : activeTab === 'people'
                             ? 'Every access change is enforced by the server and recorded in the audit trail.'
                             : selectedUser
                                 ? 'The invited user must sign in with the targeted verified account before accepting.'
