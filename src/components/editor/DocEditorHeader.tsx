@@ -523,6 +523,7 @@ export function DocEditorHeader({
                 <ShareDocumentDialog
                     documentId={doc.id}
                     docTitle={doc.title}
+                    canGrantManageAccess={doc.access?.isOwner ?? true}
                     onClose={() => setShareOpen(false)}
                 />
             )}
