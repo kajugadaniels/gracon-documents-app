@@ -209,6 +209,8 @@ interface DocEditorHeaderProps {
     isReadOnly: boolean;
     isLocked: boolean;
     isFinalised: boolean;
+    canShare: boolean;
+    canRunOwnerWorkflow: boolean;
     onFinalise: () => void;
     onViewSignature: () => void;
 }
@@ -217,7 +219,7 @@ interface DocEditorHeaderProps {
 export function DocEditorHeader({
     editor, doc, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
-    isReadOnly, isLocked, isFinalised,
+    isReadOnly, isLocked, isFinalised, canShare, canRunOwnerWorkflow,
     onFinalise, onViewSignature,
 }: DocEditorHeaderProps) {
     const router = useRouter();
@@ -487,25 +489,27 @@ export function DocEditorHeader({
                         <HugeiconsIcon icon={Comment01Icon} size={17} />
                     </button>
 
-                    {!isLocked && (
+                    {canRunOwnerWorkflow && !isLocked && (
                         <button onClick={onFinalise} className="ded-action-btn ded-action-btn--primary">
                             {isFinalised ? 'Sign document' : 'Finalise & sign'}
                         </button>
                     )}
-                    {isLocked && (
+                    {canRunOwnerWorkflow && isLocked && (
                         <button onClick={onViewSignature} className="ded-action-btn">
                             View signature
                         </button>
                     )}
 
-                    <button
-                        className="ded-share-btn"
-                        onClick={() => setShareOpen(true)}
-                        title="Share document"
-                    >
-                        <HugeiconsIcon icon={Share01Icon} size={15} />
-                        <span>Share</span>
-                    </button>
+                    {canShare && (
+                        <button
+                            className="ded-share-btn"
+                            onClick={() => setShareOpen(true)}
+                            title="Share document"
+                        >
+                            <HugeiconsIcon icon={Share01Icon} size={15} />
+                            <span>Share</span>
+                        </button>
+                    )}
 
                     <UserAvatarMenu />
                 </div>
