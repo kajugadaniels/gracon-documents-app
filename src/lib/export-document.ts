@@ -1,7 +1,13 @@
 'use client';
 
+/**
+ * Client-side rendered document export.
+ *
+ * The live editor can be responsive, so export captures an isolated A4 clone
+ * with fixed paper geometry. That keeps PDF/DOCX output aligned with the
+ * document paper constants instead of the user's current viewport width.
+ */
 import {
-    A4_PAPER_ASPECT_RATIO,
     A4_PAPER_HEIGHT_PT,
     A4_PAPER_HEIGHT_PX,
     A4_PAPER_HEIGHT_TWIP,
@@ -9,6 +15,7 @@ import {
     A4_PAPER_WIDTH_PX,
     A4_PAPER_WIDTH_TWIP,
 } from '@/constants/document-paper';
+import { captureRenderedDocumentPages } from './export-document-capture';
 
 type ExportFormat = 'pdf' | 'docx';
 
@@ -52,92 +59,6 @@ function toPlainArrayBuffer(bytes: Uint8Array<ArrayBufferLike>) {
     const copy = new Uint8Array(bytes.byteLength);
     copy.set(bytes);
     return copy.buffer;
-}
-
-async function waitForRenderableAssets(sheetEl: HTMLElement) {
-    if ('fonts' in document) {
-        await document.fonts.ready;
-    }
-
-    const images = Array.from(sheetEl.querySelectorAll('img'));
-
-    await Promise.all(images.map((image) => new Promise<void>((resolve) => {
-        if (image.complete) {
-            resolve();
-            return;
-        }
-
-        const finish = () => resolve();
-        image.addEventListener('load', finish, { once: true });
-        image.addEventListener('error', finish, { once: true });
-    })));
-}
-
-async function captureDocumentPages(sheetEl: HTMLElement) {
-    await waitForRenderableAssets(sheetEl);
-
-    const { default: html2canvas } = await import('html2canvas');
-    const rect = sheetEl.getBoundingClientRect();
-    const cssWidth = Math.max(Math.round(rect.width), 1);
-    const cssHeight = Math.max(sheetEl.scrollHeight, Math.round(rect.height), 1);
-    const cssPageHeight = Math.max(Math.round(cssWidth * A4_PAPER_ASPECT_RATIO), 1);
-    const scale = Math.min(Math.max(window.devicePixelRatio || 1, 1.5), 2);
-
-    const snapshotCanvas = await html2canvas(sheetEl, {
-        backgroundColor: '#ffffff',
-        scale,
-        useCORS: true,
-        logging: false,
-        width: cssWidth,
-        height: cssHeight,
-        windowWidth: Math.max(window.innerWidth, cssWidth),
-        windowHeight: Math.max(window.innerHeight, cssHeight),
-        onclone: (clonedDocument) => {
-            const clonedSheet = clonedDocument.querySelector('.document-paper-sheet') as HTMLElement | null;
-            if (!clonedSheet) return;
-
-            clonedSheet.style.boxShadow = 'none';
-            clonedSheet.style.margin = '0';
-            clonedSheet.style.background = '#ffffff';
-        },
-    });
-
-    const pixelsPerCssPixel = snapshotCanvas.height / cssHeight;
-    const pageHeightPixels = Math.max(Math.round(cssPageHeight * pixelsPerCssPixel), 1);
-    const pageCount = Math.max(Math.ceil(snapshotCanvas.height / pageHeightPixels), 1);
-
-    const pages: HTMLCanvasElement[] = [];
-
-    for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
-        const sourceY = pageIndex * pageHeightPixels;
-        const sourceHeight = Math.min(pageHeightPixels, snapshotCanvas.height - sourceY);
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = snapshotCanvas.width;
-        pageCanvas.height = pageHeightPixels;
-
-        const context = pageCanvas.getContext('2d');
-        if (!context) {
-            throw new Error('Failed to prepare export canvas.');
-        }
-
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        context.drawImage(
-            snapshotCanvas,
-            0,
-            sourceY,
-            snapshotCanvas.width,
-            sourceHeight,
-            0,
-            0,
-            pageCanvas.width,
-            sourceHeight,
-        );
-
-        pages.push(pageCanvas);
-    }
-
-    return pages;
 }
 
 async function exportPdf(pages: HTMLCanvasElement[], title: string) {
@@ -216,12 +137,15 @@ async function exportDocx(pages: HTMLCanvasElement[], title: string) {
     );
 }
 
+/**
+ * Saves the currently rendered document sheet as a PDF or DOCX download.
+ */
 export async function saveRenderedDocumentAs(
     format: ExportFormat,
     title: string,
     sheetEl: HTMLElement,
 ) {
-    const pages = await captureDocumentPages(sheetEl);
+    const pages = await captureRenderedDocumentPages(sheetEl);
 
     if (format === 'pdf') {
         await exportPdf(pages, title);
