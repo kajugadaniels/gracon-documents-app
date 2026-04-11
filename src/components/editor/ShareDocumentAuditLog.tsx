@@ -126,7 +126,22 @@ export function ShareDocumentAuditLog({
         void loadAuditLog();
     }, [documentId, refreshKey]);
 
-    if (loading) return <p className="share-dialog__idle">Loading access activity...</p>;
+    if (loading) {
+        return (
+            <div className="share-dialog__access-list">
+                {[0, 1, 2].map((i) => (
+                    <div key={i} className="share-skeleton">
+                        <div className="share-skeleton__avatar" />
+                        <div className="share-skeleton__lines">
+                            <div className="share-skeleton__line" />
+                            <div className="share-skeleton__line" />
+                            <div className="share-skeleton__line" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
 
     if (error) {
         return (
