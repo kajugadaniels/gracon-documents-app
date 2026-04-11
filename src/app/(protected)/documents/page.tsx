@@ -18,7 +18,7 @@ import {
     autosaveDocument,
     createDocument,
     listDocuments, deleteDocument,
-    type DocumentSummary, type DocumentStatus,
+    type DocumentListScope, type DocumentSummary, type DocumentStatus,
 } from '@/api/documents.api';
 import { useStarred } from '@/lib/hooks/useStarred';
 import { importDocxToTiptap } from '@/lib/import-docx';
@@ -53,6 +53,11 @@ function sortDocuments(items: DocumentSummary[], sort: SortOption): DocumentSumm
     }
 }
 
+function parseAccessScope(value: string | null): DocumentListScope {
+    if (value === 'OWNED' || value === 'SHARED_WITH_ME') return value;
+    return 'ALL_ACCESSIBLE';
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DocumentsPage() {
@@ -60,6 +65,7 @@ export default function DocumentsPage() {
     const searchParams = useSearchParams();
     const search       = searchParams.get('search') ?? '';
     const statusFilter = searchParams.get('status') as DocumentStatus | null;
+    const accessScope  = parseAccessScope(searchParams.get('scope'));
 
     const [items,     setItems]     = useState<DocumentSummary[]>([]);
     const [total,     setTotal]     = useState(0);
@@ -84,6 +90,7 @@ export default function DocumentsPage() {
             const res = await listDocuments({
                 page,
                 limit: 20,
+                scope:  accessScope,
                 type:   'RICH_TEXT',
                 search: search || undefined,
                 // When starredOnly is on we load all docs then filter client-side
@@ -100,7 +107,7 @@ export default function DocumentsPage() {
         } finally {
             if (requestId === latestLoadRef.current) setLoading(false);
         }
-    }, [page, search, statusFilter, starredOnly]);
+    }, [accessScope, page, search, statusFilter, starredOnly]);
 
     useEffect(() => {
         void load();
@@ -147,7 +154,18 @@ export default function DocumentsPage() {
         if (s) url.searchParams.set('status', s);
         else   url.searchParams.delete('status');
         const after = url.pathname + url.search;
+        setPage(1);
         // Only push if the URL actually changed — a no-op push resets local state.
+        if (before !== after) router.push(after);
+    }
+
+    function handleAccessScopeChange(scope: DocumentListScope) {
+        const url = new URL(window.location.href);
+        const before = url.pathname + url.search;
+        if (scope === 'ALL_ACCESSIBLE') url.searchParams.delete('scope');
+        else url.searchParams.set('scope', scope);
+        const after = url.pathname + url.search;
+        setPage(1);
         if (before !== after) router.push(after);
     }
 
@@ -245,6 +263,7 @@ export default function DocumentsPage() {
 
             {/* ── Filters bar ── */}
             <DocumentsFilters
+                accessScope={accessScope}
                 statusFilter={statusFilter}
                 starredOnly={starredOnly}
                 starredCount={starredCount}
@@ -252,6 +271,7 @@ export default function DocumentsPage() {
                 total={starredOnly ? visibleItems.length : total}
                 loading={loading}
                 search={search}
+                onAccessScopeChange={handleAccessScopeChange}
                 onStatusChange={handleStatusChange}
                 onStarredChange={setStarredOnly}
                 onSortChange={setSort}
@@ -291,7 +311,9 @@ export default function DocumentsPage() {
                             ? 'No starred documents'
                             : search
                                 ? 'No results found'
-                                : statusFilter
+                                : accessScope === 'SHARED_WITH_ME'
+                                    ? 'No shared documents yet'
+                                    : statusFilter
                                     ? `No ${statusFilter.toLowerCase()} documents`
                                     : 'No documents yet'}
                     </p>
@@ -300,7 +322,9 @@ export default function DocumentsPage() {
                             ? 'Star a document to add it to your favourites.'
                             : search
                                 ? `No documents match "${search}"`
-                                : statusFilter
+                                : accessScope === 'SHARED_WITH_ME'
+                                    ? 'Documents shared with you will appear here after you accept their invitation.'
+                                    : statusFilter
                                     ? 'Documents with this status will appear here.'
                                     : 'Create your first document to get started.'}
                     </p>
