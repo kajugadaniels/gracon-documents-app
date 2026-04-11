@@ -21,10 +21,12 @@ import {
     type CollaboratorPermission,
 } from '@/api/documents.api';
 import { toast } from '@/components/ui';
+import { ShareDocumentAccessManager } from './ShareDocumentAccessManager';
 
 interface ShareDocumentDialogProps {
     documentId: string;
     docTitle: string;
+    canGrantManageAccess?: boolean;
     onClose: () => void;
 }
 
@@ -61,6 +63,8 @@ const SHARE_PERMISSION_OPTIONS: Array<{
         description: 'Can invite and update collaborators',
     },
 ];
+const ACCESS_TABS = ['invite', 'people'] as const;
+type AccessTab = (typeof ACCESS_TABS)[number];
 
 function isNumericSearchMode(mode: UserSearchMode): boolean {
     return mode === 'platformId' || mode === 'citizenId';
@@ -145,8 +149,12 @@ function getMatchLabel(user: UserSearchResult): string {
 export function ShareDocumentDialog({
     documentId,
     docTitle,
+    canGrantManageAccess = true,
     onClose,
 }: ShareDocumentDialogProps) {
+    const [activeTab, setActiveTab]       = useState<AccessTab>('invite');
+    const [accessCount, setAccessCount] = useState(0);
+    const [accessRefreshKey, setAccessRefreshKey] = useState(0);
     const [searchMode, setSearchMode]   = useState<UserSearchMode>('email');
     const [query, setQuery]             = useState('');
     const [results, setResults]         = useState<UserSearchResult[]>([]);
@@ -163,6 +171,9 @@ export function ShareDocumentDialog({
     const inputRef      = useRef<HTMLInputElement>(null);
     const backdropRef   = useRef<HTMLDivElement>(null);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const visiblePermissionOptions = canGrantManageAccess
+        ? SHARE_PERMISSION_OPTIONS
+        : SHARE_PERMISSION_OPTIONS.filter((option) => option.value !== 'MANAGE_ACCESS');
 
     // Auto-focus input on mount.
     useEffect(() => {
@@ -285,7 +296,14 @@ export function ShareDocumentDialog({
                 toast.success('Access updated successfully.');
             }
 
-            onClose();
+            setQuery('');
+            setResults([]);
+            setSelectedId(null);
+            setSelectedUser(null);
+            setSharePermissions(['READ']);
+            setNote('');
+            setAccessRefreshKey((value) => value + 1);
+            setActiveTab('people');
         } catch (error: unknown) {
             const message = (error as { response?: { data?: { message?: string } } })
                 ?.response?.data?.message;
@@ -345,70 +363,96 @@ export function ShareDocumentDialog({
                 {/* ── Divider ── */}
                 <div className="share-dialog__divider" aria-hidden="true" />
 
-                <div className="share-dialog__mode-switch" role="tablist" aria-label="Search mode">
+                <div className="share-dialog__tabs" role="tablist" aria-label="Share dialog tabs">
                     <button
                         type="button"
                         role="tab"
-                        aria-selected={searchMode === 'email'}
-                        className={`share-dialog__mode-btn${searchMode === 'email' ? ' share-dialog__mode-btn--active' : ''}`}
-                        onClick={() => handleSearchModeChange('email')}
+                        aria-selected={activeTab === 'invite'}
+                        className={`share-dialog__tab${activeTab === 'invite' ? ' share-dialog__tab--active' : ''}`}
+                        onClick={() => setActiveTab('invite')}
                     >
-                        Email
+                        Invite user
                     </button>
                     <button
                         type="button"
                         role="tab"
-                        aria-selected={searchMode === 'platformId'}
-                        className={`share-dialog__mode-btn${searchMode === 'platformId' ? ' share-dialog__mode-btn--active' : ''}`}
-                        onClick={() => handleSearchModeChange('platformId')}
+                        aria-selected={activeTab === 'people'}
+                        className={`share-dialog__tab${activeTab === 'people' ? ' share-dialog__tab--active' : ''}`}
+                        onClick={() => setActiveTab('people')}
                     >
-                        Platform ID
-                    </button>
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected={searchMode === 'citizenId'}
-                        className={`share-dialog__mode-btn${searchMode === 'citizenId' ? ' share-dialog__mode-btn--active' : ''}`}
-                        onClick={() => handleSearchModeChange('citizenId')}
-                    >
-                        Citizen ID
+                        People with access
+                        {accessCount > 0 && (
+                            <span className="share-dialog__tab-count">{accessCount}</span>
+                        )}
                     </button>
                 </div>
 
-                {/* ── Search input ── */}
-                <div className="share-dialog__search-wrap">
-                    <div className="share-dialog__search-icon" aria-hidden="true">
-                        {loading
-                            ? <span className="share-dialog__search-spinner" />
-                            : <HugeiconsIcon icon={Search01Icon} size={16} color="#9ca3af" />
-                        }
-                    </div>
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={query}
-                        onChange={(e) => handleQueryChange(e.target.value)}
-                        placeholder={searchPlaceholder}
-                        className="share-dialog__search-input"
-                        autoComplete="off"
-                        spellCheck={false}
-                        aria-label={searchAriaLabel}
-                        aria-describedby="share-search-hint"
-                        inputMode={isNumericSearchMode(searchMode) ? 'numeric' : 'email'}
-                    />
-                    {query.length > 0 && (
+                {activeTab === 'invite' && (
+                    <>
+                    <div className="share-dialog__mode-switch" role="tablist" aria-label="Search mode">
                         <button
-                            className="share-dialog__search-clear"
-                            onClick={() => handleQueryChange('')}
-                            aria-label="Clear search"
+                            type="button"
+                            role="tab"
+                            aria-selected={searchMode === 'email'}
+                            className={`share-dialog__mode-btn${searchMode === 'email' ? ' share-dialog__mode-btn--active' : ''}`}
+                            onClick={() => handleSearchModeChange('email')}
                         >
-                            <HugeiconsIcon icon={Cancel01Icon} size={13} />
+                            Email
                         </button>
-                    )}
-                </div>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={searchMode === 'platformId'}
+                            className={`share-dialog__mode-btn${searchMode === 'platformId' ? ' share-dialog__mode-btn--active' : ''}`}
+                            onClick={() => handleSearchModeChange('platformId')}
+                        >
+                            Platform ID
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={searchMode === 'citizenId'}
+                            className={`share-dialog__mode-btn${searchMode === 'citizenId' ? ' share-dialog__mode-btn--active' : ''}`}
+                            onClick={() => handleSearchModeChange('citizenId')}
+                        >
+                            Citizen ID
+                        </button>
+                    </div>
 
-                {/* ── Hint / results / empty state ── */}
-                <div className="share-dialog__body">
+                    {/* ── Search input ── */}
+                    <div className="share-dialog__search-wrap">
+                        <div className="share-dialog__search-icon" aria-hidden="true">
+                            {loading
+                                ? <span className="share-dialog__search-spinner" />
+                                : <HugeiconsIcon icon={Search01Icon} size={16} color="#9ca3af" />
+                            }
+                        </div>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={query}
+                            onChange={(e) => handleQueryChange(e.target.value)}
+                            placeholder={searchPlaceholder}
+                            className="share-dialog__search-input"
+                            autoComplete="off"
+                            spellCheck={false}
+                            aria-label={searchAriaLabel}
+                            aria-describedby="share-search-hint"
+                            inputMode={isNumericSearchMode(searchMode) ? 'numeric' : 'email'}
+                        />
+                        {query.length > 0 && (
+                            <button
+                                className="share-dialog__search-clear"
+                                onClick={() => handleQueryChange('')}
+                                aria-label="Clear search"
+                            >
+                                <HugeiconsIcon icon={Cancel01Icon} size={13} />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* ── Hint / results / empty state ── */}
+                    <div className="share-dialog__body">
                     {showHint && (
                         <p id="share-search-hint" className="share-dialog__hint">
                             {getSearchHint(searchMode)}
@@ -553,7 +597,7 @@ export function ShareDocumentDialog({
                                         gap: 10,
                                     }}
                                 >
-                                    {SHARE_PERMISSION_OPTIONS.map((option) => {
+                                    {visiblePermissionOptions.map((option) => {
                                         const checked = sharePermissions.includes(option.value);
 
                                         return (
@@ -660,20 +704,35 @@ export function ShareDocumentDialog({
                         </div>
                     )}
                 </div>
+                    </>
+                )}
+
+                {activeTab === 'people' && (
+                    <div className="share-dialog__body share-dialog__body--access">
+                        <ShareDocumentAccessManager
+                            documentId={documentId}
+                            canGrantManageAccess={canGrantManageAccess}
+                            refreshKey={accessRefreshKey}
+                            onCountChange={setAccessCount}
+                        />
+                    </div>
+                )}
 
                 {/* ── Footer ── */}
                 <div className="share-dialog__footer">
                     <p className="share-dialog__footer-note">
-                        {selectedUser
-                            ? 'The invited user must sign in with the targeted verified account before accepting.'
-                            : 'Search for a verified user, then choose the permissions you want to send.'}
+                        {activeTab === 'people'
+                            ? 'Every access change is enforced by the server and recorded in the audit trail.'
+                            : selectedUser
+                                ? 'The invited user must sign in with the targeted verified account before accepting.'
+                                : 'Search for a verified user, then choose the permissions you want to send.'}
                     </p>
                     <button
                         className="share-dialog__done-btn"
-                        onClick={selectedUser ? handleSendInvitation : onClose}
+                        onClick={activeTab === 'invite' && selectedUser ? handleSendInvitation : onClose}
                         disabled={shareLoading}
                     >
-                        {selectedUser
+                        {activeTab === 'invite' && selectedUser
                             ? shareLoading
                                 ? 'Sending…'
                                 : 'Send invitation'
