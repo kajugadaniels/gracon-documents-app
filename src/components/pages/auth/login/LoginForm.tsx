@@ -5,11 +5,13 @@
  *
  * Successful sign-in performs a full navigation to the documents index so the
  * protected shell rehydrates against the freshly written session cookies.
+ * If a ?next path is present, the user is returned there after sign-in.
  */
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button, Input, Card } from '@/components/ui';
 import { loginApi } from '@/api/auth/login.api';
-import { APP_URL } from '@/lib/session';
+import { APP_URL, DOCS_URL, normalizeDocsPath } from '@/lib/session';
 
 interface LoginErrors {
     email?: string;
@@ -17,11 +19,13 @@ interface LoginErrors {
 }
 
 export function LoginForm() {
+    const searchParams = useSearchParams();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState<LoginErrors>({});
     const [apiError, setApiError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const nextPath = normalizeDocsPath(searchParams.get('next'));
 
     function validate(): boolean {
         const nextErrors: LoginErrors = {};
@@ -60,11 +64,12 @@ export function LoginForm() {
             });
 
             if (response.data.tokenType === 'limited') {
-                window.location.href = `${APP_URL}/verify-identity`;
+                const returnUrl = `${DOCS_URL}${nextPath}`;
+                window.location.href = `${APP_URL}/verify-identity?next=${encodeURIComponent(returnUrl)}`;
                 return;
             }
 
-            window.location.href = '/documents';
+            window.location.href = nextPath;
         } catch (error: unknown) {
             const message =
                 (error as { response?: { data?: { message?: string } } })
