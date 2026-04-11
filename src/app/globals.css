@@ -63,11 +63,12 @@
   --editor-line-height:      1.8;
   --editor-font-size:        15px;
   --editor-max-width:        780px;
-  --editor-page-padding-x:   96px;
-  --editor-page-padding-top: 72px;
-  --editor-page-padding-bottom: 96px;
-  --paper-width:             816px;
-  --paper-height:            1056px;
+  --paper-margin:            96px;
+  --editor-page-padding-x:   var(--paper-margin);
+  --editor-page-padding-top: var(--paper-margin);
+  --editor-page-padding-bottom: var(--paper-margin);
+  --paper-width:             794px;
+  --paper-height:            1123px;
   --paper-gap:               20px;
   --paper-edge:              #ffffff;
   --paper-shadow:            0 1px 3px rgba(0,0,0,0.22), 0 4px 14px rgba(0,0,0,0.1);
@@ -297,18 +298,18 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 10px 96px 8px;
+  padding: 10px var(--editor-page-padding-x) 8px;
   border-bottom: 1px solid rgba(0,0,0,0.07);
 }
 .document-paper-sheet__footer {
-  padding: 8px 96px 10px;
+  padding: 8px var(--editor-page-padding-x) 10px;
   border-top: 1px solid rgba(0,0,0,0.07);
   border-bottom: none;
 }
 .document-paper-sheet__body {
   position: relative;
   z-index: 1;
-  padding: 18px 96px 28px;
+  padding: 18px var(--editor-page-padding-x) 28px;
 }
 .document-paper-sheet__body--editor {
   padding: 0;
@@ -458,7 +459,7 @@ body {
 
 @media (max-width: 900px) {
   :root {
-    --editor-page-padding-x: 24px;
+    --paper-margin: 24px;
     --editor-page-padding-top: 32px;
     --editor-page-padding-bottom: 48px;
   }
