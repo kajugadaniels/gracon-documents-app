@@ -23,7 +23,10 @@ export type DocumentAccessAuditEvent =
     | 'INVITE_ACCEPTED'
     | 'INVITE_DECLINED'
     | 'INVITE_REVOKED'
-    | 'PERMISSIONS_UPDATED';
+    | 'PERMISSIONS_UPDATED'
+    | 'COMMENT_CREATED'
+    | 'COMMENT_REPLIED'
+    | 'COMMENT_RESOLVED';
 export type CollaboratorPermission =
     | 'READ'
     | 'COMMENT'
