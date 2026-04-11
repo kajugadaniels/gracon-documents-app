@@ -210,7 +210,9 @@ interface DocEditorHeaderProps {
     isLocked: boolean;
     isFinalised: boolean;
     canShare: boolean;
+    canComment?: boolean;
     canRunOwnerWorkflow: boolean;
+    onOpenComments?: () => void;
     onFinalise: () => void;
     onViewSignature: () => void;
 }
@@ -219,8 +221,8 @@ interface DocEditorHeaderProps {
 export function DocEditorHeader({
     editor, doc, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
-    isReadOnly, isLocked, isFinalised, canShare, canRunOwnerWorkflow,
-    onFinalise, onViewSignature,
+    isReadOnly, isLocked, isFinalised, canShare, canComment = false, canRunOwnerWorkflow,
+    onOpenComments, onFinalise, onViewSignature,
 }: DocEditorHeaderProps) {
     const router = useRouter();
     const [importing, setImporting] = useState(false);
@@ -485,7 +487,12 @@ export function DocEditorHeader({
                     <button className="ded-icon-btn" title="Version history" disabled>
                         <HugeiconsIcon icon={Clock01Icon} size={17} />
                     </button>
-                    <button className="ded-icon-btn" title="Comments" disabled>
+                    <button
+                        className="ded-icon-btn"
+                        title={canComment ? 'Comments' : 'View comments'}
+                        disabled={!onOpenComments}
+                        onClick={onOpenComments}
+                    >
                         <HugeiconsIcon icon={Comment01Icon} size={17} />
                     </button>
 
