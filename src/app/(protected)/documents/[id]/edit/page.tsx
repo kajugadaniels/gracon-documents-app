@@ -17,7 +17,7 @@ import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
-    type DocumentDetail,
+    type CollaboratorPermission, type DocumentDetail,
 } from '@/api/documents.api';
 
 const AUTOSAVE_INTERVAL_MS = 30_000;
@@ -26,6 +26,13 @@ function getErrorMessage(error: unknown, fallback: string) {
     const message = (error as { response?: { data?: { message?: string } } })
         ?.response?.data?.message;
     return typeof message === 'string' && message.trim() ? message : fallback;
+}
+
+function hasDocumentPermission(doc: DocumentDetail | null, permission: CollaboratorPermission) {
+    if (!doc) return false;
+    if (!doc.access) return true;
+    if (doc.access?.isOwner) return true;
+    return doc.access?.permissions.includes(permission) ?? false;
 }
 
 export default function EditDocumentPage() {
@@ -74,6 +81,7 @@ export default function EditDocumentPage() {
         if (!dirtyRef.current && !force) return;
         if (!contentRef.current) return;
         if (doc?.status !== 'DRAFT') return;
+        if (!hasDocumentPermission(doc, 'EDIT')) return;
         setSaveStatus('saving');
         dirtyRef.current = false;
         try {
@@ -84,7 +92,7 @@ export default function EditDocumentPage() {
             setSaveStatus('error');
             dirtyRef.current = true;
         }
-    }, [id, doc?.status]);
+    }, [id, doc]);
 
     useEffect(() => {
         const interval = setInterval(() => { void save(); }, AUTOSAVE_INTERVAL_MS);
@@ -103,6 +111,11 @@ export default function EditDocumentPage() {
     async function handleTitleSave() {
         setEditingTitle(false);
         if (title.trim() === doc?.title) return;
+        if (!hasDocumentPermission(doc, 'EDIT')) {
+            setTitle(doc?.title ?? title);
+            toast.warning('You do not have permission to rename this document.');
+            return;
+        }
         try {
             const updated = await updateDocumentMeta(id, { title: title.trim() || 'Untitled' });
             setDoc(prev => prev ? { ...prev, title: updated.title } : prev);
@@ -112,6 +125,10 @@ export default function EditDocumentPage() {
 
     async function handleFinalise() {
         if (!doc) return;
+        if (!doc.access?.isOwner) {
+            toast.warning('Only the document owner can finalise and sign this document.');
+            return;
+        }
         if (doc.status !== 'DRAFT') { setShowSigning(true); return; }
         await save(true);
         try {
@@ -168,9 +185,22 @@ export default function EditDocumentPage() {
         );
     }
 
-    const isReadOnly = doc.status !== 'DRAFT';
+    const canEdit = hasDocumentPermission(doc, 'EDIT');
+    const canManageAccess = hasDocumentPermission(doc, 'MANAGE_ACCESS');
+    const canRunOwnerWorkflow = doc.access?.isOwner ?? true;
+    const isReadOnly = doc.status !== 'DRAFT' || !canEdit;
     const isLocked = doc.status === 'LOCKED';
     const isFinalised = doc.status === 'FINALISED';
+    const readOnlyBannerText = !canEdit && doc.status === 'DRAFT'
+        ? 'You can view this shared document, but you do not have edit permission.'
+        : isLocked
+            ? 'This document is permanently locked. It has been signed and cannot be modified.'
+            : 'This document is finalised. Its content is frozen. Sign it to lock it permanently.';
+    const readOnlyBannerClass = !canEdit && doc.status === 'DRAFT'
+        ? 'readonly'
+        : isLocked
+            ? 'locked'
+            : 'finalised';
 
     const signatureStrip = isLocked ? (
         <DocumentSignatureBlock
@@ -203,16 +233,16 @@ export default function EditDocumentPage() {
                 isReadOnly={isReadOnly}
                 isLocked={isLocked}
                 isFinalised={isFinalised}
+                canShare={canManageAccess}
+                canRunOwnerWorkflow={canRunOwnerWorkflow}
                 onFinalise={handleFinalise}
                 onViewSignature={() => setShowSigning(true)}
             />
 
             {/* ── Status banner (read-only) ── */}
             {isReadOnly && (
-                <div className={`ded-status-banner ded-status-banner--${isLocked ? 'locked' : 'finalised'}`}>
-                    {isLocked
-                        ? 'This document is permanently locked. It has been signed and cannot be modified.'
-                        : 'This document is finalised. Its content is frozen. Sign it to lock it permanently.'}
+                <div className={`ded-status-banner ded-status-banner--${readOnlyBannerClass}`}>
+                    {readOnlyBannerText}
                 </div>
             )}
 
