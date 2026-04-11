@@ -3,6 +3,12 @@ import { apiClient } from './client';
 export type DocumentType = 'RICH_TEXT' | 'SPREADSHEET';
 export type DocumentStatus = 'DRAFT' | 'FINALISED' | 'SIGNED' | 'LOCKED';
 export type DocumentListScope = 'ALL_ACCESSIBLE' | 'OWNED' | 'SHARED_WITH_ME';
+export type CollaboratorInvitationStatus =
+    | 'PENDING'
+    | 'ACCEPTED'
+    | 'DECLINED'
+    | 'REVOKED'
+    | 'EXPIRED';
 export type CollaboratorPermission =
     | 'READ'
     | 'COMMENT'
@@ -21,6 +27,41 @@ export interface DocumentAccessSummary {
         email: string;
         displayName: string;
     } | null;
+}
+
+export interface DocumentCollaboratorAccess {
+    id: string;
+    userId: string;
+    role: 'VIEWER' | 'EDITOR' | 'SIGNER';
+    permissions: CollaboratorPermission[];
+    invitationStatus: CollaboratorInvitationStatus;
+    invitationExpiresAt: string | null;
+    invitationEmailSentAt: string | null;
+    invitationOpenedAt: string | null;
+    invitedAt: string;
+    acceptedAt: string | null;
+    declinedAt: string | null;
+    revokedAt: string | null;
+    note: string | null;
+    isActive: boolean;
+    user: {
+        email: string;
+        imageUrl: string | null;
+        displayName: string;
+        surName: string | null;
+        postNames: string | null;
+    };
+    invitedBy: {
+        id: string;
+        email: string;
+        displayName: string;
+    } | null;
+}
+
+export interface DocumentAccessListResponse {
+    documentId: string;
+    title: string;
+    collaborators: DocumentCollaboratorAccess[];
 }
 
 export interface DocumentSummary {
@@ -243,6 +284,40 @@ export async function shareDocumentAccess(
     emailStatus: 'sent' | 'failed' | 'not_required';
 }> {
     const res = await apiClient.post(`/documents/${id}/access`, data);
+    return res.data;
+}
+
+export async function getDocumentAccessList(
+    id: string,
+): Promise<DocumentAccessListResponse> {
+    const res = await apiClient.get(`/documents/${id}/access`);
+    return res.data;
+}
+
+export async function updateDocumentAccess(
+    id: string,
+    collaboratorId: string,
+    permissions: CollaboratorPermission[],
+): Promise<DocumentCollaboratorAccess> {
+    const res = await apiClient.patch(`/documents/${id}/access/${collaboratorId}`, {
+        permissions,
+    });
+    return res.data;
+}
+
+export async function revokeDocumentAccess(
+    id: string,
+    collaboratorId: string,
+): Promise<{ revoked: boolean; collaboratorId: string }> {
+    const res = await apiClient.delete(`/documents/${id}/access/${collaboratorId}`);
+    return res.data;
+}
+
+export async function resendDocumentInvitation(
+    id: string,
+    collaboratorId: string,
+): Promise<DocumentCollaboratorAccess & { emailStatus: 'sent' | 'failed' }> {
+    const res = await apiClient.post(`/documents/${id}/access/${collaboratorId}/resend`);
     return res.data;
 }
 
