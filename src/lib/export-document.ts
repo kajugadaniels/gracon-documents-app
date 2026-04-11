@@ -1,12 +1,14 @@
 'use client';
 
-const A4_WIDTH_PX = 794;
-const A4_HEIGHT_PX = 1123;
-const A4_PDF_WIDTH = 595.28;
-const A4_PDF_HEIGHT = 841.89;
-const A4_TWIP_WIDTH = 11906;
-const A4_TWIP_HEIGHT = 16838;
-const A4_ASPECT_RATIO = A4_HEIGHT_PX / A4_WIDTH_PX;
+import {
+    A4_PAPER_ASPECT_RATIO,
+    A4_PAPER_HEIGHT_PT,
+    A4_PAPER_HEIGHT_PX,
+    A4_PAPER_HEIGHT_TWIP,
+    A4_PAPER_WIDTH_PT,
+    A4_PAPER_WIDTH_PX,
+    A4_PAPER_WIDTH_TWIP,
+} from '@/constants/document-paper';
 
 type ExportFormat = 'pdf' | 'docx';
 
@@ -78,7 +80,7 @@ async function captureDocumentPages(sheetEl: HTMLElement) {
     const rect = sheetEl.getBoundingClientRect();
     const cssWidth = Math.max(Math.round(rect.width), 1);
     const cssHeight = Math.max(sheetEl.scrollHeight, Math.round(rect.height), 1);
-    const cssPageHeight = Math.max(Math.round(cssWidth * A4_ASPECT_RATIO), 1);
+    const cssPageHeight = Math.max(Math.round(cssWidth * A4_PAPER_ASPECT_RATIO), 1);
     const scale = Math.min(Math.max(window.devicePixelRatio || 1, 1.5), 2);
 
     const snapshotCanvas = await html2canvas(sheetEl, {
@@ -146,13 +148,13 @@ async function exportPdf(pages: HTMLCanvasElement[], title: string) {
         const pageBlob = await canvasToBlob(pageCanvas);
         const pageBytes = await blobToUint8Array(pageBlob);
         const image = await pdf.embedPng(pageBytes);
-        const page = pdf.addPage([A4_PDF_WIDTH, A4_PDF_HEIGHT]);
+        const page = pdf.addPage([A4_PAPER_WIDTH_PT, A4_PAPER_HEIGHT_PT]);
 
         page.drawImage(image, {
             x: 0,
             y: 0,
-            width: A4_PDF_WIDTH,
-            height: A4_PDF_HEIGHT,
+            width: A4_PAPER_WIDTH_PT,
+            height: A4_PAPER_HEIGHT_PT,
         });
     }
 
@@ -174,7 +176,7 @@ async function exportDocx(pages: HTMLCanvasElement[], title: string) {
             return {
                 properties: {
                     page: {
-                        size: { width: A4_TWIP_WIDTH, height: A4_TWIP_HEIGHT },
+                        size: { width: A4_PAPER_WIDTH_TWIP, height: A4_PAPER_HEIGHT_TWIP },
                         margin: {
                             top: 0,
                             right: 0,
@@ -194,8 +196,8 @@ async function exportDocx(pages: HTMLCanvasElement[], title: string) {
                                 type: 'png',
                                 data: pageBytes,
                                 transformation: {
-                                    width: A4_WIDTH_PX,
-                                    height: A4_HEIGHT_PX,
+                                    width: A4_PAPER_WIDTH_PX,
+                                    height: A4_PAPER_HEIGHT_PX,
                                 },
                             }),
                         ],
