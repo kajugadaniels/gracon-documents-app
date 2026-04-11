@@ -2058,7 +2058,7 @@ body {
     0 20px 60px rgba(0,0,0,0.24),
     0 4px 20px rgba(0,0,0,0.10);
   width: 100%;
-  max-width: 480px;
+  max-width: 620px;
   overflow: hidden;
   animation: dialog-slide-up 0.18s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -2133,6 +2133,53 @@ body {
   height: 1px;
   background: #f3f4f6;
   margin: 16px 0 0;
+}
+
+.share-dialog__tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 16px 20px 0;
+  padding: 4px;
+  border-radius: 14px;
+  background: #f6f4ff;
+}
+
+.share-dialog__tab {
+  flex: 1 1 0;
+  min-height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #6b7280;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.share-dialog__tab--active {
+  background: #ffffff;
+  color: var(--color-primary);
+  box-shadow: 0 1px 4px rgba(22,16,58,0.08);
+}
+
+.share-dialog__tab-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(91,35,255,0.1);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .share-dialog__mode-switch {
@@ -2233,10 +2280,13 @@ body {
 /* Body */
 .share-dialog__body {
   min-height: 80px;
-  max-height: 280px;
+  max-height: 420px;
   overflow-y: auto;
   margin: 10px 0 0;
   padding: 0 0 4px;
+}
+.share-dialog__body--access {
+  padding: 10px 16px 16px;
 }
 
 .share-dialog__hint,
@@ -2262,6 +2312,27 @@ body {
   text-align: center;
   padding: 16px 20px;
   margin: 0;
+}
+
+.share-dialog__access-error {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 26px 20px;
+  text-align: center;
+  color: #b91c1c;
+  font-size: 13px;
+}
+.share-dialog__access-error p { margin: 0; }
+.share-dialog__access-error button {
+  border: 1px solid rgba(185,28,28,0.22);
+  background: rgba(254,242,242,0.9);
+  color: #991b1b;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 /* Results list */
@@ -2358,6 +2429,154 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.share-dialog__access-list {
+  display: grid;
+  gap: 12px;
+}
+
+.share-dialog__access-card {
+  border: 1px solid rgba(22,16,58,0.09);
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 14px;
+  box-shadow: 0 1px 2px rgba(22,16,58,0.03);
+}
+
+.share-dialog__access-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.share-dialog__access-user {
+  min-width: 0;
+  flex: 1;
+}
+
+.share-dialog__access-name {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-dialog__access-email,
+.share-dialog__access-detail,
+.share-dialog__access-warning {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #9ca3af;
+}
+
+.share-dialog__access-status {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.share-dialog__access-status--active {
+  background: rgba(5,150,105,0.1);
+  color: #047857;
+}
+.share-dialog__access-status--pending {
+  background: rgba(217,119,6,0.1);
+  color: #b45309;
+}
+.share-dialog__access-status--muted {
+  background: rgba(107,114,128,0.1);
+  color: #4b5563;
+}
+.share-dialog__access-status--danger {
+  background: rgba(220,38,38,0.09);
+  color: #b91c1c;
+}
+
+.share-dialog__access-note {
+  margin: 10px 0 0;
+  border-radius: 12px;
+  background: #fbfaff;
+  border: 1px solid rgba(91,35,255,0.08);
+  padding: 9px 11px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.share-dialog__access-permissions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.share-dialog__access-permission {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(22,16,58,0.1);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.share-dialog__access-permission--checked {
+  border-color: rgba(91,35,255,0.26);
+  background: rgba(91,35,255,0.06);
+  color: var(--color-primary);
+}
+.share-dialog__access-permission--disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.share-dialog__access-warning {
+  color: #b45309;
+}
+
+.share-dialog__access-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.share-dialog__secondary-btn,
+.share-dialog__danger-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.share-dialog__secondary-btn {
+  border: 1px solid rgba(91,35,255,0.16);
+  background: rgba(91,35,255,0.06);
+  color: var(--color-primary);
+}
+.share-dialog__danger-btn {
+  border: 1px solid rgba(220,38,38,0.18);
+  background: rgba(220,38,38,0.07);
+  color: #b91c1c;
+}
+.share-dialog__secondary-btn:disabled,
+.share-dialog__danger-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* Footer */
