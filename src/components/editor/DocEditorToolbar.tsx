@@ -48,6 +48,106 @@ function TbDivider() {
     return <div className="ded-tb-divider" />;
 }
 
+// ─── Text color picker ───────────────────────────────────────────────────────
+
+const TEXT_COLOR_SWATCHES = [
+    '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef', '#f3f3f3', '#ffffff',
+    '#980000', '#ff0000', '#ff9900', '#ffff00', '#00ff00', '#00ffff', '#4a86e8', '#0000ff', '#9900ff', '#ff00ff',
+    '#e6b8af', '#f4cccc', '#fce5cd', '#fff2cc', '#d9ead3', '#d0e0e3', '#c9daf8', '#cfe2f3', '#d9d2e9', '#ead1dc',
+    '#dd7e6b', '#ea9999', '#f9cb9c', '#ffe599', '#b6d7a8', '#a2c4c9', '#a4c2f4', '#9fc5e8', '#b4a7d6', '#d5a6bd',
+    '#cc4125', '#e06666', '#f6b26b', '#ffd966', '#93c47d', '#76a5af', '#6d9eeb', '#6fa8dc', '#8e7cc3', '#c27ba0',
+    '#a61c00', '#cc0000', '#e69138', '#f1c232', '#6aa84f', '#45818e', '#3c78d8', '#3d85c6', '#674ea7', '#a64d79',
+] as const;
+
+function getEditorTextColor(editor: Editor) {
+    return (editor.getAttributes('textStyle').color as string | undefined) ?? '#000000';
+}
+
+function toColorInputValue(color: string) {
+    return /^#[0-9a-f]{6}$/i.test(color) ? color : '#000000';
+}
+
+function TextColorPicker({ editor }: { editor: Editor }) {
+    const [open, setOpen] = useState(false);
+    const [currentColor, setCurrentColor] = useState(() => getEditorTextColor(editor));
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    useEffect(() => {
+        const syncColor = () => setCurrentColor(getEditorTextColor(editor));
+        syncColor();
+        editor.on('selectionUpdate', syncColor);
+        editor.on('transaction', syncColor);
+        return () => {
+            editor.off('selectionUpdate', syncColor);
+            editor.off('transaction', syncColor);
+        };
+    }, [editor]);
+
+    function applyColor(color: string) {
+        editor.chain().focus().setColor(color).run();
+        setCurrentColor(color);
+        setOpen(false);
+    }
+
+    function clearColor() {
+        editor.chain().focus().unsetColor().run();
+        setCurrentColor('#000000');
+        setOpen(false);
+    }
+
+    return (
+        <div ref={ref} className="ded-picker ded-color-picker">
+            <button
+                className={`ded-tb-btn ded-color-picker__trigger${open ? ' ded-tb-btn--active' : ''}`}
+                onClick={() => setOpen(v => !v)}
+                title="Text color"
+                aria-label="Text color"
+                aria-expanded={open}
+            >
+                <HugeiconsIcon icon={TextColorIcon} size={15} />
+                <span className="ded-color-picker__underline" style={{ backgroundColor: currentColor }} />
+            </button>
+
+            {open && (
+                <div className="ded-picker__dropdown ded-picker__dropdown--left ded-color-picker__dropdown">
+                    <div className="ded-color-picker__head">
+                        <span>Text color</span>
+                        <button type="button" onClick={clearColor}>Reset</button>
+                    </div>
+                    <div className="ded-color-picker__grid">
+                        {TEXT_COLOR_SWATCHES.map((color) => (
+                            <button
+                                key={color}
+                                type="button"
+                                className={`ded-color-picker__swatch${toColorInputValue(currentColor).toLowerCase() === color ? ' ded-color-picker__swatch--active' : ''}`}
+                                style={{ backgroundColor: color }}
+                                onClick={() => applyColor(color)}
+                                title={color}
+                                aria-label={`Apply text color ${color}`}
+                            />
+                        ))}
+                    </div>
+                    <label className="ded-color-picker__custom">
+                        <span>Custom</span>
+                        <input
+                            type="color"
+                            value={toColorInputValue(currentColor)}
+                            onChange={e => applyColor(e.target.value)}
+                            title="Custom text color"
+                        />
+                    </label>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Heading picker ───────────────────────────────────────────────────────────
 
 const HEADING_LABELS = [
@@ -204,9 +304,7 @@ export function DocEditorToolbar({ editor }: { editor: Editor }) {
             <TbBtn onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight">
                 <HugeiconsIcon icon={HighlighterIcon} size={15} />
             </TbBtn>
-            <TbBtn onClick={() => {/* text color – coming soon */}} title="Text color (coming soon)" disabled>
-                <HugeiconsIcon icon={TextColorIcon} size={15} />
-            </TbBtn>
+            <TextColorPicker editor={editor} />
 
             <TbDivider />
             <TbBtn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align left">
