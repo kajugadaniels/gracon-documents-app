@@ -2,7 +2,7 @@
  * DocumentsFilters
  *
  * Filter + sort control bar for the documents listing page.
- * Renders status chip tabs (All / Draft / Finalised / Locked),
+ * Renders access-scope and status chip tabs,
  * a Starred tab that filters by locally-bookmarked document IDs,
  * a sort selector (Recent / Oldest / Name A–Z / Name Z–A),
  * and a result-count summary on the right.
@@ -11,10 +11,16 @@
 
 import { HugeiconsIcon } from '@hugeicons/react';
 import { StarIcon, SortingIcon } from '@hugeicons/core-free-icons';
-import type { DocumentStatus } from '@/api/documents.api';
+import type { DocumentListScope, DocumentStatus } from '@/api/documents.api';
 
 export const STATUS_FILTER_TABS = [null, 'DRAFT', 'FINALISED', 'LOCKED'] as const;
 export type StatusFilter = DocumentStatus | null;
+
+export const ACCESS_SCOPE_TABS: { value: DocumentListScope; label: string }[] = [
+    { value: 'ALL_ACCESSIBLE', label: 'All documents' },
+    { value: 'OWNED', label: 'Owned' },
+    { value: 'SHARED_WITH_ME', label: 'Shared with me' },
+];
 
 export type SortOption = 'recent' | 'oldest' | 'name-asc' | 'name-desc';
 
@@ -33,6 +39,8 @@ const STATUS_LABELS: Record<DocumentStatus, string> = {
 };
 
 interface DocumentsFiltersProps {
+    /** Which ownership/access scope is active. */
+    accessScope: DocumentListScope;
     /** Currently active status filter, or null for "All". */
     statusFilter: StatusFilter;
     /** Whether the Starred tab is currently active. */
@@ -47,6 +55,7 @@ interface DocumentsFiltersProps {
     loading: boolean;
     /** Active search term (used in count summary label). */
     search: string;
+    onAccessScopeChange: (scope: DocumentListScope) => void;
     onStatusChange: (status: StatusFilter) => void;
     onStarredChange: (active: boolean) => void;
     onSortChange: (sort: SortOption) => void;
@@ -58,6 +67,7 @@ interface DocumentsFiltersProps {
  * clears the other.
  */
 export function DocumentsFilters({
+    accessScope,
     statusFilter,
     starredOnly,
     starredCount,
@@ -65,6 +75,7 @@ export function DocumentsFilters({
     total,
     loading,
     search,
+    onAccessScopeChange,
     onStatusChange,
     onStarredChange,
     onSortChange,
@@ -73,11 +84,16 @@ export function DocumentsFilters({
     function countLabel(): string {
         if (loading) return '';
         const noun = total === 1 ? 'document' : 'documents';
+        const accessQualifier = accessScope === 'SHARED_WITH_ME'
+            ? 'shared '
+            : accessScope === 'OWNED'
+                ? 'owned '
+                : '';
         const qualifier = starredOnly
             ? 'starred '
             : statusFilter
                 ? `${STATUS_LABELS[statusFilter].toLowerCase()} `
-                : '';
+                : accessQualifier;
         const suffix = search ? ` matching "${search}"` : '';
         return `${total} ${qualifier}${noun}${suffix}`;
     }
@@ -85,36 +101,63 @@ export function DocumentsFilters({
     return (
         <div className="docs-filters">
             {/* ── Left: tab strip + starred tab ── */}
-            <div className="docs-filters__tabs" role="tablist" aria-label="Filter documents">
+            <div className="docs-filters__tabs" aria-label="Filter documents">
+                {/* Access-scope tabs */}
+                <div className="docs-filters__scope" role="tablist" aria-label="Filter by access">
+                    {ACCESS_SCOPE_TABS.map((tab) => {
+                        const isActive = accessScope === tab.value;
+                        return (
+                            <button
+                                key={tab.value}
+                                role="tab"
+                                aria-selected={isActive}
+                                onClick={() => {
+                                    if (!isActive) {
+                                        onStarredChange(false);
+                                        onAccessScopeChange(tab.value);
+                                    }
+                                }}
+                                className={`docs-filter-tab docs-filter-tab--scope${isActive ? ' docs-filter-tab--active' : ''}`}
+                            >
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Divider */}
+                <span className="docs-filters__divider" aria-hidden="true" />
+
                 {/* Status tabs */}
-                {STATUS_FILTER_TABS.map((s) => {
-                    const isActive = !starredOnly && statusFilter === s;
-                    return (
-                        <button
-                            key={s ?? 'all'}
-                            role="tab"
-                            aria-selected={isActive}
-                            onClick={() => {
-                                // Only push to router if the status is actually changing.
-                                if (!isActive) {
-                                    onStarredChange(false);
-                                    onStatusChange(s);
-                                }
-                            }}
-                            className={`docs-filter-tab${isActive ? ' docs-filter-tab--active' : ''}`}
-                        >
-                            {s ? STATUS_LABELS[s as DocumentStatus] : 'All'}
-                        </button>
-                    );
-                })}
+                <div className="docs-filters__status" role="tablist" aria-label="Filter by document status">
+                    {STATUS_FILTER_TABS.map((s) => {
+                        const isActive = !starredOnly && statusFilter === s;
+                        return (
+                            <button
+                                key={s ?? 'all'}
+                                role="tab"
+                                aria-selected={isActive}
+                                onClick={() => {
+                                    // Only push to router if the status is actually changing.
+                                    if (!isActive) {
+                                        onStarredChange(false);
+                                        onStatusChange(s);
+                                    }
+                                }}
+                                className={`docs-filter-tab${isActive ? ' docs-filter-tab--active' : ''}`}
+                            >
+                                {s ? STATUS_LABELS[s as DocumentStatus] : 'All'}
+                            </button>
+                        );
+                    })}
+                </div>
 
                 {/* Divider */}
                 <span className="docs-filters__divider" aria-hidden="true" />
 
                 {/* Starred tab */}
                 <button
-                    role="tab"
-                    aria-selected={starredOnly}
+                    aria-pressed={starredOnly}
                     onClick={() => {
                         // Only clear the status URL param if one is currently set —
                         // avoids a router.push('/documents') no-op that resets local state.
