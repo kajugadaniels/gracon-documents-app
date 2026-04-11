@@ -3473,8 +3473,23 @@ body {
   user-select: none;
 }
 .share-dialog__result:hover { background: #f9fafb; }
-.share-dialog__result--selected { background: rgba(91, 35, 255, 0.06); }
-.share-dialog__result--selected:hover { background: rgba(91, 35, 255, 0.09); }
+.share-dialog__result--selected              { background: rgba(91, 35, 255, 0.06); }
+.share-dialog__result--selected:hover        { background: rgba(91, 35, 255, 0.09); }
+.share-dialog__result--has-access            { cursor: default; opacity: 0.6; }
+.share-dialog__result--has-access:hover      { background: transparent; }
+
+/* ── Existing-access badge (shown on search results) ── */
+.share-dialog__access-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.share-dialog__access-badge--active  { background: rgba(16, 185, 129, 0.12); color: var(--color-success); }
+.share-dialog__access-badge--pending { background: rgba(245, 158, 11, 0.12);  color: var(--color-warning); }
 
 /* Avatar */
 .share-dialog__avatar {
