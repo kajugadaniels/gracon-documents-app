@@ -10,7 +10,6 @@ import { useEffect, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import {
     createDocumentComment,
-    listDocumentComments,
     resolveDocumentComment,
     type DocumentComment,
 } from '@/api/documents.api';
@@ -22,6 +21,13 @@ interface DocumentCommentsPanelProps {
     canComment: boolean;
     canResolve: boolean;
     open: boolean;
+    comments: DocumentComment[];
+    loading: boolean;
+    error: string | null;
+    activeCommentId: string | null;
+    onCommentsChange: (comments: DocumentComment[]) => void;
+    onReload: () => void | Promise<void>;
+    onFocusComment: (comment: DocumentComment) => void;
     onClose: () => void;
 }
 
@@ -88,6 +94,7 @@ function replaceComment(
 
 function CommentCard({
     comment,
+    active,
     canComment,
     canResolve,
     busyCommentId,
@@ -95,8 +102,10 @@ function CommentCard({
     onReplyChange,
     onReplySubmit,
     onResolve,
+    onFocus,
 }: {
     comment: DocumentComment;
+    active: boolean;
     canComment: boolean;
     canResolve: boolean;
     busyCommentId: string | null;
@@ -104,12 +113,13 @@ function CommentCard({
     onReplyChange: (value: string) => void;
     onReplySubmit: () => void;
     onResolve: () => void;
+    onFocus: () => void;
 }) {
     const isResolved = Boolean(comment.resolvedAt);
     const isBusy = busyCommentId === comment.id;
 
     return (
-        <article className={`doc-comments__card${isResolved ? ' doc-comments__card--resolved' : ''}`}>
+        <article className={`doc-comments__card${isResolved ? ' doc-comments__card--resolved' : ''}${active ? ' doc-comments__card--active' : ''}`}>
             <div className="doc-comments__card-head">
                 <div className="doc-comments__avatar" aria-hidden="true">
                     {comment.author.imageUrl
@@ -125,9 +135,14 @@ function CommentCard({
             </div>
 
             {comment.anchorText && (
-                <blockquote className="doc-comments__anchor">
+                <button
+                    type="button"
+                    className="doc-comments__anchor"
+                    onClick={onFocus}
+                    title="Go to commented text"
+                >
                     {comment.anchorText}
-                </blockquote>
+                </button>
             )}
 
             <p className="doc-comments__content">{comment.content}</p>
@@ -186,34 +201,27 @@ export function DocumentCommentsPanel({
     canComment,
     canResolve,
     open,
+    comments,
+    loading,
+    error,
+    activeCommentId,
+    onCommentsChange,
+    onReload,
+    onFocusComment,
     onClose,
 }: DocumentCommentsPanelProps) {
-    const [comments, setComments] = useState<DocumentComment[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [content, setContent] = useState('');
     const [anchorText, setAnchorText] = useState('');
+    const [anchorFrom, setAnchorFrom] = useState<number | null>(null);
+    const [anchorTo, setAnchorTo] = useState<number | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [busyCommentId, setBusyCommentId] = useState<string | null>(null);
     const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
 
-    async function loadComments() {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await listDocumentComments(documentId);
-            setComments(response.comments);
-        } catch (loadError: unknown) {
-            setError(getErrorMessage(loadError, 'Unable to load comments.'));
-        } finally {
-            setLoading(false);
-        }
-    }
-
     useEffect(() => {
         if (!open) return;
-        void loadComments();
-    }, [documentId, open]);
+        void onReload();
+    }, [documentId, open, onReload]);
 
     useEffect(() => {
         if (!open) return;
@@ -233,7 +241,10 @@ export function DocumentCommentsPanel({
             return;
         }
 
+        const selection = editor?.state.selection;
         setAnchorText(selectedText);
+        setAnchorFrom(selection?.from ?? null);
+        setAnchorTo(selection?.to ?? null);
     }
 
     async function submitComment() {
@@ -245,10 +256,14 @@ export function DocumentCommentsPanel({
             const created = await createDocumentComment(documentId, {
                 content: trimmedContent,
                 ...(anchorText.trim() ? { anchorText: anchorText.trim() } : {}),
+                ...(anchorFrom !== null ? { anchorFrom } : {}),
+                ...(anchorTo !== null ? { anchorTo } : {}),
             });
-            setComments((current) => mergeCreatedComment(current, created));
+            onCommentsChange(mergeCreatedComment(comments, created));
             setContent('');
             setAnchorText('');
+            setAnchorFrom(null);
+            setAnchorTo(null);
             toast.success('Comment added.');
         } catch (submitError: unknown) {
             toast.error(getErrorMessage(submitError, 'Unable to add comment.'));
@@ -267,7 +282,7 @@ export function DocumentCommentsPanel({
                 content: draft,
                 parentCommentId,
             });
-            setComments((current) => mergeCreatedComment(current, created));
+            onCommentsChange(mergeCreatedComment(comments, created));
             setReplyDrafts((current) => ({ ...current, [parentCommentId]: '' }));
         } catch (replyError: unknown) {
             toast.error(getErrorMessage(replyError, 'Unable to add reply.'));
@@ -282,7 +297,7 @@ export function DocumentCommentsPanel({
         setBusyCommentId(commentId);
         try {
             const updated = await resolveDocumentComment(documentId, commentId);
-            setComments((current) => replaceComment(current, updated));
+            onCommentsChange(replaceComment(comments, updated));
             toast.success('Comment resolved.');
         } catch (resolveError: unknown) {
             toast.error(getErrorMessage(resolveError, 'Unable to resolve comment.'));
@@ -315,7 +330,16 @@ export function DocumentCommentsPanel({
                     {anchorText && (
                         <div className="doc-comments__selection">
                             <span>{anchorText}</span>
-                            <button type="button" onClick={() => setAnchorText('')}>Clear</button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setAnchorText('');
+                                    setAnchorFrom(null);
+                                    setAnchorTo(null);
+                                }}
+                            >
+                                Clear
+                            </button>
                         </div>
                     )}
                     <div className="doc-comments__composer-actions">
@@ -343,7 +367,7 @@ export function DocumentCommentsPanel({
                 {error && (
                     <div className="doc-comments__error">
                         <p>{error}</p>
-                        <button type="button" onClick={() => void loadComments()}>Try again</button>
+                        <button type="button" onClick={() => void onReload()}>Try again</button>
                     </div>
                 )}
                 {!loading && !error && comments.length === 0 && (
@@ -357,6 +381,7 @@ export function DocumentCommentsPanel({
                             <CommentCard
                                 key={comment.id}
                                 comment={comment}
+                                active={activeCommentId === comment.id}
                                 canComment={canComment}
                                 canResolve={canResolve}
                                 busyCommentId={busyCommentId}
@@ -367,6 +392,7 @@ export function DocumentCommentsPanel({
                                 }))}
                                 onReplySubmit={() => void submitReply(comment.id)}
                                 onResolve={() => void resolveComment(comment.id)}
+                                onFocus={() => onFocusComment(comment)}
                             />
                         ))}
                     </div>
