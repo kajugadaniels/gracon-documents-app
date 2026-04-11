@@ -3,10 +3,8 @@
  *
  * Modal for sharing a document with other users.
  * Provides a debounced user-search input with explicit email, platform-ID,
- * and citizen-ID modes. Selecting a result highlights the row.
- *
- * Sharing logic is intentionally deferred — the component exposes the
- * selected user via `onSelectUser` for the parent to wire up later.
+ * and citizen-ID modes, then lets the owner compose an invitation with
+ * additive permissions before it is sent.
  */
 'use client';
 
@@ -18,10 +16,15 @@ import {
     type UserSearchMode,
     type UserSearchResult,
 } from '@/api/auth/search-users.api';
+import {
+    shareDocumentAccess,
+    type CollaboratorPermission,
+} from '@/api/documents.api';
+import { toast } from '@/components/ui';
 
 interface ShareDocumentDialogProps {
+    documentId: string;
     docTitle: string;
-    onSelectUser: (user: UserSearchResult) => void;
     onClose: () => void;
 }
 
@@ -32,6 +35,32 @@ const DEBOUNCE_MS = 350;
 const MIN_QUERY_LEN = 5;
 const PLATFORM_ID_LENGTH = 11;
 const CITIZEN_ID_LENGTH = 16;
+const SHARE_PERMISSION_OPTIONS: Array<{
+    value: Exclude<CollaboratorPermission, 'READ'>;
+    label: string;
+    description: string;
+}> = [
+    {
+        value: 'COMMENT',
+        label: 'Comment',
+        description: 'Can review and leave comments',
+    },
+    {
+        value: 'SIGN',
+        label: 'Sign',
+        description: 'Can review and sign the document',
+    },
+    {
+        value: 'EDIT',
+        label: 'Edit',
+        description: 'Can change the document content',
+    },
+    {
+        value: 'MANAGE_ACCESS',
+        label: 'Manage access',
+        description: 'Can invite and update collaborators',
+    },
+];
 
 function isNumericSearchMode(mode: UserSearchMode): boolean {
     return mode === 'platformId' || mode === 'citizenId';
@@ -114,17 +143,22 @@ function getMatchLabel(user: UserSearchResult): string {
 }
 
 export function ShareDocumentDialog({
+    documentId,
     docTitle,
-    onSelectUser,
     onClose,
 }: ShareDocumentDialogProps) {
     const [searchMode, setSearchMode]   = useState<UserSearchMode>('email');
     const [query, setQuery]             = useState('');
     const [results, setResults]         = useState<UserSearchResult[]>([]);
     const [selectedId, setSelectedId]   = useState<string | null>(null);
+    const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
     const [loading, setLoading]         = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
     const [hasSearched, setHasSearched] = useState(false);
+    const [sharePermissions, setSharePermissions] = useState<CollaboratorPermission[]>(['READ']);
+    const [note, setNote] = useState('');
+    const [shareLoading, setShareLoading] = useState(false);
+    const [shareError, setShareError] = useState<string | null>(null);
 
     const inputRef      = useRef<HTMLInputElement>(null);
     const backdropRef   = useRef<HTMLDivElement>(null);
@@ -198,6 +232,7 @@ export function ShareDocumentDialog({
         setQuery('');
         setResults([]);
         setSelectedId(null);
+        setSelectedUser(null);
         setHasSearched(false);
         setSearchError(null);
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -211,7 +246,57 @@ export function ShareDocumentDialog({
 
     function handleSelectUser(user: UserSearchResult) {
         setSelectedId(user.id);
-        onSelectUser(user);
+        setSelectedUser(user);
+        setShareError(null);
+    }
+
+    function handleTogglePermission(
+        permission: Exclude<CollaboratorPermission, 'READ'>,
+    ) {
+        setSharePermissions((current) => {
+            if (current.includes(permission)) {
+                return current.filter((value) => value !== permission);
+            }
+
+            return [...current, permission];
+        });
+    }
+
+    async function handleSendInvitation() {
+        if (!selectedUser || shareLoading) {
+            return;
+        }
+
+        setShareLoading(true);
+        setShareError(null);
+
+        try {
+            const response = await shareDocumentAccess(documentId, {
+                userId: selectedUser.id,
+                permissions: sharePermissions,
+                note: note.trim() || undefined,
+            });
+
+            if (response.emailStatus === 'failed') {
+                toast.error('Access was created, but the invitation email could not be sent.');
+            } else if (response.emailStatus === 'sent') {
+                toast.success('Invitation sent successfully.');
+            } else {
+                toast.success('Access updated successfully.');
+            }
+
+            onClose();
+        } catch (error: unknown) {
+            const message = (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message;
+            setShareError(
+                typeof message === 'string' && message.trim()
+                    ? message
+                    : 'Unable to send the invitation right now.',
+            );
+        } finally {
+            setShareLoading(false);
+        }
     }
 
     const trimmedQuery = query.trim();
@@ -392,18 +477,207 @@ export function ShareDocumentDialog({
                             {getIdleCopy(searchMode)}
                         </p>
                     )}
+
+                    {selectedUser && (
+                        <div
+                            style={{
+                                marginTop: 20,
+                                borderTop: '1px solid rgba(22, 16, 58, 0.08)',
+                                paddingTop: 20,
+                                display: 'grid',
+                                gap: 16,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    borderRadius: 18,
+                                    border: '1px solid rgba(22, 16, 58, 0.08)',
+                                    background: '#fbfaff',
+                                    padding: 16,
+                                }}
+                            >
+                                <p
+                                    style={{
+                                        margin: 0,
+                                        fontSize: 12,
+                                        color: 'var(--color-text-muted)',
+                                    }}
+                                >
+                                    Selected recipient
+                                </p>
+                                <p
+                                    style={{
+                                        margin: '8px 0 2px',
+                                        fontSize: 16,
+                                        fontWeight: 700,
+                                        color: 'var(--color-text-primary)',
+                                    }}
+                                >
+                                    {getDisplayName(selectedUser)}
+                                </p>
+                                <p
+                                    style={{
+                                        margin: 0,
+                                        fontSize: 13,
+                                        color: 'var(--color-text-secondary)',
+                                    }}
+                                >
+                                    {selectedUser.email}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p
+                                    style={{
+                                        margin: '0 0 8px',
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        color: 'var(--color-text-primary)',
+                                    }}
+                                >
+                                    Permissions
+                                </p>
+                                <p
+                                    style={{
+                                        margin: '0 0 12px',
+                                        fontSize: 12,
+                                        lineHeight: 1.6,
+                                        color: 'var(--color-text-muted)',
+                                    }}
+                                >
+                                    Read access is always included. Add one or many extra permissions as needed.
+                                </p>
+                                <div
+                                    style={{
+                                        display: 'grid',
+                                        gap: 10,
+                                    }}
+                                >
+                                    {SHARE_PERMISSION_OPTIONS.map((option) => {
+                                        const checked = sharePermissions.includes(option.value);
+
+                                        return (
+                                            <label
+                                                key={option.value}
+                                                style={{
+                                                    display: 'flex',
+                                                    gap: 12,
+                                                    alignItems: 'flex-start',
+                                                    borderRadius: 16,
+                                                    border: checked
+                                                        ? '1px solid rgba(91, 35, 255, 0.25)'
+                                                        : '1px solid rgba(22, 16, 58, 0.08)',
+                                                    background: checked ? 'rgba(91, 35, 255, 0.04)' : '#fff',
+                                                    padding: '12px 14px',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() => handleTogglePermission(option.value)}
+                                                    style={{ marginTop: 2 }}
+                                                />
+                                                <span>
+                                                    <span
+                                                        style={{
+                                                            display: 'block',
+                                                            fontSize: 14,
+                                                            fontWeight: 600,
+                                                            color: 'var(--color-text-primary)',
+                                                        }}
+                                                    >
+                                                        {option.label}
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            display: 'block',
+                                                            marginTop: 2,
+                                                            fontSize: 12,
+                                                            lineHeight: 1.6,
+                                                            color: 'var(--color-text-muted)',
+                                                        }}
+                                                    >
+                                                        {option.description}
+                                                    </span>
+                                                </span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="share-note"
+                                    style={{
+                                        display: 'block',
+                                        marginBottom: 8,
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        color: 'var(--color-text-primary)',
+                                    }}
+                                >
+                                    Note for the recipient
+                                </label>
+                                <textarea
+                                    id="share-note"
+                                    value={note}
+                                    onChange={(event) => setNote(event.target.value)}
+                                    placeholder="Optional context for the invited user…"
+                                    maxLength={1000}
+                                    style={{
+                                        width: '100%',
+                                        minHeight: 104,
+                                        resize: 'vertical',
+                                        borderRadius: 16,
+                                        border: '1px solid rgba(22, 16, 58, 0.12)',
+                                        padding: '12px 14px',
+                                        fontSize: 14,
+                                        lineHeight: 1.6,
+                                        color: 'var(--color-text-primary)',
+                                        background: '#fff',
+                                    }}
+                                />
+                            </div>
+
+                            {shareError && (
+                                <p
+                                    style={{
+                                        margin: 0,
+                                        borderRadius: 14,
+                                        padding: '12px 14px',
+                                        background: 'rgba(255, 240, 240, 0.9)',
+                                        border: '1px solid rgba(199, 77, 77, 0.2)',
+                                        color: '#8f2d2d',
+                                        fontSize: 13,
+                                        lineHeight: 1.6,
+                                    }}
+                                >
+                                    {shareError}
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* ── Footer ── */}
                 <div className="share-dialog__footer">
                     <p className="share-dialog__footer-note">
-                        Sharing functionality coming soon
+                        {selectedUser
+                            ? 'The invited user must sign in with the targeted verified account before accepting.'
+                            : 'Search for a verified user, then choose the permissions you want to send.'}
                     </p>
                     <button
                         className="share-dialog__done-btn"
-                        onClick={onClose}
+                        onClick={selectedUser ? handleSendInvitation : onClose}
+                        disabled={shareLoading}
                     >
-                        Done
+                        {selectedUser
+                            ? shareLoading
+                                ? 'Sending…'
+                                : 'Send invitation'
+                            : 'Done'}
                     </button>
                 </div>
             </div>
