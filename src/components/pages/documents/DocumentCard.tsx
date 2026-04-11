@@ -45,7 +45,9 @@ interface DocumentCardProps {
  * The hover overlay reveals Open and Delete actions.
  */
 export function DocumentCard({ doc, starred, onDelete, onToggleStar }: DocumentCardProps) {
-    const canDelete = doc.status === 'DRAFT' || doc.status === 'FINALISED';
+    const isOwner = doc.access?.isOwner ?? true;
+    const canDelete = isOwner && (doc.status === 'DRAFT' || doc.status === 'FINALISED');
+    const sharedBy = doc.access?.sharedBy?.displayName || doc.access?.sharedBy?.email || null;
 
     return (
         <div className="doc-card doc-card--rich-text">
@@ -68,6 +70,11 @@ export function DocumentCard({ doc, starred, onDelete, onToggleStar }: DocumentC
                         {STATUS_LABELS[doc.status]}
                     </span>
                 </div>
+                {!isOwner && (
+                    <span className="doc-card__access-badge">
+                        Shared
+                    </span>
+                )}
 
                 {/* Hover action overlay */}
                 <div className="doc-card__hover-actions">
@@ -120,6 +127,12 @@ export function DocumentCard({ doc, starred, onDelete, onToggleStar }: DocumentC
                         </>
                     )}
                 </div>
+
+                {!isOwner && sharedBy && (
+                    <p className="doc-card__shared-by" title={`Shared by ${sharedBy}`}>
+                        Shared by {sharedBy}
+                    </p>
+                )}
 
                 {doc.tags.length > 0 && (
                     <div className="doc-card__tags">
