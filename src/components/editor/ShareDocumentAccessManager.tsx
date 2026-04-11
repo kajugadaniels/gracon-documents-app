@@ -32,6 +32,7 @@ interface ShareDocumentAccessManagerProps {
     canGrantManageAccess: boolean;
     refreshKey: number;
     onCountChange: (count: number) => void;
+    onActivityRecorded: () => void;
 }
 function normalizePermissions(permissions: CollaboratorPermission[]) {
     const unique = new Set<CollaboratorPermission>(permissions);
@@ -95,6 +96,7 @@ export function ShareDocumentAccessManager({
     canGrantManageAccess,
     refreshKey,
     onCountChange,
+    onActivityRecorded,
 }: ShareDocumentAccessManagerProps) {
     const currentUser = useSessionUser();
     const [items, setItems] = useState<DocumentCollaboratorAccess[]>([]);
@@ -140,6 +142,7 @@ export function ShareDocumentAccessManager({
         try {
             const updated = await updateDocumentAccess(documentId, access.id, drafts[access.id] ?? access.permissions);
             replaceItem(updated);
+            onActivityRecorded();
             toast.success('Access permissions updated.');
         } catch (saveError: unknown) {
             toast.error(getErrorMessage(saveError, 'Unable to update permissions.'));
@@ -153,6 +156,7 @@ export function ShareDocumentAccessManager({
         try {
             const updated = await resendDocumentInvitation(documentId, access.id);
             replaceItem(updated);
+            onActivityRecorded();
             toast[updated.emailStatus === 'failed' ? 'error' : 'success'](
                 updated.emailStatus === 'failed'
                     ? 'Invitation token was refreshed, but email delivery failed.'
@@ -171,6 +175,7 @@ export function ShareDocumentAccessManager({
         try {
             await revokeDocumentAccess(documentId, access.id);
             await loadAccessList();
+            onActivityRecorded();
             toast.success('Access removed.');
         } catch (revokeError: unknown) {
             toast.error(getErrorMessage(revokeError, 'Unable to revoke access.'));
