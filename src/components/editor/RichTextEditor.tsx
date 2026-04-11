@@ -16,7 +16,6 @@ import Highlight from '@tiptap/extension-highlight';
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
-import { PageBreakExtension } from './page-break-extension';
 import {
     CommentAnchorExtension,
     type CommentAnchorInput,
@@ -41,12 +40,6 @@ interface RichTextEditorProps {
      * the page rather than being constrained to the document flow.
      */
     overlayContent?: ReactNode;
-    /**
-     * When true, renders inside a bare wrapper for the paginated canvas.
-     * PageBreakExtension is always registered; PaginatedEditorCanvas provides
-     * all surrounding structure (page background, margins, page numbers).
-     */
-    paginatedMode?: boolean;
     commentAnchors?: CommentAnchorInput[];
 }
 
@@ -62,7 +55,6 @@ export function RichTextEditor({
     paperStatus,
     pageNumber = 1,
     overlayContent,
-    paginatedMode = false,
     commentAnchors = [],
 }: RichTextEditorProps) {
     const onChangeRef = useRef(onContentChange);
@@ -89,7 +81,6 @@ export function RichTextEditor({
             Highlight.configure({ multicolor: false }),
             Placeholder.configure({ placeholder }),
             CharacterCount,
-            PageBreakExtension,
             CommentAnchorExtension,
         ],
         content: initialContent ?? { type: 'doc', content: [{ type: 'paragraph' }] },
@@ -119,14 +110,6 @@ export function RichTextEditor({
     }, [editor, commentAnchors]);
 
     if (!editor) return null;
-
-    if (paginatedMode) {
-        return (
-            <div className="tiptap-paginated">
-                <EditorContent editor={editor} />
-            </div>
-        );
-    }
 
     if (paperMode) {
         const footerLabel = paperStatus
