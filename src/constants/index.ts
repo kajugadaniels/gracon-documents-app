@@ -12,3 +12,14 @@ export { FORMAT_MENU_ITEMS } from './format-menu';
 export { TOOLS_MENU_ITEMS } from './tools-menu';
 export { EXTENSIONS_MENU_ITEMS } from './extensions-menu';
 export { HELP_MENU_ITEMS } from './help-menu';
+export {
+    DOCUMENT_PAPER_DPI,
+    A4_PAPER_WIDTH_PX,
+    A4_PAPER_HEIGHT_PX,
+    A4_PAPER_MARGIN_PX,
+    A4_PAPER_WIDTH_PT,
+    A4_PAPER_HEIGHT_PT,
+    A4_PAPER_WIDTH_TWIP,
+    A4_PAPER_HEIGHT_TWIP,
+    A4_PAPER_ASPECT_RATIO,
+} from './document-paper';
