@@ -14,7 +14,9 @@ import { toast } from '@/components/ui';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
+import { DocumentPageGuides } from '@/components/editor/DocumentPageGuides';
 import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
+import { useDocumentPagination } from '@/components/editor/use-document-pagination';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import {
@@ -56,6 +58,7 @@ export default function EditDocumentPage() {
     const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
     const [retryKey, setRetryKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
+    const pagination = useDocumentPagination(editor);
 
     const contentRef = useRef<Record<string, unknown> | null>(null);
     const wordCntRef = useRef(0);
@@ -98,7 +101,7 @@ export default function EditDocumentPage() {
     }, [id]);
 
     useEffect(() => {
-        if (!doc) return;
+        if (!doc?.id) return;
         void loadComments();
     }, [doc?.id, loadComments]);
 
@@ -306,20 +309,24 @@ export default function EditDocumentPage() {
             {/* ── Paper canvas ── */}
             <div className="ded-canvas">
                 <div className="document-workspace-stage">
-                    <RichTextEditor
-                        key={doc.id}
-                        initialContent={doc.content}
-                        onContentChange={isReadOnly ? undefined : handleContentChange}
-                        onEditorReady={setEditor}
-                        hideToolbar
-                        readOnly={isReadOnly}
-                        paperMode
-                        paperTitle={doc.title}
-                        paperStatus={doc.status}
-                        pageNumber={1}
-                        overlayContent={signatureStrip}
-                        commentAnchors={commentAnchors}
-                    />
+                    <div className="document-layout-frame">
+                        <RichTextEditor
+                            key={doc.id}
+                            initialContent={doc.content}
+                            onContentChange={isReadOnly ? undefined : handleContentChange}
+                            onEditorReady={setEditor}
+                            hideToolbar
+                            readOnly={isReadOnly}
+                            paperMode
+                            paperTitle={doc.title}
+                            paperStatus={doc.status}
+                            pageNumber={1}
+                            pageCount={pagination.pageCount}
+                            overlayContent={signatureStrip}
+                            commentAnchors={commentAnchors}
+                        />
+                        <DocumentPageGuides pages={pagination.pages} />
+                    </div>
                 </div>
             </div>
 
