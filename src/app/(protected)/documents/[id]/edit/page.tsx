@@ -11,8 +11,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Editor } from '@tiptap/react';
 import { toast } from '@/components/ui';
+import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
-import { PaginatedEditorCanvas } from '@/components/editor/PaginatedEditorCanvas';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
 import { SigningModal } from '@/components/documents/SigningModal';
@@ -303,16 +303,25 @@ export default function EditDocumentPage() {
                 </div>
             )}
 
-            {/* ── Paginated A4 canvas ── */}
-            <PaginatedEditorCanvas
-                documentId={doc.id}
-                initialContent={doc.content}
-                onContentChange={isReadOnly ? undefined : handleContentChange}
-                onEditorReady={setEditor}
-                readOnly={isReadOnly}
-                overlayContent={signatureStrip}
-                commentAnchors={commentAnchors}
-            />
+            {/* ── Paper canvas ── */}
+            <div className="ded-canvas">
+                <div className="document-workspace-stage">
+                    <RichTextEditor
+                        key={doc.id}
+                        initialContent={doc.content}
+                        onContentChange={isReadOnly ? undefined : handleContentChange}
+                        onEditorReady={setEditor}
+                        hideToolbar
+                        readOnly={isReadOnly}
+                        paperMode
+                        paperTitle={doc.title}
+                        paperStatus={doc.status}
+                        pageNumber={1}
+                        overlayContent={signatureStrip}
+                        commentAnchors={commentAnchors}
+                    />
+                </div>
+            </div>
 
             <DocumentCommentsPanel
                 documentId={doc.id}
