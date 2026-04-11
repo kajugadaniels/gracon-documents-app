@@ -35,6 +35,9 @@ const EVENT_LABELS: Record<DocumentAccessAuditEvent, string> = {
     INVITE_DECLINED: 'Invitation declined',
     INVITE_REVOKED: 'Access revoked',
     PERMISSIONS_UPDATED: 'Permissions updated',
+    COMMENT_CREATED: 'Comment added',
+    COMMENT_REPLIED: 'Comment replied',
+    COMMENT_RESOLVED: 'Comment resolved',
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -72,8 +75,23 @@ function getActorLabel(event: DocumentAccessAuditEntry) {
 
 function getEventDescription(event: DocumentAccessAuditEntry) {
     const target = event.target?.displayName ?? 'recipient';
+    const actor = event.actor?.displayName ?? 'Someone';
     if (event.eventType === 'PERMISSIONS_UPDATED') {
         return `${target}: ${formatPermissions(event.fromPermissions)} -> ${formatPermissions(event.toPermissions)}`;
+    }
+
+    if (event.eventType === 'COMMENT_CREATED') {
+        return event.metadata?.anchored
+            ? `${actor} added an anchored comment.`
+            : `${actor} added a document comment.`;
+    }
+
+    if (event.eventType === 'COMMENT_REPLIED') {
+        return `${actor} replied to a document comment.`;
+    }
+
+    if (event.eventType === 'COMMENT_RESOLVED') {
+        return `${actor} resolved a comment from ${target}.`;
     }
 
     if (event.eventType === 'INVITE_CREATED' && event.metadata?.resent) {
@@ -93,7 +111,11 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
 
 function getTone(eventType: DocumentAccessAuditEvent) {
     if (eventType === 'INVITE_EMAIL_FAILED' || eventType === 'IDENTITY_VERIFICATION_FAILED') return 'danger';
-    if (eventType === 'INVITE_ACCEPTED' || eventType === 'IDENTITY_VERIFICATION_PASSED') return 'success';
+    if (
+        eventType === 'INVITE_ACCEPTED' ||
+        eventType === 'IDENTITY_VERIFICATION_PASSED' ||
+        eventType === 'COMMENT_RESOLVED'
+    ) return 'success';
     if (eventType === 'INVITE_REVOKED' || eventType === 'INVITE_DECLINED') return 'muted';
     return 'default';
 }
