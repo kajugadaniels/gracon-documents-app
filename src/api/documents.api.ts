@@ -2,6 +2,26 @@ import { apiClient } from './client';
 
 export type DocumentType = 'RICH_TEXT' | 'SPREADSHEET';
 export type DocumentStatus = 'DRAFT' | 'FINALISED' | 'SIGNED' | 'LOCKED';
+export type DocumentListScope = 'ALL_ACCESSIBLE' | 'OWNED' | 'SHARED_WITH_ME';
+export type CollaboratorPermission =
+    | 'READ'
+    | 'COMMENT'
+    | 'SIGN'
+    | 'EDIT'
+    | 'MANAGE_ACCESS';
+
+export interface DocumentAccessSummary {
+    isOwner: boolean;
+    role: 'OWNER' | 'VIEWER' | 'EDITOR' | 'SIGNER' | null;
+    collaboratorId: string | null;
+    permissions: CollaboratorPermission[];
+    acceptedAt: string | null;
+    sharedBy: {
+        id: string;
+        email: string;
+        displayName: string;
+    } | null;
+}
 
 export interface DocumentSummary {
     id: string;
@@ -15,6 +35,7 @@ export interface DocumentSummary {
     updatedAt: string;
     signedAt: string | null;
     lockedAt: string | null;
+    access?: DocumentAccessSummary;
 }
 
 export interface DocumentSignatureSnapshot {
@@ -64,13 +85,6 @@ export interface Folder {
     subFolders: Folder[];
 }
 
-export type CollaboratorPermission =
-    | 'READ'
-    | 'COMMENT'
-    | 'SIGN'
-    | 'EDIT'
-    | 'MANAGE_ACCESS';
-
 const pendingGetRequests = new Map<string, Promise<unknown>>();
 
 function buildGetRequestKey(path: string, params?: unknown) {
@@ -110,6 +124,7 @@ export async function createDocument(data: {
 }
 
 export async function listDocuments(params: {
+    scope?: DocumentListScope;
     status?: DocumentStatus;
     type?: DocumentType;
     folderId?: string;
