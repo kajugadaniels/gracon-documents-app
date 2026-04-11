@@ -7,18 +7,20 @@
  */
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Editor } from '@tiptap/react';
 import { toast } from '@/components/ui';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
+import { PaginatedEditorCanvas } from '@/components/editor/PaginatedEditorCanvas';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
+import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
-    type CollaboratorPermission, type DocumentDetail,
+    listDocumentComments,
+    type CollaboratorPermission, type DocumentComment, type DocumentDetail,
 } from '@/api/documents.api';
 
 const AUTOSAVE_INTERVAL_MS = 30_000;
@@ -48,6 +50,10 @@ export default function EditDocumentPage() {
     const [title, setTitle] = useState('');
     const [showSigning, setShowSigning] = useState(false);
     const [commentsOpen, setCommentsOpen] = useState(false);
+    const [comments, setComments] = useState<DocumentComment[]>([]);
+    const [commentsLoading, setCommentsLoading] = useState(false);
+    const [commentsError, setCommentsError] = useState<string | null>(null);
+    const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
     const [retryKey, setRetryKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
 
@@ -77,6 +83,36 @@ export default function EditDocumentPage() {
             .finally(() => { if (!ignore) setLoading(false); });
         return () => { ignore = true; };
     }, [id, retryKey]);
+
+    const loadComments = useCallback(async () => {
+        setCommentsLoading(true);
+        setCommentsError(null);
+        try {
+            const response = await listDocumentComments(id);
+            setComments(response.comments);
+        } catch (error: unknown) {
+            setCommentsError(getErrorMessage(error, 'Unable to load comments.'));
+        } finally {
+            setCommentsLoading(false);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        if (!doc) return;
+        void loadComments();
+    }, [doc?.id, loadComments]);
+
+    const commentAnchors = useMemo(
+        () => comments.map((comment) => ({
+            id: comment.id,
+            anchorText: comment.anchorText,
+            anchorFrom: comment.anchorFrom,
+            anchorTo: comment.anchorTo,
+            resolvedAt: comment.resolvedAt,
+            active: activeCommentId === comment.id,
+        })),
+        [activeCommentId, comments],
+    );
 
     // Autosave logic
     const save = useCallback(async (force = false) => {
@@ -217,6 +253,22 @@ export default function EditDocumentPage() {
         />
     ) : null;
 
+    function handleFocusComment(comment: DocumentComment) {
+        setActiveCommentId(comment.id);
+        const focused = focusCommentAnchor(editor, {
+            id: comment.id,
+            anchorText: comment.anchorText,
+            anchorFrom: comment.anchorFrom,
+            anchorTo: comment.anchorTo,
+            resolvedAt: comment.resolvedAt,
+            active: true,
+        });
+
+        if (!focused) {
+            toast.info('The original text for this comment could not be found.');
+        }
+    }
+
     return (
         <div className="ded-page">
             {/* ── Sticky Google Docs-style header ── */}
@@ -251,24 +303,16 @@ export default function EditDocumentPage() {
                 </div>
             )}
 
-            {/* ── Paper canvas ── */}
-            <div className="ded-canvas">
-                <div className="document-workspace-stage">
-                    <RichTextEditor
-                        key={doc.id}
-                        initialContent={doc.content}
-                        onContentChange={isReadOnly ? undefined : handleContentChange}
-                        onEditorReady={setEditor}
-                        hideToolbar
-                        readOnly={isReadOnly}
-                        paperMode
-                        paperTitle={doc.title}
-                        paperStatus={doc.status}
-                        pageNumber={1}
-                        overlayContent={signatureStrip}
-                    />
-                </div>
-            </div>
+            {/* ── Paginated A4 canvas ── */}
+            <PaginatedEditorCanvas
+                documentId={doc.id}
+                initialContent={doc.content}
+                onContentChange={isReadOnly ? undefined : handleContentChange}
+                onEditorReady={setEditor}
+                readOnly={isReadOnly}
+                overlayContent={signatureStrip}
+                commentAnchors={commentAnchors}
+            />
 
             <DocumentCommentsPanel
                 documentId={doc.id}
@@ -276,6 +320,13 @@ export default function EditDocumentPage() {
                 canComment={canComment}
                 canResolve={doc.access?.isOwner ?? true}
                 open={commentsOpen}
+                comments={comments}
+                loading={commentsLoading}
+                error={commentsError}
+                activeCommentId={activeCommentId}
+                onCommentsChange={setComments}
+                onReload={loadComments}
+                onFocusComment={handleFocusComment}
                 onClose={() => setCommentsOpen(false)}
             />
 
