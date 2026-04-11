@@ -115,6 +115,8 @@ export interface DocumentComment {
     authorId: string;
     parentCommentId: string | null;
     anchorText: string | null;
+    anchorFrom: number | null;
+    anchorTo: number | null;
     content: string;
     resolvedAt: string | null;
     createdAt: string;
@@ -407,6 +409,8 @@ export async function createDocumentComment(
     data: {
         content: string;
         anchorText?: string;
+        anchorFrom?: number;
+        anchorTo?: number;
         parentCommentId?: string;
     },
 ): Promise<DocumentComment> {
