@@ -9,12 +9,9 @@
  */
 import {
     A4_PAPER_HEIGHT_PT,
-    A4_PAPER_HEIGHT_PX,
-    A4_PAPER_HEIGHT_TWIP,
     A4_PAPER_WIDTH_PT,
-    A4_PAPER_WIDTH_PX,
-    A4_PAPER_WIDTH_TWIP,
 } from '@/constants/document-paper';
+import { createEditableDocxBlob } from './export-document-docx';
 import { captureRenderedDocumentPages } from './export-document-capture';
 
 type ExportFormat = 'pdf' | 'docx';
@@ -86,57 +83,6 @@ async function exportPdf(pages: HTMLCanvasElement[], title: string) {
     );
 }
 
-async function exportDocx(pages: HTMLCanvasElement[], title: string) {
-    const { Document, Packer, Paragraph, ImageRun } = await import('docx');
-
-    const sections = await Promise.all(
-        pages.map(async (pageCanvas) => {
-            const pageBlob = await canvasToBlob(pageCanvas);
-            const pageBytes = await blobToUint8Array(pageBlob);
-
-            return {
-                properties: {
-                    page: {
-                        size: { width: A4_PAPER_WIDTH_TWIP, height: A4_PAPER_HEIGHT_TWIP },
-                        margin: {
-                            top: 0,
-                            right: 0,
-                            bottom: 0,
-                            left: 0,
-                            header: 0,
-                            footer: 0,
-                            gutter: 0,
-                        },
-                    },
-                },
-                children: [
-                    new Paragraph({
-                        spacing: { before: 0, after: 0 },
-                        children: [
-                            new ImageRun({
-                                type: 'png',
-                                data: pageBytes,
-                                transformation: {
-                                    width: A4_PAPER_WIDTH_PX,
-                                    height: A4_PAPER_HEIGHT_PX,
-                                },
-                            }),
-                        ],
-                    }),
-                ],
-            };
-        }),
-    );
-
-    const doc = new Document({ sections });
-    const blob = await Packer.toBlob(doc);
-
-    downloadBlob(
-        blob,
-        sanitizeFileName(title, 'docx'),
-    );
-}
-
 /**
  * Saves the currently rendered document sheet as a PDF or DOCX download.
  */
@@ -145,12 +91,12 @@ export async function saveRenderedDocumentAs(
     title: string,
     sheetEl: HTMLElement,
 ) {
-    const pages = await captureRenderedDocumentPages(sheetEl);
-
     if (format === 'pdf') {
+        const pages = await captureRenderedDocumentPages(sheetEl);
         await exportPdf(pages, title);
         return;
     }
 
-    await exportDocx(pages, title);
+    const blob = await createEditableDocxBlob(sheetEl);
+    downloadBlob(blob, sanitizeFileName(title, 'docx'));
 }
