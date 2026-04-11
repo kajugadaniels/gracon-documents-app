@@ -103,6 +103,31 @@ export interface DocumentAccessAuditResponse {
     events: DocumentAccessAuditEntry[];
 }
 
+export interface DocumentCommentAuthor {
+    id: string;
+    email: string;
+    imageUrl: string | null;
+    displayName: string;
+}
+
+export interface DocumentComment {
+    id: string;
+    authorId: string;
+    parentCommentId: string | null;
+    anchorText: string | null;
+    content: string;
+    resolvedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    author: DocumentCommentAuthor;
+    replies: DocumentComment[];
+}
+
+export interface DocumentCommentsResponse {
+    documentId: string;
+    comments: DocumentComment[];
+}
+
 export interface DocumentSummary {
     id: string;
     title: string;
@@ -367,6 +392,33 @@ export async function getDocumentAccessAuditLog(
     const res = await apiClient.get(`/documents/${id}/access/audit`, {
         params: { limit },
     });
+    return res.data;
+}
+
+export async function listDocumentComments(
+    id: string,
+): Promise<DocumentCommentsResponse> {
+    const res = await apiClient.get(`/documents/${id}/comments`);
+    return res.data;
+}
+
+export async function createDocumentComment(
+    id: string,
+    data: {
+        content: string;
+        anchorText?: string;
+        parentCommentId?: string;
+    },
+): Promise<DocumentComment> {
+    const res = await apiClient.post(`/documents/${id}/comments`, data);
+    return res.data;
+}
+
+export async function resolveDocumentComment(
+    id: string,
+    commentId: string,
+): Promise<DocumentComment> {
+    const res = await apiClient.patch(`/documents/${id}/comments/${commentId}/resolve`);
     return res.data;
 }
 
