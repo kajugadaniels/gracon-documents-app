@@ -5,6 +5,7 @@ import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle, FontFamily, FontSize } from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
@@ -77,6 +78,7 @@ export function RichTextEditor({
                 codeBlock: { languageClassPrefix: 'language-' },
             }),
             TextStyle,
+            Color,
             FontFamily,
             FontSize,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
