@@ -128,37 +128,6 @@ export function SignatureStripCard({
                     overflow: 'hidden',
                 }}
             >
-                {/* Top header band — verified seal */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 7,
-                    padding: '7px 14px',
-                    background: '#f0fdf4',
-                    borderBottom: '1px solid rgba(21,128,61,0.18)',
-                }}>
-                    <CheckIcon />
-                    <span style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        letterSpacing: '0.1em',
-                        textTransform: 'uppercase',
-                        color: '#15803d',
-                    }}>
-                        Digitally Signed &amp; Verified
-                    </span>
-                    {/* Decorative stamp watermark */}
-                    <span style={{
-                        marginLeft: 'auto',
-                        fontSize: 9,
-                        fontWeight: 800,
-                        letterSpacing: '0.18em',
-                        textTransform: 'uppercase',
-                        color: 'rgba(21,128,61,0.18)',
-                    }}>
-                        AUTHENTIC
-                    </span>
-                </div>
 
                 {/* Signature display area */}
                 <div style={{
@@ -191,9 +160,9 @@ export function SignatureStripCard({
                     ) : (
                         <span style={{
                             fontFamily: 'Georgia, "Times New Roman", serif',
-                            fontSize: 22,
+                            fontSize: 18,
                             fontStyle: 'italic',
-                            color: '#1e3a5f',
+                            color: 'var(--color-primary)',
                             letterSpacing: '0.02em',
                             position: 'relative',
                             zIndex: 1,
