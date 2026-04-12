@@ -213,7 +213,8 @@ interface DocEditorHeaderProps {
     isFinalised: boolean;
     canShare: boolean;
     canComment?: boolean;
-    canRunOwnerWorkflow: boolean;
+    canUseSigningAction: boolean;
+    canViewSignature: boolean;
     certificateStatus: DigitalCertificateActionStatus;
     onOpenComments?: () => void;
     onApplyForDigitalSignature: () => void;
@@ -225,7 +226,8 @@ interface DocEditorHeaderProps {
 export function DocEditorHeader({
     editor, doc, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
-    isReadOnly, isLocked, isFinalised, canShare, canComment = false, canRunOwnerWorkflow,
+    isReadOnly, isLocked, isFinalised, canShare, canComment = false,
+    canUseSigningAction, canViewSignature,
     certificateStatus, onOpenComments, onApplyForDigitalSignature, onFinalise, onViewSignature,
 }: DocEditorHeaderProps) {
     const router = useRouter();
@@ -501,7 +503,7 @@ export function DocEditorHeader({
                         <HugeiconsIcon icon={Comment01Icon} size={17} />
                     </button>
 
-                    {canRunOwnerWorkflow && !isLocked && (
+                    {canUseSigningAction && !isLocked && (
                         <DocEditorSignatureAction
                             certificateStatus={certificateStatus}
                             isFinalised={isFinalised}
@@ -509,7 +511,7 @@ export function DocEditorHeader({
                             onFinalise={onFinalise}
                         />
                     )}
-                    {canRunOwnerWorkflow && isLocked && (
+                    {canViewSignature && isLocked && (
                         <button onClick={onViewSignature} className="ded-action-btn">
                             View signature
                         </button>
