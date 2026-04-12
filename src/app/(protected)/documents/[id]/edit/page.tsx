@@ -16,9 +16,11 @@ import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentPageGuides } from '@/components/editor/DocumentPageGuides';
 import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
+import { useDigitalCertificateStatus } from '@/components/editor/use-digital-certificate-status';
 import { useDocumentPagination } from '@/components/editor/use-document-pagination';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
+import { getDigitalCertificateUrl } from '@/lib/session';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
     listDocumentComments,
@@ -59,6 +61,8 @@ export default function EditDocumentPage() {
     const [retryKey, setRetryKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
     const pagination = useDocumentPagination(editor);
+    const shouldCheckCertificate = !!doc && doc.status !== 'LOCKED' && (doc.access?.isOwner ?? true);
+    const certificateStatus = useDigitalCertificateStatus(shouldCheckCertificate);
 
     const contentRef = useRef<Record<string, unknown> | null>(null);
     const wordCntRef = useRef(0);
@@ -183,6 +187,10 @@ export default function EditDocumentPage() {
         }
     }
 
+    function handleApplyForDigitalSignature() {
+        window.location.href = getDigitalCertificateUrl();
+    }
+
     // ── Loading state ────────────────────────────────────────────────────────
     if (loading) {
         return (
@@ -294,7 +302,9 @@ export default function EditDocumentPage() {
                 canShare={canManageAccess}
                 canComment={canComment}
                 canRunOwnerWorkflow={canRunOwnerWorkflow}
+                certificateStatus={certificateStatus.status}
                 onOpenComments={() => setCommentsOpen(true)}
+                onApplyForDigitalSignature={handleApplyForDigitalSignature}
                 onFinalise={handleFinalise}
                 onViewSignature={() => setShowSigning(true)}
             />
