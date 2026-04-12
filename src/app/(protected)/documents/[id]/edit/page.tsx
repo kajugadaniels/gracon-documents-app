@@ -61,8 +61,13 @@ export default function EditDocumentPage() {
     const [retryKey, setRetryKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
     const pagination = useDocumentPagination(editor);
-    const shouldCheckCertificate = !!doc && doc.status !== 'LOCKED' && (doc.access?.isOwner ?? true);
-    const certificateStatus = useDigitalCertificateStatus(shouldCheckCertificate);
+    const canUseSigningAction = !!doc
+        && doc.status !== 'LOCKED'
+        && (
+            (doc.access?.isOwner ?? true)
+            || (doc.status === 'FINALISED' && hasDocumentPermission(doc, 'SIGN'))
+        );
+    const certificateStatus = useDigitalCertificateStatus(canUseSigningAction);
 
     const contentRef = useRef<Record<string, unknown> | null>(null);
     const wordCntRef = useRef(0);
@@ -170,11 +175,27 @@ export default function EditDocumentPage() {
 
     async function handleFinalise() {
         if (!doc) return;
-        if (!doc.access?.isOwner) {
+
+        const isOwner = doc.access?.isOwner ?? true;
+        const canSign = hasDocumentPermission(doc, 'SIGN');
+
+        if (doc.status === 'FINALISED') {
+            if (!isOwner && !canSign) {
+                toast.warning('You do not have signing access to this document.');
+                return;
+            }
+
+            setShowSigning(true);
+            return;
+        }
+
+        if (!isOwner) {
             toast.warning('Only the document owner can finalise and sign this document.');
             return;
         }
-        if (doc.status !== 'DRAFT') { setShowSigning(true); return; }
+
+        if (doc.status !== 'DRAFT') return;
+
         await save(true);
         try {
             const finalised = await finaliseDocument(id);
@@ -236,11 +257,13 @@ export default function EditDocumentPage() {
 
     const canEdit = hasDocumentPermission(doc, 'EDIT');
     const canComment = hasDocumentPermission(doc, 'COMMENT');
+    const canSign = hasDocumentPermission(doc, 'SIGN');
     const canManageAccess = hasDocumentPermission(doc, 'MANAGE_ACCESS');
-    const canRunOwnerWorkflow = doc.access?.isOwner ?? true;
+    const isOwner = doc.access?.isOwner ?? true;
     const isReadOnly = doc.status !== 'DRAFT' || !canEdit;
     const isLocked = doc.status === 'LOCKED';
     const isFinalised = doc.status === 'FINALISED';
+    const canViewSignature = isLocked && (isOwner || canSign);
     const readOnlyBannerText = !canEdit && doc.status === 'DRAFT'
         ? 'You can view this shared document, but you do not have edit permission.'
         : isLocked
@@ -301,7 +324,8 @@ export default function EditDocumentPage() {
                 isFinalised={isFinalised}
                 canShare={canManageAccess}
                 canComment={canComment}
-                canRunOwnerWorkflow={canRunOwnerWorkflow}
+                canUseSigningAction={canUseSigningAction}
+                canViewSignature={canViewSignature}
                 certificateStatus={certificateStatus.status}
                 onOpenComments={() => setCommentsOpen(true)}
                 onApplyForDigitalSignature={handleApplyForDigitalSignature}
