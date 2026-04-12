@@ -21,6 +21,7 @@ import { useDocumentPagination } from '@/components/editor/use-document-paginati
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import { getDigitalCertificateUrl } from '@/lib/session';
+import { useSessionUser } from '@/app/(protected)/layout';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
     listDocumentComments,
@@ -45,6 +46,7 @@ function hasDocumentPermission(doc: DocumentDetail | null, permission: Collabora
 export default function EditDocumentPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
+    const user = useSessionUser();
 
     const [doc, setDoc] = useState<DocumentDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -61,8 +63,14 @@ export default function EditDocumentPage() {
     const [retryKey, setRetryKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
     const pagination = useDocumentPagination(editor);
+    const signatureRequests = doc?.signatureRequests ?? [];
+    const currentSignatureRequest = signatureRequests.find(
+        request => request.requestedUserId === user?.userId,
+    ) ?? null;
+    const hasSignedCurrentRequest = currentSignatureRequest?.status === 'SIGNED';
     const canUseSigningAction = !!doc
         && doc.status !== 'LOCKED'
+        && !hasSignedCurrentRequest
         && (
             (doc.access?.isOwner ?? true)
             || (doc.status === 'FINALISED' && hasDocumentPermission(doc, 'SIGN'))
@@ -180,6 +188,11 @@ export default function EditDocumentPage() {
         const canSign = hasDocumentPermission(doc, 'SIGN');
 
         if (doc.status === 'FINALISED') {
+            if (hasSignedCurrentRequest) {
+                toast.info('Your signature is already recorded for this document.');
+                return;
+            }
+
             if (!isOwner && !canSign) {
                 toast.warning('You do not have signing access to this document.');
                 return;
@@ -200,7 +213,7 @@ export default function EditDocumentPage() {
         try {
             const finalised = await finaliseDocument(id);
             setDoc(prev => prev ? { ...prev, ...finalised, status: 'FINALISED', contentHash: finalised.contentHash } : prev);
-            toast.success('Document finalised. Now sign it to lock it permanently.');
+            toast.success('Document finalised. Required signatures can now be collected.');
             setShowSigning(true);
         } catch (e: unknown) {
             const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to finalise document.';
@@ -263,12 +276,17 @@ export default function EditDocumentPage() {
     const isReadOnly = doc.status !== 'DRAFT' || !canEdit;
     const isLocked = doc.status === 'LOCKED';
     const isFinalised = doc.status === 'FINALISED';
+    const pendingSignatureCount = signatureRequests.filter(
+        request => request.status !== 'SIGNED',
+    ).length;
     const canViewSignature = isLocked && (isOwner || canSign);
     const readOnlyBannerText = !canEdit && doc.status === 'DRAFT'
         ? 'You can view this shared document, but you do not have edit permission.'
         : isLocked
             ? 'This document is permanently locked. It has been signed and cannot be modified.'
-            : 'This document is finalised. Its content is frozen. Sign it to lock it permanently.';
+            : hasSignedCurrentRequest
+                ? `Your signature is recorded. Waiting for ${pendingSignatureCount} remaining signer${pendingSignatureCount === 1 ? '' : 's'}.`
+                : 'This document is finalised. Its content is frozen. Sign it to lock it permanently.';
     const readOnlyBannerClass = !canEdit && doc.status === 'DRAFT'
         ? 'readonly'
         : isLocked
@@ -386,9 +404,16 @@ export default function EditDocumentPage() {
                     document={doc}
                     onClose={() => setShowSigning(false)}
                     onLocked={(updated) => {
-                        setDoc(prev => prev ? { ...prev, ...updated, status: 'LOCKED' } : prev);
+                        setDoc(prev => prev ? { ...prev, ...updated } : prev);
                         setShowSigning(false);
-                        toast.success('Document signed and permanently locked!');
+                        if (updated.status === 'LOCKED') {
+                            toast.success('Document signed and permanently locked!');
+                            return;
+                        }
+
+                        toast.success(
+                            `Signature recorded. Waiting for ${updated.pendingSignatureCount ?? 0} remaining signer${updated.pendingSignatureCount === 1 ? '' : 's'}.`,
+                        );
                     }}
                 />
             )}
