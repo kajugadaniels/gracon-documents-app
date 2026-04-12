@@ -13,5 +13,5 @@ export const EDIT_MENU_ITEMS: MenuItem[] = [
     { type: 'action', label: 'Paste',           actionId: 'edit:paste',       shortcut: '⌘V' },
     { type: 'action', label: 'Select all',      actionId: 'edit:select-all',  shortcut: '⌘A' },
     { type: 'divider' },
-    { type: 'action', label: 'Find and replace', actionId: 'edit:find',       shortcut: '⌘H', disabled: true },
+    { type: 'action', label: 'Find',             actionId: 'edit:find',       shortcut: '⌘F' },
 ];

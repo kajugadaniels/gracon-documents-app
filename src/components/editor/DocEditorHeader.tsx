@@ -50,6 +50,25 @@ const MENU_BAR = [
     { label: 'Help',       items: HELP_MENU_ITEMS },
 ] as const;
 
+/**
+ * Walks the ProseMirror document and returns every position range where
+ * the query string appears (case-insensitive).
+ */
+function collectMatches(editor: Editor, query: string): Array<{ from: number; to: number }> {
+    const lower = query.toLowerCase();
+    const results: Array<{ from: number; to: number }> = [];
+    editor.state.doc.descendants((node, pos) => {
+        if (!node.isText || !node.text) return;
+        const text = node.text.toLowerCase();
+        let idx = text.indexOf(lower);
+        while (idx !== -1) {
+            results.push({ from: pos + idx, to: pos + idx + query.length });
+            idx = text.indexOf(lower, idx + 1);
+        }
+    });
+    return results;
+}
+
 // ─── Menu dropdown ────────────────────────────────────────────────────────────
 
 function MenuDropdown({
@@ -237,6 +256,11 @@ export function DocEditorHeader({
     const [savingAs, setSavingAs] = useState<'pdf' | 'docx' | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const findInputRef = useRef<HTMLInputElement>(null);
+
+    const [findOpen, setFindOpen] = useState(false);
+    const [findQuery, setFindQuery] = useState('');
+    const [findIndex, setFindIndex] = useState(0);
 
     useEffect(() => {
         if (!editingTitle || !titleInputRef.current) return;
@@ -269,6 +293,40 @@ export function DocEditorHeader({
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     }, [router]);
+
+    /** Navigates to the next or previous find match, wrapping around. */
+    const navigateFind = useCallback((direction: 'next' | 'prev') => {
+        if (!editor || !findQuery.trim()) return;
+        const matches = collectMatches(editor, findQuery);
+        if (!matches.length) return;
+        const next = direction === 'next'
+            ? (findIndex + 1) % matches.length
+            : (findIndex - 1 + matches.length) % matches.length;
+        setFindIndex(next);
+        const match = matches[next];
+        editor.chain().focus().setTextSelection({ from: match.from, to: match.to }).scrollIntoView().run();
+    }, [editor, findIndex, findQuery]);
+
+    // Focus the find input when the bar opens; close on Escape
+    useEffect(() => {
+        if (!findOpen) return;
+        findInputRef.current?.focus();
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') { setFindOpen(false); setFindQuery(''); }
+        };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [findOpen]);
+
+    // Jump to the first match whenever the query changes
+    useEffect(() => {
+        if (!editor || !findQuery.trim()) return;
+        const matches = collectMatches(editor, findQuery);
+        if (!matches.length) return;
+        setFindIndex(0);
+        const match = matches[0];
+        editor.chain().focus().setTextSelection({ from: match.from, to: match.to }).scrollIntoView().run();
+    }, [editor, findQuery]);
 
     const handleAction = useCallback((actionId: string) => {
         // File actions that don't require the editor run first.
@@ -379,12 +437,33 @@ export function DocEditorHeader({
             return;
         }
 
+        if (actionId === 'edit:find') {
+            setFindOpen((v) => {
+                if (v) setFindQuery('');
+                return !v;
+            });
+            return;
+        }
+
         if (!editor) return;
         const chain = editor.chain().focus();
         switch (actionId) {
             case 'file:print':    window.print(); break;
             case 'edit:undo':    chain.undo().run(); break;
             case 'edit:redo':    chain.redo().run(); break;
+            case 'edit:cut':
+                editor.view.focus();
+                document.execCommand('cut');
+                break;
+            case 'edit:copy':
+                editor.view.focus();
+                document.execCommand('copy');
+                break;
+            case 'edit:paste':
+                navigator.clipboard.readText()
+                    .then((text) => { if (text) editor.chain().focus().insertContent(text).run(); })
+                    .catch(() => toast.warning('Paste using ⌘V / Ctrl+V'));
+                break;
             case 'edit:select-all': chain.selectAll().run(); break;
             case 'format:bold':      chain.toggleBold().run(); break;
             case 'format:italic':    chain.toggleItalic().run(); break;
@@ -534,6 +613,71 @@ export function DocEditorHeader({
 
             {/* ── Row 2: formatting toolbar ── */}
             {editor && !isReadOnly && <DocEditorToolbar editor={editor} />}
+
+            {/* ── Row 3: find bar ── */}
+            {findOpen && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 12px',
+                    borderBottom: '1px solid var(--color-border)',
+                    background: 'var(--glass-bg)',
+                }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500, flexShrink: 0 }}>
+                        Find
+                    </span>
+                    <input
+                        ref={findInputRef}
+                        value={findQuery}
+                        onChange={e => setFindQuery(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') { e.preventDefault(); navigateFind('next'); }
+                            if (e.key === 'Escape') { setFindOpen(false); setFindQuery(''); }
+                        }}
+                        placeholder="Search in document…"
+                        style={{
+                            flex: 1, maxWidth: 260, height: 28, padding: '0 10px',
+                            borderRadius: 6, border: '1px solid var(--color-border)',
+                            background: 'rgba(255,255,255,0.05)',
+                            color: 'var(--color-text-primary)', fontSize: 13, outline: 'none',
+                        }}
+                    />
+                    {findQuery.trim() && editor && (
+                        <span style={{ fontSize: 12, color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                            {collectMatches(editor, findQuery).length} found
+                        </span>
+                    )}
+                    {(['prev', 'next'] as const).map((dir) => (
+                        <button
+                            key={dir}
+                            onClick={() => navigateFind(dir)}
+                            disabled={!findQuery.trim()}
+                            title={dir === 'prev' ? 'Previous match' : 'Next match'}
+                            style={{
+                                width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'transparent', border: '1px solid var(--color-border)',
+                                color: 'var(--color-text-secondary)', fontSize: 13,
+                                cursor: findQuery.trim() ? 'pointer' : 'not-allowed',
+                                opacity: findQuery.trim() ? 1 : 0.4,
+                            }}
+                        >
+                            {dir === 'prev' ? '↑' : '↓'}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => { setFindOpen(false); setFindQuery(''); }}
+                        title="Close (Esc)"
+                        style={{
+                            width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'transparent', border: '1px solid var(--color-border)',
+                            color: 'var(--color-text-secondary)', cursor: 'pointer', fontSize: 13,
+                        }}
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
 
             {/* ── Share dialog ── */}
             {shareOpen && (
