@@ -2,6 +2,7 @@ import { apiClient } from './client';
 
 export type DocumentType = 'RICH_TEXT' | 'SPREADSHEET';
 export type DocumentStatus = 'DRAFT' | 'FINALISED' | 'SIGNED' | 'LOCKED';
+export type SignatureRequestStatus = 'PENDING' | 'SIGNED' | 'DECLINED';
 export type DocumentListScope = 'ALL_ACCESSIBLE' | 'OWNED' | 'SHARED_WITH_ME';
 export type CollaboratorInvitationStatus =
     | 'PENDING'
@@ -163,11 +164,24 @@ export interface DocumentSignatureSnapshot {
     lockedAt: string | null;
 }
 
+export interface DocumentSignatureRequestSummary {
+    id: string;
+    requestedById: string;
+    requestedUserId: string;
+    status: SignatureRequestStatus;
+    personalSignedDocumentId: string | null;
+    signedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface DocumentDetail extends DocumentSummary {
     content: Record<string, unknown> | null;
     contentHash: string | null;
     collaborators: { userId: string; role: string; acceptedAt: string | null }[];
     signatureSnapshot: DocumentSignatureSnapshot | null;
+    signatureRequests: DocumentSignatureRequestSummary[];
+    pendingSignatureCount?: number;
 }
 
 export interface DocumentVersion {
@@ -277,7 +291,12 @@ export async function copyDocument(id: string): Promise<DocumentSummary> {
 export async function finaliseDocument(
     id: string,
     note?: string,
-): Promise<DocumentSummary & { contentHash: string; message: string }> {
+): Promise<DocumentSummary & {
+    contentHash: string;
+    message: string;
+    signatureRequests: DocumentSignatureRequestSummary[];
+    pendingSignatureCount: number;
+}> {
     const res = await apiClient.post(`/documents/${id}/finalise`, { note });
     return res.data;
 }
@@ -290,6 +309,8 @@ export async function lockDocument(
     signatureId: string;
     message: string;
     signatureSnapshot: DocumentSignatureSnapshot | null;
+    signatureRequests: DocumentSignatureRequestSummary[];
+    pendingSignatureCount: number;
 }> {
     const res = await apiClient.post(`/documents/${id}/lock`, { signatureId, documentHash });
     return res.data;
