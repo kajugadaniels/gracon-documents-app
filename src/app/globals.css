@@ -1869,6 +1869,14 @@ body {
   color: #fff;
 }
 .ded-action-btn--primary:hover:not(:disabled) { background: var(--color-primary-hover); }
+.ded-action-btn--certificate {
+  background: var(--color-success-subtle);
+  border-color: var(--color-success-border);
+  color: var(--color-success);
+}
+.ded-action-btn--certificate:hover:not(:disabled) {
+  background: rgba(5,150,105,0.16);
+}
 
 .ded-share-btn {
   display: flex;
