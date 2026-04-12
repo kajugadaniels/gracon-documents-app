@@ -1,5 +1,5 @@
 /**
- * Owner signing CTA for the document editor header.
+ * Signing CTA for the document editor header.
  *
  * The button never exposes finalise/sign actions until the current user has
  * an active certificate; the backend still enforces this during signing.
@@ -15,7 +15,7 @@ interface DocEditorSignatureActionProps {
     onFinalise: () => void;
 }
 
-/** Renders the correct signing-related action for the owner workflow. */
+/** Renders the correct signing-related action for owners and invited signers. */
 export function DocEditorSignatureAction({
     certificateStatus,
     isFinalised,
