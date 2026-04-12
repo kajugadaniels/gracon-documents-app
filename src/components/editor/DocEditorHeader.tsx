@@ -19,6 +19,7 @@ import {
     Share01Icon, Comment01Icon, Clock01Icon, Logout01Icon,
 } from '@hugeicons/core-free-icons';
 import { useSessionUser } from '@/app/(protected)/layout';
+import type { DigitalCertificateActionStatus } from '@/components/editor/use-digital-certificate-status';
 import { APP_URL } from '@/lib/session';
 import {
     createDocument,
@@ -35,6 +36,7 @@ import {
     FORMAT_MENU_ITEMS, TOOLS_MENU_ITEMS, EXTENSIONS_MENU_ITEMS, HELP_MENU_ITEMS,
 } from '@/constants';
 import { DocEditorToolbar } from './DocEditorToolbar';
+import { DocEditorSignatureAction } from './DocEditorSignatureAction';
 import { ShareDocumentDialog } from './ShareDocumentDialog';
 
 const MENU_BAR = [
@@ -212,7 +214,9 @@ interface DocEditorHeaderProps {
     canShare: boolean;
     canComment?: boolean;
     canRunOwnerWorkflow: boolean;
+    certificateStatus: DigitalCertificateActionStatus;
     onOpenComments?: () => void;
+    onApplyForDigitalSignature: () => void;
     onFinalise: () => void;
     onViewSignature: () => void;
 }
@@ -222,7 +226,7 @@ export function DocEditorHeader({
     editor, doc, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
     isReadOnly, isLocked, isFinalised, canShare, canComment = false, canRunOwnerWorkflow,
-    onOpenComments, onFinalise, onViewSignature,
+    certificateStatus, onOpenComments, onApplyForDigitalSignature, onFinalise, onViewSignature,
 }: DocEditorHeaderProps) {
     const router = useRouter();
     const [importing, setImporting] = useState(false);
@@ -393,6 +397,7 @@ export function DocEditorHeader({
         copying,
         doc.id,
         doc.status,
+        doc.title,
         doc.wordCount,
         editingTitle,
         editor,
@@ -497,9 +502,12 @@ export function DocEditorHeader({
                     </button>
 
                     {canRunOwnerWorkflow && !isLocked && (
-                        <button onClick={onFinalise} className="ded-action-btn ded-action-btn--primary">
-                            {isFinalised ? 'Sign document' : 'Finalise & sign'}
-                        </button>
+                        <DocEditorSignatureAction
+                            certificateStatus={certificateStatus}
+                            isFinalised={isFinalised}
+                            onApplyForDigitalSignature={onApplyForDigitalSignature}
+                            onFinalise={onFinalise}
+                        />
                     )}
                     {canRunOwnerWorkflow && isLocked && (
                         <button onClick={onViewSignature} className="ded-action-btn">
