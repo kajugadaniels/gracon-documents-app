@@ -23,16 +23,6 @@ interface SignatureStripCardProps {
     onSave: () => void;
 }
 
-/** Checkmark SVG for the verified header band. */
-function CheckIcon() {
-    return (
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M20 6L9 17l-5-5" stroke="#15803d" strokeWidth="2.5"
-                strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-    );
-}
-
 /** Drag-handle icon for the placement hint row. */
 function DragIcon() {
     return (
