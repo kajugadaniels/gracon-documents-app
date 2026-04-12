@@ -12,6 +12,9 @@ export { FORMAT_MENU_ITEMS } from './format-menu';
 export { TOOLS_MENU_ITEMS } from './tools-menu';
 export { EXTENSIONS_MENU_ITEMS } from './extensions-menu';
 export { HELP_MENU_ITEMS } from './help-menu';
+export { MENU_BAR } from './menu-bar';
+export { DOCS_NAV_ITEMS } from './docs-nav';
+export type { DocsNavItem } from './docs-nav';
 export {
     DOCUMENT_PAPER_DPI,
     A4_PAPER_WIDTH_PX,
