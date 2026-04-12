@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     getDocumentAccessAuditLog,
     type DocumentAccessAuditEntry,
@@ -73,6 +73,22 @@ function getActorLabel(event: DocumentAccessAuditEntry) {
     return 'System';
 }
 
+function isSignatureReminderEvent(event: DocumentAccessAuditEntry) {
+    return event.metadata?.signatureReminder === true;
+}
+
+function getEventLabel(event: DocumentAccessAuditEntry) {
+    if (isSignatureReminderEvent(event) && event.eventType === 'INVITE_EMAIL_SENT') {
+        return 'Signature reminder sent';
+    }
+
+    if (isSignatureReminderEvent(event) && event.eventType === 'INVITE_EMAIL_FAILED') {
+        return 'Signature reminder failed';
+    }
+
+    return EVENT_LABELS[event.eventType];
+}
+
 function getEventDescription(event: DocumentAccessAuditEntry) {
     const target = event.target?.displayName ?? 'recipient';
     const actor = event.actor?.displayName ?? 'Someone';
@@ -103,6 +119,12 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
     if (event.eventType === 'INVITE_ACCEPTED') return `${target} accepted the invitation.`;
     if (event.eventType === 'INVITE_DECLINED') return `${target} declined the invitation.`;
     if (event.eventType === 'INVITE_OPENED') return `${target} opened the invitation link.`;
+    if (isSignatureReminderEvent(event) && event.eventType === 'INVITE_EMAIL_FAILED') {
+        return `Signature reminder delivery failed for ${target}.`;
+    }
+    if (isSignatureReminderEvent(event) && event.eventType === 'INVITE_EMAIL_SENT') {
+        return `Signature reminder sent to ${target}.`;
+    }
     if (event.eventType === 'INVITE_EMAIL_FAILED') return `Email delivery failed for ${target}.`;
     if (event.eventType === 'INVITE_EMAIL_SENT') return `Invitation email sent to ${target}.`;
     if (event.eventType === 'INVITE_EMAIL_QUEUED') return `Invitation email queued for ${target}.`;
@@ -130,7 +152,7 @@ export function ShareDocumentAuditLog({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    async function loadAuditLog() {
+    const loadAuditLog = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -142,11 +164,11 @@ export function ShareDocumentAuditLog({
         } finally {
             setLoading(false);
         }
-    }
+    }, [documentId, onCountChange]);
 
     useEffect(() => {
         void loadAuditLog();
-    }, [documentId, refreshKey]);
+    }, [loadAuditLog, refreshKey]);
 
     if (loading) {
         return (
@@ -185,7 +207,7 @@ export function ShareDocumentAuditLog({
                     <span className={`share-dialog__audit-dot share-dialog__audit-dot--${getTone(event.eventType)}`} />
                     <div className="share-dialog__audit-card">
                         <div className="share-dialog__audit-head">
-                            <p className="share-dialog__audit-title">{EVENT_LABELS[event.eventType]}</p>
+                            <p className="share-dialog__audit-title">{getEventLabel(event)}</p>
                             <time className="share-dialog__audit-time" dateTime={event.createdAt}>
                                 {formatDate(event.createdAt)}
                             </time>
