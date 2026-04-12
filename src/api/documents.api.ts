@@ -173,12 +173,20 @@ export interface DocumentSignatureRequestSummary {
     signedAt: string | null;
     createdAt: string;
     updatedAt: string;
+    requestedUser?: {
+        id: string;
+        email: string;
+        imageUrl: string | null;
+        displayName: string;
+        surName: string | null;
+        postNames: string | null;
+    } | null;
 }
 
 export interface DocumentDetail extends DocumentSummary {
     content: Record<string, unknown> | null;
     contentHash: string | null;
-    collaborators: { userId: string; role: string; acceptedAt: string | null }[];
+    collaborators: DocumentCollaboratorAccess[];
     signatureSnapshot: DocumentSignatureSnapshot | null;
     signatureRequests: DocumentSignatureRequestSummary[];
     pendingSignatureCount?: number;
@@ -408,6 +416,14 @@ export async function resendDocumentInvitation(
     collaboratorId: string,
 ): Promise<DocumentCollaboratorAccess & { emailStatus: 'sent' | 'failed' }> {
     const res = await apiClient.post(`/documents/${id}/access/${collaboratorId}/resend`);
+    return res.data;
+}
+
+export async function sendSignatureReminder(
+    id: string,
+    requestId: string,
+): Promise<{ sent: boolean; requestId: string; sentAt: string }> {
+    const res = await apiClient.post(`/documents/${id}/signature-requests/${requestId}/remind`);
     return res.data;
 }
 
