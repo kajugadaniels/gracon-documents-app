@@ -1598,6 +1598,190 @@ body {
   color: var(--color-primary);
 }
 
+.signing-progress {
+  margin: 18px clamp(16px, 4vw, 48px) 0;
+  padding: 16px;
+  border: 1px solid rgba(22,16,58,0.10);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255,247,237,0.92), rgba(255,255,255,0.96)),
+    #fff;
+  box-shadow: 0 16px 44px rgba(22,16,58,0.07);
+}
+
+.signing-progress__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.signing-progress__eyebrow {
+  margin: 0 0 4px;
+  color: #9a3412;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.signing-progress__title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.signing-progress__meter {
+  display: grid;
+  gap: 6px;
+  min-width: 150px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.signing-progress__track {
+  width: 150px;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(154,52,18,0.14);
+}
+
+.signing-progress__track > div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9a3412, #ea580c);
+  transition: width 220ms ease;
+}
+
+.signing-progress__list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.signing-progress__row {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid rgba(22,16,58,0.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.78);
+}
+
+.signing-progress__avatar {
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #16103a;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.signing-progress__person {
+  min-width: 0;
+}
+
+.signing-progress__person p,
+.signing-progress__person span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signing-progress__person p {
+  margin: 0 0 2px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.signing-progress__person span {
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+}
+
+.signing-progress__status {
+  justify-self: end;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.signing-progress__status--signed {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.signing-progress__status--pending {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+
+.signing-progress__action {
+  justify-self: end;
+}
+
+.signing-progress__action button {
+  border: 1px solid rgba(22,16,58,0.14);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 750;
+  padding: 7px 11px;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.signing-progress__action button:hover:not(:disabled) {
+  border-color: rgba(234,88,12,0.5);
+  box-shadow: 0 8px 18px rgba(154,52,18,0.10);
+  transform: translateY(-1px);
+}
+
+.signing-progress__action button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.signing-progress__complete {
+  color: var(--color-success);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .signing-progress__summary,
+  .signing-progress__row {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .signing-progress__summary {
+    display: grid;
+  }
+
+  .signing-progress__meter,
+  .signing-progress__status,
+  .signing-progress__action {
+    justify-self: start;
+    text-align: left;
+  }
+}
+
 /* ── Header shell ── */
 .ded-header {
   position: sticky;
