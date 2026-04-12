@@ -15,32 +15,10 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Search01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import type { SessionUser } from '@/app/(protected)/layout';
 import { APP_URL } from '@/lib/session';
+import { DOCS_NAV_ITEMS } from '@/constants';
 
 /** Debounce delay in ms before the search query is pushed to the URL. */
 const SEARCH_DEBOUNCE_MS = 350;
-
-const NAV_ITEMS = [
-    {
-        href: '/documents',
-        label: 'My documents',
-        description: 'Everything you are drafting right now',
-        isActive: (pathname: string, status: string | null) =>
-            pathname.startsWith('/documents') && status !== 'LOCKED',
-    },
-    {
-        href: '/templates',
-        label: 'Templates',
-        description: 'Reusable foundations for repeat work',
-        isActive: (pathname: string) => pathname.startsWith('/templates'),
-    },
-    {
-        href: '/documents?status=LOCKED',
-        label: 'Signed',
-        description: 'Completed and sealed records',
-        isActive: (pathname: string, status: string | null) =>
-            pathname === '/documents' && status === 'LOCKED',
-    },
-] as const;
 
 export function DocsHeader({ user }: { user: SessionUser }) {
     const router        = useRouter();
@@ -250,7 +228,7 @@ export function DocsHeader({ user }: { user: SessionUser }) {
 
             {/* ── Nav strip ── */}
             <nav className="docs-header__nav" aria-label="Document sections">
-                {NAV_ITEMS.map((item) => {
+                {DOCS_NAV_ITEMS.map((item) => {
                     const active = item.isActive(pathname, status);
                     return (
                         <Link
