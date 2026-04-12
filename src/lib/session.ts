@@ -15,6 +15,7 @@ export const APP_URL =
 export const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:4002';
 const SESSION_API_BASE = '/api';
 const DEFAULT_NEXT_PATH = '/documents';
+const DIGITAL_CERTIFICATE_PATH = '/profile/signature';
 
 export type SessionRefreshResult =
     | {
@@ -61,6 +62,13 @@ export function normalizeDocsPath(path: string | null | undefined): string {
     }
 
     return DEFAULT_NEXT_PATH;
+}
+
+/**
+ * Builds the main-app URL where users manage keys and digital certificates.
+ */
+export function getDigitalCertificateUrl(): string {
+    return new URL(DIGITAL_CERTIFICATE_PATH, APP_URL).toString();
 }
 
 function getUnavailableMessage(payload: unknown, fallback: string): string {
