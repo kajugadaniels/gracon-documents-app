@@ -14,6 +14,7 @@ import { toast } from '@/components/ui';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
+import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
 import { DocumentPageGuides } from '@/components/editor/DocumentPageGuides';
 import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
 import { useDigitalCertificateStatus } from '@/components/editor/use-digital-certificate-status';
@@ -357,6 +358,14 @@ export default function EditDocumentPage() {
                     {readOnlyBannerText}
                 </div>
             )}
+
+            <DocumentSigningProgressPanel
+                document={doc}
+                currentUserId={user?.userId ?? null}
+                canManageAccess={canManageAccess}
+                onOpenSigning={() => setShowSigning(true)}
+                onDocumentRefresh={() => setRetryKey(v => v + 1)}
+            />
 
             {/* ── Paper canvas ── */}
             <div className="ded-canvas">
