@@ -70,7 +70,7 @@ export function InvitationVerificationPanel({
 
     const verifyIdentityHref = useMemo(() => {
         const next = `${DOCS_URL}/invitations/${token}`;
-        return `${APP_URL}/verify-identity?next=${encodeURIComponent(next)}`;
+        return `${APP_URL}/verify-identity?challenge=invitation&next=${encodeURIComponent(next)}`;
     }, [token]);
 
     async function handleSendCode() {
@@ -133,11 +133,16 @@ export function InvitationVerificationPanel({
                     </p>
                 </div>
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>
-                    Your email has been confirmed for this invitation. Complete ID and face verification in the main app to unlock the review page.
+                    Your email has been confirmed for this invitation. Complete a fresh ID and face verification challenge in the main app to unlock the review page.
                 </p>
+                {gateStatus.identityVerification?.challengeStartedAt && (
+                    <p style={{ margin: 0, fontSize: 12, color: '#9a7415' }}>
+                        Challenge started {formatDate(gateStatus.identityVerification.challengeStartedAt)}.
+                    </p>
+                )}
                 <div>
                     <a href={verifyIdentityHref} style={{ textDecoration: 'none' }}>
-                        <Button variant="ghost">Continue to identity verification</Button>
+                        <Button variant="ghost">Start identity challenge</Button>
                     </a>
                 </div>
             </div>
