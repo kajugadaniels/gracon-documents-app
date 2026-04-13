@@ -12,6 +12,7 @@ import { useParams, useRouter } from 'next/navigation';
 import type { Editor } from '@tiptap/react';
 import { toast } from '@/components/ui';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import { DocumentAccessTransitionBanner } from '@/components/editor/DocumentAccessTransitionBanner';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
@@ -57,6 +58,7 @@ export default function EditDocumentPage() {
     const [doc, setDoc] = useState<DocumentDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [accessTransitionMessage, setAccessTransitionMessage] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [editingTitle, setEditingTitle] = useState(false);
     const [title, setTitle] = useState('');
@@ -88,6 +90,18 @@ export default function EditDocumentPage() {
     const wordCntRef = useRef(0);
     const dirtyRef = useRef(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const beginAccessTransition = useCallback((message: string) => {
+        setAccessTransitionMessage((current) => current ?? message);
+
+        if (redirectTimerRef.current) {
+            return;
+        }
+
+        redirectTimerRef.current = setTimeout(() => {
+            router.replace('/documents');
+        }, 1400);
+    }, [router]);
     const refreshSharedDocumentState = useCallback(async () => {
         try {
             const sharedState = await getDocument(id, false);
@@ -99,11 +113,12 @@ export default function EditDocumentPage() {
             const status = (error as { response?: { status?: number } }).response?.status;
 
             if (status === 403 || status === 404) {
-                toast.error('Your access to this document changed. Redirecting to documents.');
-                router.replace('/documents');
+                beginAccessTransition(
+                    'Your access to this document changed. Redirecting to documents…',
+                );
             }
         }
-    }, [id, router]);
+    }, [beginAccessTransition, id]);
     const handleShareActivityRecorded = useCallback(
         () => {
             setShareActivityRefreshKey((current) => current + 1);
@@ -116,6 +131,12 @@ export default function EditDocumentPage() {
     }, [refreshSharedDocumentState]);
 
     useDocumentShareSync(id, handleRemoteShareSync);
+
+    useEffect(() => () => {
+        if (redirectTimerRef.current) {
+            clearTimeout(redirectTimerRef.current);
+        }
+    }, []);
 
     // Load document
     useEffect(() => {
@@ -357,7 +378,7 @@ export default function EditDocumentPage() {
     }
 
     return (
-        <div className="ded-page">
+        <div className={`ded-page${accessTransitionMessage ? ' ded-page--access-transition' : ''}`}>
             {/* ── Sticky Google Docs-style header ── */}
             <DocEditorHeader
                 editor={editor}
@@ -393,6 +414,10 @@ export default function EditDocumentPage() {
                 <div className={`ded-status-banner ded-status-banner--${readOnlyBannerClass}`}>
                     {readOnlyBannerText}
                 </div>
+            )}
+
+            {accessTransitionMessage && (
+                <DocumentAccessTransitionBanner message={accessTransitionMessage} />
             )}
 
             <DocumentSigningProgressPanel
@@ -463,6 +488,8 @@ export default function EditDocumentPage() {
                     }}
                 />
             )}
+
+            {accessTransitionMessage && <div className="ded-access-transition-scrim" aria-hidden="true" />}
         </div>
     );
 }
