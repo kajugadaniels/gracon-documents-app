@@ -38,6 +38,13 @@ export interface InvitationReview {
         email: string;
         displayName: string;
     };
+    verification: {
+        emailOtpVerifiedAt: string | null;
+        identityChallengeStartedAt: string | null;
+        identityVerificationAttemptId: string | null;
+        identityVerifiedAt: string | null;
+        completedAt: string | null;
+    };
 }
 
 export type InvitationGateNextStep =
