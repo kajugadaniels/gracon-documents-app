@@ -11,9 +11,11 @@ import type { DigitalCertificateActionStatus } from './use-digital-certificate-s
 interface DocEditorSignatureActionProps {
     certificateStatus: DigitalCertificateActionStatus;
     canFinalise: boolean;
+    canLock: boolean;
     canSign: boolean;
     onApplyForDigitalSignature: () => void;
     onFinalise: () => void;
+    onLock: () => void;
     onSign: () => void;
 }
 
@@ -21,15 +23,25 @@ interface DocEditorSignatureActionProps {
 export function DocEditorSignatureAction({
     certificateStatus,
     canFinalise,
+    canLock,
     canSign,
     onApplyForDigitalSignature,
     onFinalise,
+    onLock,
     onSign,
 }: DocEditorSignatureActionProps) {
     if (canFinalise) {
         return (
             <button onClick={onFinalise} className="ded-action-btn ded-action-btn--primary">
                 Finalise document
+            </button>
+        );
+    }
+
+    if (canLock) {
+        return (
+            <button onClick={onLock} className="ded-action-btn ded-action-btn--primary">
+                Lock document
             </button>
         );
     }
