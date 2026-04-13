@@ -16,6 +16,7 @@ import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
 import { DocumentPageGuides } from '@/components/editor/DocumentPageGuides';
+import { mergeDocumentShareState } from '@/components/editor/document-share-state';
 import {
     publishDocumentShareSync,
     useDocumentShareSync,
@@ -87,6 +88,22 @@ export default function EditDocumentPage() {
     const wordCntRef = useRef(0);
     const dirtyRef = useRef(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const refreshSharedDocumentState = useCallback(async () => {
+        try {
+            const sharedState = await getDocument(id, false);
+            setDoc((current) =>
+                current ? mergeDocumentShareState(current, sharedState) : sharedState,
+            );
+            setShareActivityRefreshKey((current) => current + 1);
+        } catch (error: unknown) {
+            const status = (error as { response?: { status?: number } }).response?.status;
+
+            if (status === 403 || status === 404) {
+                toast.error('Your access to this document changed. Redirecting to documents.');
+                router.replace('/documents');
+            }
+        }
+    }, [id, router]);
     const handleShareActivityRecorded = useCallback(
         () => {
             setShareActivityRefreshKey((current) => current + 1);
@@ -95,9 +112,8 @@ export default function EditDocumentPage() {
         [id],
     );
     const handleRemoteShareSync = useCallback(() => {
-        setShareActivityRefreshKey((current) => current + 1);
-        setRetryKey((current) => current + 1);
-    }, []);
+        void refreshSharedDocumentState();
+    }, [refreshSharedDocumentState]);
 
     useDocumentShareSync(id, handleRemoteShareSync);
 
