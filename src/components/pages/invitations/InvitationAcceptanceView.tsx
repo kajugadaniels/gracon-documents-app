@@ -45,6 +45,11 @@ function formatDate(value: string | null) {
     }
 }
 
+function formatAttemptId(value: string | null) {
+    if (!value) return null;
+    return value.length > 10 ? `${value.slice(0, 8)}...` : value;
+}
+
 function formatPermissions(permissions: string[]) {
     return permissions
         .map((permission) => permission.replaceAll('_', ' ').toLowerCase())
@@ -508,6 +513,64 @@ export function InvitationAcceptanceView({ token }: Props) {
                                         </div>
                                     ) : review ? (
                                         <>
+                                            <div
+                                                style={{
+                                                    borderRadius: 18,
+                                                    border: '1px solid rgba(22,16,58,0.08)',
+                                                    padding: 18,
+                                                    background: '#fbfaff',
+                                                    marginBottom: 16,
+                                                }}
+                                            >
+                                                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                                    Verification completed
+                                                </p>
+                                                <div
+                                                    style={{
+                                                        display: 'grid',
+                                                        gap: 14,
+                                                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                                                        marginTop: 12,
+                                                    }}
+                                                >
+                                                    <div>
+                                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                                            Email OTP passed
+                                                        </p>
+                                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
+                                                            {formatDate(review.verification.emailOtpVerifiedAt)}
+                                                        </p>
+                                                    </div>
+
+                                                    <div>
+                                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                                            Identity challenge started
+                                                        </p>
+                                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
+                                                            {formatDate(review.verification.identityChallengeStartedAt)}
+                                                        </p>
+                                                    </div>
+
+                                                    <div>
+                                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                                            Identity verification passed
+                                                        </p>
+                                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
+                                                            {formatDate(review.verification.identityVerifiedAt)}
+                                                        </p>
+                                                    </div>
+
+                                                    <div>
+                                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                                            Verification attempt
+                                                        </p>
+                                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
+                                                            {formatAttemptId(review.verification.identityVerificationAttemptId) ?? 'Recorded'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div
                                                 style={{
                                                     borderRadius: 18,
