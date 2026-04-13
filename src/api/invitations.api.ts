@@ -67,6 +67,8 @@ export interface InvitationGateStatus {
     } | null;
     identityVerification: {
         required: boolean;
+        challengeStartedAt: string | null;
+        verificationAttemptId: string | null;
         verifiedAt: string | null;
     } | null;
 }
