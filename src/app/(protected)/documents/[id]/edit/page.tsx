@@ -16,6 +16,10 @@ import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
 import { DocumentPageGuides } from '@/components/editor/DocumentPageGuides';
+import {
+    publishDocumentShareSync,
+    useDocumentShareSync,
+} from '@/components/editor/document-share-sync';
 import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
 import { useDigitalCertificateStatus } from '@/components/editor/use-digital-certificate-status';
 import { useDocumentPagination } from '@/components/editor/use-document-pagination';
@@ -84,9 +88,18 @@ export default function EditDocumentPage() {
     const dirtyRef = useRef(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const handleShareActivityRecorded = useCallback(
-        () => setShareActivityRefreshKey((current) => current + 1),
-        [],
+        () => {
+            setShareActivityRefreshKey((current) => current + 1);
+            publishDocumentShareSync(id);
+        },
+        [id],
     );
+    const handleRemoteShareSync = useCallback(() => {
+        setShareActivityRefreshKey((current) => current + 1);
+        setRetryKey((current) => current + 1);
+    }, []);
+
+    useDocumentShareSync(id, handleRemoteShareSync);
 
     // Load document
     useEffect(() => {
