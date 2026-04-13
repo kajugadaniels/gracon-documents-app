@@ -62,6 +62,7 @@ export default function EditDocumentPage() {
     const [commentsError, setCommentsError] = useState<string | null>(null);
     const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
     const [retryKey, setRetryKey] = useState(0);
+    const [shareActivityRefreshKey, setShareActivityRefreshKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
     const pagination = useDocumentPagination(editor);
     const signatureRequests = doc?.signatureRequests ?? [];
@@ -82,6 +83,10 @@ export default function EditDocumentPage() {
     const wordCntRef = useRef(0);
     const dirtyRef = useRef(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handleShareActivityRecorded = useCallback(
+        () => setShareActivityRefreshKey((current) => current + 1),
+        [],
+    );
 
     // Load document
     useEffect(() => {
@@ -328,6 +333,7 @@ export default function EditDocumentPage() {
             <DocEditorHeader
                 editor={editor}
                 doc={doc}
+                shareActivityRefreshKey={shareActivityRefreshKey}
                 saveStatus={saveStatus}
                 editingTitle={editingTitle}
                 title={title}
@@ -347,6 +353,7 @@ export default function EditDocumentPage() {
                 canViewSignature={canViewSignature}
                 certificateStatus={certificateStatus.status}
                 onOpenComments={() => setCommentsOpen(true)}
+                onShareActivityRecorded={handleShareActivityRecorded}
                 onApplyForDigitalSignature={handleApplyForDigitalSignature}
                 onFinalise={handleFinalise}
                 onViewSignature={() => setShowSigning(true)}
@@ -364,6 +371,7 @@ export default function EditDocumentPage() {
                 currentUserId={user?.userId ?? null}
                 canManageAccess={canManageAccess}
                 onOpenSigning={() => setShowSigning(true)}
+                onActivityRecorded={handleShareActivityRecorded}
                 onDocumentRefresh={() => setRetryKey(v => v + 1)}
             />
 
