@@ -12,6 +12,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Cancel01Icon, Search01Icon, Share01Icon } from '@hugeicons/core-free-icons';
 import {
@@ -96,6 +97,26 @@ function extractApiError(error: unknown, fallback: string): string {
     return typeof msg === 'string' && msg.trim() ? msg : fallback;
 }
 
+/** Fixed-size user avatar with initials fallback for share dialog results. */
+function ShareDialogAvatar({ user }: { user: UserSearchResult }) {
+    return (
+        <div className="share-dialog__avatar" aria-hidden="true">
+            {user.imageUrl ? (
+                <Image
+                    src={user.imageUrl}
+                    alt=""
+                    width={40}
+                    height={40}
+                    unoptimized
+                    className="share-dialog__avatar-img"
+                />
+            ) : (
+                <span className="share-dialog__avatar-initials">{getInitials(user)}</span>
+            )}
+        </div>
+    );
+}
+
 // ── InviteForm ────────────────────────────────────────────────────────────────
 
 interface InviteFormProps {
@@ -126,12 +147,7 @@ function InviteForm({
         <div className="share-invite__form">
             {/* Recipient chip */}
             <div className="share-invite__recipient">
-                <div className="share-dialog__avatar" aria-hidden="true">
-                    {user.imageUrl
-                        ? <img src={user.imageUrl} alt="" className="share-dialog__avatar-img" />
-                        : <span className="share-dialog__avatar-initials">{getInitials(user)}</span>
-                    }
-                </div>
+                <ShareDialogAvatar user={user} />
                 <div className="share-invite__recipient-body">
                     <p className="share-invite__recipient-meta">Selected recipient</p>
                     <p className="share-invite__recipient-name">{getDisplayName(user)}</p>
@@ -518,12 +534,7 @@ export function ShareDocumentDialog({
                                                 className={className}
                                                 onClick={() => { if (!hasAccess) handleSelectUser(user); }}
                                             >
-                                                <div className="share-dialog__avatar" aria-hidden="true">
-                                                    {user.imageUrl
-                                                        ? <img src={user.imageUrl} alt="" className="share-dialog__avatar-img" />
-                                                        : <span className="share-dialog__avatar-initials">{getInitials(user)}</span>
-                                                    }
-                                                </div>
+                                                <ShareDialogAvatar user={user} />
                                                 <div className="share-dialog__user-info">
                                                     <span className="share-dialog__user-name">{getDisplayName(user)}</span>
                                                     <span className="share-dialog__user-email">{user.email}</span>
