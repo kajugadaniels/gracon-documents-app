@@ -315,7 +315,7 @@ export async function finaliseDocument(
     return res.data;
 }
 
-export async function lockDocument(
+export async function signDocument(
     id: string,
     signatureId: string,
     documentHash: string,
@@ -326,7 +326,19 @@ export async function lockDocument(
     signatureRequests: DocumentSignatureRequestSummary[];
     pendingSignatureCount: number;
 }> {
-    const res = await apiClient.post(`/documents/${id}/lock`, { signatureId, documentHash });
+    const res = await apiClient.post(`/documents/${id}/sign`, { signatureId, documentHash });
+    return res.data;
+}
+
+export async function lockDocument(
+    id: string,
+): Promise<DocumentSummary & {
+    message: string;
+    signatureSnapshot: DocumentSignatureSnapshot | null;
+    signatureRequests: DocumentSignatureRequestSummary[];
+    pendingSignatureCount: number;
+}> {
+    const res = await apiClient.post(`/documents/${id}/lock`);
     return res.data;
 }
 
