@@ -1,8 +1,8 @@
 /**
  * Signing CTA for the document editor header.
  *
- * The button never exposes finalise/sign actions until the current user has
- * an active certificate; the backend still enforces this during signing.
+ * Finalisation and signing are separate controls. Finalisation is owner-only,
+ * while signing still depends on the current user's certificate state.
  */
 'use client';
 
@@ -10,18 +10,34 @@ import type { DigitalCertificateActionStatus } from './use-digital-certificate-s
 
 interface DocEditorSignatureActionProps {
     certificateStatus: DigitalCertificateActionStatus;
-    isFinalised: boolean;
+    canFinalise: boolean;
+    canSign: boolean;
     onApplyForDigitalSignature: () => void;
     onFinalise: () => void;
+    onSign: () => void;
 }
 
 /** Renders the correct signing-related action for owners and invited signers. */
 export function DocEditorSignatureAction({
     certificateStatus,
-    isFinalised,
+    canFinalise,
+    canSign,
     onApplyForDigitalSignature,
     onFinalise,
+    onSign,
 }: DocEditorSignatureActionProps) {
+    if (canFinalise) {
+        return (
+            <button onClick={onFinalise} className="ded-action-btn ded-action-btn--primary">
+                Finalise document
+            </button>
+        );
+    }
+
+    if (!canSign) {
+        return null;
+    }
+
     if (certificateStatus === 'checking') {
         return (
             <button className="ded-action-btn" disabled>
@@ -43,8 +59,8 @@ export function DocEditorSignatureAction({
     }
 
     return (
-        <button onClick={onFinalise} className="ded-action-btn ded-action-btn--primary">
-            {isFinalised ? 'Sign document' : 'Finalise & sign'}
+        <button onClick={onSign} className="ded-action-btn ded-action-btn--primary">
+            Sign document
         </button>
     );
 }
