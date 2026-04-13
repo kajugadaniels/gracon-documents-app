@@ -31,7 +31,7 @@ import { DocumentSignatureBlock } from '@/components/documents/DocumentSignature
 import { getDigitalCertificateUrl } from '@/lib/session';
 import { useSessionUser } from '@/app/(protected)/layout';
 import {
-    getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument,
+    getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument, lockDocument,
     listDocumentComments,
     type CollaboratorPermission, type DocumentComment, type DocumentDetail,
 } from '@/api/documents.api';
@@ -81,6 +81,9 @@ export default function EditDocumentPage() {
     const hasSignedCurrentRequest = currentSignatureRequest?.status === 'SIGNED';
     const canFinaliseDocument = !!doc
         && doc.status === 'DRAFT'
+        && (doc.access?.isOwner ?? true);
+    const canLockDocument = !!doc
+        && doc.status === 'SIGNED'
         && (doc.access?.isOwner ?? true);
     const canSignDocument = !!doc
         && doc.status === 'FINALISED'
@@ -288,6 +291,28 @@ export default function EditDocumentPage() {
         setShowSigning(true);
     }
 
+    async function handleLockDocument() {
+        if (!doc || !canLockDocument) {
+            return;
+        }
+
+        const shouldLock = window.confirm(
+            'Lock this document now? After locking, the document becomes permanently immutable.',
+        );
+
+        if (!shouldLock) {
+            return;
+        }
+
+        try {
+            const locked = await lockDocument(id);
+            setDoc(prev => prev ? { ...prev, ...locked, status: 'LOCKED' } : prev);
+            toast.success('Document locked. It is now permanently immutable.');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'Failed to lock document.'));
+        }
+    }
+
     function handleApplyForDigitalSignature() {
         window.location.href = getDigitalCertificateUrl();
     }
@@ -356,11 +381,15 @@ export default function EditDocumentPage() {
         ? 'You can view this shared document, but you do not have edit permission.'
         : isLocked
             ? 'This document is permanently locked. It has been signed and cannot be modified.'
+            : canLockDocument
+                ? 'All required signatures are complete. Lock this document when you are ready.'
             : hasSignedCurrentRequest
                 ? `Your signature is recorded. Waiting for ${remainingSignerLabel}.`
                 : canSignDocument
                     ? 'This document is finalised. Its content is frozen. Sign when you are ready.'
-                    : `This document is finalised. Its content is frozen. Waiting for ${remainingSignerLabel}.`;
+                    : doc.status === 'SIGNED'
+                        ? 'All required signatures are complete. Waiting for the owner to lock this document.'
+                        : `This document is finalised. Its content is frozen. Waiting for ${remainingSignerLabel}.`;
     const readOnlyBannerClass = !canEdit && doc.status === 'DRAFT'
         ? 'readonly'
         : isLocked
@@ -417,6 +446,7 @@ export default function EditDocumentPage() {
                 canShare={canManageAccess}
                 canComment={canComment}
                 canFinalise={canFinaliseDocument}
+                canLock={canLockDocument}
                 canSign={canSignDocument}
                 canViewSignature={canViewSignature}
                 certificateStatus={certificateStatus.status}
@@ -424,6 +454,7 @@ export default function EditDocumentPage() {
                 onShareActivityRecorded={handleShareActivityRecorded}
                 onApplyForDigitalSignature={handleApplyForDigitalSignature}
                 onFinalise={handleFinalise}
+                onLock={handleLockDocument}
                 onSign={handleSignDocument}
                 onViewSignature={() => setShowSigning(true)}
             />
@@ -500,11 +531,11 @@ export default function EditDocumentPage() {
                 <SigningModal
                     document={doc}
                     onClose={() => setShowSigning(false)}
-                    onLocked={(updated) => {
+                    onSigned={(updated) => {
                         setDoc(prev => prev ? { ...prev, ...updated } : prev);
                         setShowSigning(false);
-                        if (updated.status === 'LOCKED') {
-                            toast.success('Document signed and permanently locked!');
+                        if (updated.status === 'SIGNED') {
+                            toast.success('All required signatures are complete. The owner can now lock the document.');
                             return;
                         }
 
