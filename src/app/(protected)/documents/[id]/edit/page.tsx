@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Editor } from '@tiptap/react';
 import { toast } from '@/components/ui';
+import { DocumentFinaliseDialog } from '@/components/editor/DocumentFinaliseDialog';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocumentAccessTransitionBanner } from '@/components/editor/DocumentAccessTransitionBanner';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
@@ -62,6 +63,7 @@ export default function EditDocumentPage() {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [editingTitle, setEditingTitle] = useState(false);
     const [title, setTitle] = useState('');
+    const [showFinaliseDialog, setShowFinaliseDialog] = useState(false);
     const [showSigning, setShowSigning] = useState(false);
     const [commentsOpen, setCommentsOpen] = useState(false);
     const [comments, setComments] = useState<DocumentComment[]>([]);
@@ -77,14 +79,14 @@ export default function EditDocumentPage() {
         request => request.requestedUserId === user?.userId,
     ) ?? null;
     const hasSignedCurrentRequest = currentSignatureRequest?.status === 'SIGNED';
-    const canUseSigningAction = !!doc
-        && doc.status !== 'LOCKED'
-        && !hasSignedCurrentRequest
-        && (
-            (doc.access?.isOwner ?? true)
-            || (doc.status === 'FINALISED' && hasDocumentPermission(doc, 'SIGN'))
-        );
-    const certificateStatus = useDigitalCertificateStatus(canUseSigningAction);
+    const canFinaliseDocument = !!doc
+        && doc.status === 'DRAFT'
+        && (doc.access?.isOwner ?? true);
+    const canSignDocument = !!doc
+        && doc.status === 'FINALISED'
+        && Boolean(currentSignatureRequest)
+        && !hasSignedCurrentRequest;
+    const certificateStatus = useDigitalCertificateStatus(canSignDocument);
 
     const contentRef = useRef<Record<string, unknown> | null>(null);
     const wordCntRef = useRef(0);
@@ -237,26 +239,10 @@ export default function EditDocumentPage() {
         } catch { toast.error('Failed to update title.'); }
     }
 
-    async function handleFinalise() {
+    async function submitFinalise(options: { requireOwnerSignature: boolean }) {
         if (!doc) return;
 
         const isOwner = doc.access?.isOwner ?? true;
-        const canSign = hasDocumentPermission(doc, 'SIGN');
-
-        if (doc.status === 'FINALISED') {
-            if (hasSignedCurrentRequest) {
-                toast.info('Your signature is already recorded for this document.');
-                return;
-            }
-
-            if (!isOwner && !canSign) {
-                toast.warning('You do not have signing access to this document.');
-                return;
-            }
-
-            setShowSigning(true);
-            return;
-        }
 
         if (!isOwner) {
             toast.warning('Only the document owner can finalise and sign this document.');
@@ -267,14 +253,39 @@ export default function EditDocumentPage() {
 
         await save(true);
         try {
-            const finalised = await finaliseDocument(id);
+            const finalised = await finaliseDocument(id, {
+                requireOwnerSignature: options.requireOwnerSignature,
+            });
             setDoc(prev => prev ? { ...prev, ...finalised, status: 'FINALISED', contentHash: finalised.contentHash } : prev);
+            setShowFinaliseDialog(false);
             toast.success('Document finalised. Required signatures can now be collected.');
-            setShowSigning(true);
+            if (finalised.signatureRequests.some(request => request.requestedUserId === user?.userId)) {
+                setShowSigning(true);
+            }
         } catch (e: unknown) {
             const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to finalise document.';
             toast.error(msg);
         }
+    }
+
+    function handleFinalise() {
+        if (canFinaliseDocument) {
+            setShowFinaliseDialog(true);
+        }
+    }
+
+    function handleSignDocument() {
+        if (!doc) return;
+        if (hasSignedCurrentRequest) {
+            toast.info('Your signature is already recorded for this document.');
+            return;
+        }
+        if (!currentSignatureRequest) {
+            toast.warning('You are not currently listed as a required signer for this document.');
+            return;
+        }
+
+        setShowSigning(true);
     }
 
     function handleApplyForDigitalSignature() {
@@ -331,18 +342,25 @@ export default function EditDocumentPage() {
     const isOwner = doc.access?.isOwner ?? true;
     const isReadOnly = doc.status !== 'DRAFT' || !canEdit;
     const isLocked = doc.status === 'LOCKED';
-    const isFinalised = doc.status === 'FINALISED';
     const pendingSignatureCount = signatureRequests.filter(
         request => request.status !== 'SIGNED',
     ).length;
     const canViewSignature = isLocked && (isOwner || canSign);
+    const acceptedSignerCount = doc.collaborators.filter((collaborator) =>
+        collaborator.isActive &&
+        collaborator.invitationStatus === 'ACCEPTED' &&
+        collaborator.permissions.includes('SIGN'),
+    ).length;
+    const remainingSignerLabel = `${pendingSignatureCount} remaining signer${pendingSignatureCount === 1 ? '' : 's'}`;
     const readOnlyBannerText = !canEdit && doc.status === 'DRAFT'
         ? 'You can view this shared document, but you do not have edit permission.'
         : isLocked
             ? 'This document is permanently locked. It has been signed and cannot be modified.'
             : hasSignedCurrentRequest
-                ? `Your signature is recorded. Waiting for ${pendingSignatureCount} remaining signer${pendingSignatureCount === 1 ? '' : 's'}.`
-                : 'This document is finalised. Its content is frozen. Sign it to lock it permanently.';
+                ? `Your signature is recorded. Waiting for ${remainingSignerLabel}.`
+                : canSignDocument
+                    ? 'This document is finalised. Its content is frozen. Sign when you are ready.'
+                    : `This document is finalised. Its content is frozen. Waiting for ${remainingSignerLabel}.`;
     const readOnlyBannerClass = !canEdit && doc.status === 'DRAFT'
         ? 'readonly'
         : isLocked
@@ -396,16 +414,17 @@ export default function EditDocumentPage() {
                 }}
                 isReadOnly={isReadOnly}
                 isLocked={isLocked}
-                isFinalised={isFinalised}
                 canShare={canManageAccess}
                 canComment={canComment}
-                canUseSigningAction={canUseSigningAction}
+                canFinalise={canFinaliseDocument}
+                canSign={canSignDocument}
                 canViewSignature={canViewSignature}
                 certificateStatus={certificateStatus.status}
                 onOpenComments={() => setCommentsOpen(true)}
                 onShareActivityRecorded={handleShareActivityRecorded}
                 onApplyForDigitalSignature={handleApplyForDigitalSignature}
                 onFinalise={handleFinalise}
+                onSign={handleSignDocument}
                 onViewSignature={() => setShowSigning(true)}
             />
 
@@ -427,6 +446,13 @@ export default function EditDocumentPage() {
                 onOpenSigning={() => setShowSigning(true)}
                 onActivityRecorded={handleShareActivityRecorded}
                 onDocumentRefresh={() => setRetryKey(v => v + 1)}
+            />
+
+            <DocumentFinaliseDialog
+                acceptedSignerCount={acceptedSignerCount}
+                open={showFinaliseDialog}
+                onClose={() => setShowFinaliseDialog(false)}
+                onConfirm={submitFinalise}
             />
 
             {/* ── Paper canvas ── */}
