@@ -1918,6 +1918,12 @@ body {
   text-align: right;
 }
 
+.signing-progress__hint--summary {
+  max-width: none;
+  margin: 10px 0 0;
+  text-align: left;
+}
+
 @media (max-width: 760px) {
   .docs-finalise-dialog__summary,
   .signing-progress__summary,
