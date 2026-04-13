@@ -156,7 +156,7 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
     if (event.eventType === 'IDENTITY_VERIFICATION_REQUIRED') return `${target} must complete the invitation identity challenge before review is unlocked.`;
     if (event.eventType === 'IDENTITY_VERIFICATION_PASSED') return `${target} passed the invitation identity verification step.`;
     if (event.eventType === 'INVITE_REVOKED') return `${target}'s access was removed.`;
-    if (event.eventType === 'INVITE_ACCEPTED') return `${target} accepted the invitation.`;
+    if (event.eventType === 'INVITE_ACCEPTED') return `${target} completed the full invitation proof chain and accepted the invitation.`;
     if (event.eventType === 'INVITE_DECLINED') return `${target} declined the invitation.`;
     if (event.eventType === 'INVITE_OPENED') return `${target} opened the invitation link.`;
     if (event.eventType === 'SIGNATURE_REMINDER_FAILED') return `Signature reminder delivery failed for ${target}.`;
@@ -257,6 +257,11 @@ function getEventMetrics(event: DocumentAccessAuditEntry) {
         }
 
         return metrics;
+    }
+
+    if (event.eventType === 'INVITE_ACCEPTED') {
+        const acceptedAt = getStringMetadata(event, 'acceptedAt');
+        return acceptedAt ? [`Accepted ${formatDate(acceptedAt)}`] : [];
     }
 
     return [];
