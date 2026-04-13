@@ -155,6 +155,12 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
     if (event.eventType === 'INVITE_EMAIL_OTP_PASSED') return `${target} passed the invitation email verification step.`;
     if (event.eventType === 'IDENTITY_VERIFICATION_REQUIRED') return `${target} must complete the invitation identity challenge before review is unlocked.`;
     if (event.eventType === 'IDENTITY_VERIFICATION_PASSED') return `${target} passed the invitation identity verification step.`;
+    if (event.eventType === 'IDENTITY_VERIFICATION_FAILED') {
+        const failReason = getStringMetadata(event, 'failReason');
+        return failReason
+            ? `${target} failed the invitation identity verification step: ${failReason}`
+            : `${target} failed the invitation identity verification step.`;
+    }
     if (event.eventType === 'INVITE_REVOKED') return `${target}'s access was removed.`;
     if (event.eventType === 'INVITE_ACCEPTED') return `${target} completed the full invitation proof chain and accepted the invitation.`;
     if (event.eventType === 'INVITE_DECLINED') return `${target} declined the invitation.`;
@@ -250,6 +256,36 @@ function getEventMetrics(event: DocumentAccessAuditEntry) {
 
         if (verifiedAt) {
             metrics.push(`Passed ${formatDate(verifiedAt)}`);
+        }
+
+        if (attemptId) {
+            metrics.push(`Attempt ${attemptId.slice(0, 8)}`);
+        }
+
+        return metrics;
+    }
+
+    if (event.eventType === 'IDENTITY_VERIFICATION_FAILED') {
+        const challengeStartedAt = getStringMetadata(
+            event,
+            'identityChallengeStartedAt',
+        );
+        const failedAt = getStringMetadata(
+            event,
+            'identityVerificationFailedAt',
+        );
+        const attemptId = getStringMetadata(
+            event,
+            'identityVerificationAttemptId',
+        );
+        const metrics: string[] = [];
+
+        if (challengeStartedAt) {
+            metrics.push(`Challenge ${formatDate(challengeStartedAt)}`);
+        }
+
+        if (failedAt) {
+            metrics.push(`Failed ${formatDate(failedAt)}`);
         }
 
         if (attemptId) {
