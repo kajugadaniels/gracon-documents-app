@@ -47,6 +47,7 @@ interface DocEditorHeaderProps {
     canShare: boolean;
     canComment?: boolean;
     canFinalise: boolean;
+    canLock: boolean;
     canSign: boolean;
     canViewSignature: boolean;
     certificateStatus: DigitalCertificateActionStatus;
@@ -54,6 +55,7 @@ interface DocEditorHeaderProps {
     onShareActivityRecorded: () => void;
     onApplyForDigitalSignature: () => void;
     onFinalise: () => void;
+    onLock: () => void;
     onSign: () => void;
     onViewSignature: () => void;
 }
@@ -63,9 +65,9 @@ export function DocEditorHeader({
     editor, doc, shareActivityRefreshKey, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
     isReadOnly, isLocked, canShare, canComment = false,
-    canFinalise, canSign, canViewSignature,
+    canFinalise, canLock, canSign, canViewSignature,
     certificateStatus, onOpenComments, onShareActivityRecorded,
-    onApplyForDigitalSignature, onFinalise, onSign, onViewSignature,
+    onApplyForDigitalSignature, onFinalise, onLock, onSign, onViewSignature,
 }: DocEditorHeaderProps) {
     const [shareOpen, setShareOpen] = useState(false);
     const [findOpen,  setFindOpen]  = useState(false);
@@ -176,13 +178,15 @@ export function DocEditorHeader({
                         <HugeiconsIcon icon={Comment01Icon} size={17} />
                     </button>
 
-                    {!isLocked && (canFinalise || canSign) && (
+                    {!isLocked && (canFinalise || canLock || canSign) && (
                         <DocEditorSignatureAction
                             certificateStatus={certificateStatus}
                             canFinalise={canFinalise}
+                            canLock={canLock}
                             canSign={canSign}
                             onApplyForDigitalSignature={onApplyForDigitalSignature}
                             onFinalise={onFinalise}
+                            onLock={onLock}
                             onSign={onSign}
                         />
                     )}
