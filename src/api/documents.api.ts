@@ -27,7 +27,9 @@ export type DocumentAccessAuditEvent =
     | 'PERMISSIONS_UPDATED'
     | 'COMMENT_CREATED'
     | 'COMMENT_REPLIED'
-    | 'COMMENT_RESOLVED';
+    | 'COMMENT_RESOLVED'
+    | 'SIGNATURE_REMINDER_SENT'
+    | 'SIGNATURE_REMINDER_FAILED';
 export type CollaboratorPermission =
     | 'READ'
     | 'COMMENT'
