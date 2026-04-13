@@ -147,10 +147,14 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
     }
 
     if (event.eventType === 'INVITE_CREATED') return `${target} was invited.`;
+    if (event.eventType === 'AUTH_REQUIRED') return `${target} must sign in with the invited account before reviewing the invitation.`;
+    if (event.eventType === 'LOGIN_COMPLETED') return `${target} signed in with the invited account.`;
     if (event.eventType === 'INVITE_EMAIL_OTP_REQUIRED') return `${target} must verify their email before reviewing the invitation.`;
     if (event.eventType === 'INVITE_EMAIL_OTP_SENT') return `Invitation verification code sent to ${target}.`;
     if (event.eventType === 'INVITE_EMAIL_OTP_FAILED') return `Invitation email verification failed for ${target}.`;
     if (event.eventType === 'INVITE_EMAIL_OTP_PASSED') return `${target} passed the invitation email verification step.`;
+    if (event.eventType === 'IDENTITY_VERIFICATION_REQUIRED') return `${target} must complete the invitation identity challenge before review is unlocked.`;
+    if (event.eventType === 'IDENTITY_VERIFICATION_PASSED') return `${target} passed the invitation identity verification step.`;
     if (event.eventType === 'INVITE_REVOKED') return `${target}'s access was removed.`;
     if (event.eventType === 'INVITE_ACCEPTED') return `${target} accepted the invitation.`;
     if (event.eventType === 'INVITE_DECLINED') return `${target} declined the invitation.`;
@@ -199,6 +203,57 @@ function getEventMetrics(event: DocumentAccessAuditEntry) {
 
         if (lockedAt) {
             metrics.push(`Locked ${formatDate(lockedAt)}`);
+        }
+
+        return metrics;
+    }
+
+    if (event.eventType === 'INVITE_EMAIL_OTP_SENT') {
+        const sentAt = getStringMetadata(event, 'emailOtpSentAt');
+        const expiresAt = getStringMetadata(event, 'emailOtpExpiresAt');
+        const metrics: string[] = [];
+
+        if (sentAt) {
+            metrics.push(`Sent ${formatDate(sentAt)}`);
+        }
+
+        if (expiresAt) {
+            metrics.push(`Expires ${formatDate(expiresAt)}`);
+        }
+
+        return metrics;
+    }
+
+    if (event.eventType === 'INVITE_EMAIL_OTP_PASSED') {
+        const verifiedAt = getStringMetadata(event, 'emailOtpVerifiedAt');
+        return verifiedAt ? [`Passed ${formatDate(verifiedAt)}`] : [];
+    }
+
+    if (
+        event.eventType === 'IDENTITY_VERIFICATION_REQUIRED' ||
+        event.eventType === 'IDENTITY_VERIFICATION_PASSED'
+    ) {
+        const challengeStartedAt = getStringMetadata(
+            event,
+            'identityChallengeStartedAt',
+        );
+        const verifiedAt = getStringMetadata(event, 'identityVerifiedAt');
+        const attemptId = getStringMetadata(
+            event,
+            'identityVerificationAttemptId',
+        );
+        const metrics: string[] = [];
+
+        if (challengeStartedAt) {
+            metrics.push(`Challenge ${formatDate(challengeStartedAt)}`);
+        }
+
+        if (verifiedAt) {
+            metrics.push(`Passed ${formatDate(verifiedAt)}`);
+        }
+
+        if (attemptId) {
+            metrics.push(`Attempt ${attemptId.slice(0, 8)}`);
         }
 
         return metrics;
