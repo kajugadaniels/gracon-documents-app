@@ -11,6 +11,10 @@ import { PremiumLoader } from '@/components/ui';
 const DOCUMENT_ID_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function formatDateTime(value: string | undefined) {
+    return value ? new Date(value).toLocaleString() : undefined;
+}
+
 export function VerifyForm() {
     const searchParams = useSearchParams();
     const [documentId, setDocumentId] = useState('');
@@ -247,15 +251,11 @@ export function VerifyForm() {
                                 { label: 'Signed by', value: result.signedBy?.name },
                                 {
                                     label: 'Signed at',
-                                    value: result.signedAt
-                                        ? new Date(result.signedAt).toLocaleString()
-                                        : undefined,
+                                    value: formatDateTime(result.signedAt),
                                 },
                                 {
                                     label: 'Locked at',
-                                    value: result.lockedAt
-                                        ? new Date(result.lockedAt).toLocaleString()
-                                        : undefined,
+                                    value: formatDateTime(result.lockedAt),
                                 },
                             ]
                                 .filter(
@@ -329,6 +329,134 @@ export function VerifyForm() {
                                     >
                                         {result.contentHash}
                                     </p>
+                                </div>
+                            )}
+
+                            {result.signers && result.signers.length > 0 && (
+                                <div
+                                    style={{
+                                        marginTop: 16,
+                                        display: 'grid',
+                                        gap: 10,
+                                    }}
+                                >
+                                    <div>
+                                        <p
+                                            style={{
+                                                margin: '0 0 4px',
+                                                fontSize: 11,
+                                                color: 'var(--color-text-muted)',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.06em',
+                                            }}
+                                        >
+                                            Signing order
+                                        </p>
+                                        <p
+                                            style={{
+                                                margin: 0,
+                                                fontSize: 12,
+                                                color: 'var(--color-success)',
+                                                opacity: 0.85,
+                                            }}
+                                        >
+                                            {result.signers.length} completed signature{result.signers.length === 1 ? '' : 's'}
+                                        </p>
+                                    </div>
+
+                                    {result.signers.map((signer) => (
+                                        <div
+                                            key={`${signer.signingOrder}-${signer.email}`}
+                                            style={{
+                                                display: 'grid',
+                                                gap: 4,
+                                                padding: '10px 12px',
+                                                background: 'rgba(52,211,153,0.08)',
+                                                border: '1px solid rgba(52,211,153,0.16)',
+                                                borderRadius: 10,
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    gap: 12,
+                                                    flexWrap: 'wrap',
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 8,
+                                                        flexWrap: 'wrap',
+                                                    }}
+                                                >
+                                                    <span
+                                                        style={{
+                                                            minWidth: 22,
+                                                            height: 22,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            borderRadius: 999,
+                                                            background: 'rgba(52,211,153,0.18)',
+                                                            color: 'var(--color-success)',
+                                                            fontSize: 11,
+                                                            fontWeight: 800,
+                                                        }}
+                                                    >
+                                                        {signer.signingOrder}
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: 13,
+                                                            fontWeight: 700,
+                                                            color: 'var(--color-success)',
+                                                        }}
+                                                    >
+                                                        {signer.name}
+                                                    </span>
+                                                    {signer.isOwner && (
+                                                        <span
+                                                            style={{
+                                                                padding: '2px 7px',
+                                                                borderRadius: 999,
+                                                                background: 'rgba(91,35,255,0.10)',
+                                                                color: 'var(--color-primary)',
+                                                                fontSize: 9,
+                                                                fontWeight: 800,
+                                                                letterSpacing: '0.08em',
+                                                                textTransform: 'uppercase',
+                                                            }}
+                                                        >
+                                                            Owner
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <span
+                                                    style={{
+                                                        fontSize: 11,
+                                                        color: 'var(--color-text-muted)',
+                                                    }}
+                                                >
+                                                    {formatDateTime(signer.signedAt)}
+                                                </span>
+                                            </div>
+
+                                            <div
+                                                style={{
+                                                    fontSize: 12,
+                                                    color: 'var(--color-text-secondary)',
+                                                    wordBreak: 'break-word',
+                                                }}
+                                            >
+                                                {signer.email}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
