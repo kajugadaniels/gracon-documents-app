@@ -69,6 +69,10 @@ export function InvitationAcceptanceView({ token }: Props) {
     const [preview, setPreview] = useState<InvitationPreview | null>(null);
     const [review, setReview] = useState<InvitationReview | null>(null);
     const [gateStatus, setGateStatus] = useState<InvitationGateStatus | null>(null);
+    const [acceptedState, setAcceptedState] = useState<{
+        documentId: string;
+        acceptedAt: string;
+    } | null>(null);
     const [loadingPreview, setLoadingPreview] = useState(true);
     const [loadingGate, setLoadingGate] = useState(false);
     const [loadingReview, setLoadingReview] = useState(false);
@@ -193,13 +197,28 @@ export function InvitationAcceptanceView({ token }: Props) {
         };
     }, [gateStatus?.nextStep, hasSession, token]);
 
+    useEffect(() => {
+        if (!acceptedState) return;
+
+        const timeoutId = window.setTimeout(() => {
+            router.replace(`/documents/${acceptedState.documentId}/edit`);
+        }, 1200);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [acceptedState, router]);
+
     async function handleAccept() {
         setSubmitting('accept');
         setReviewError(null);
 
         try {
             const response = await acceptInvitation(token);
-            router.replace(`/documents/${response.document.id}/edit`);
+            setAcceptedState({
+                documentId: response.document.id,
+                acceptedAt: response.acceptedAt,
+            });
         } catch (error) {
             setReviewError(
                 getApiMessage(
@@ -513,6 +532,51 @@ export function InvitationAcceptanceView({ token }: Props) {
                                         </div>
                                     ) : review ? (
                                         <>
+                                            {acceptedState && (
+                                                <div
+                                                    style={{
+                                                        borderRadius: 18,
+                                                        border: '1px solid rgba(55, 141, 82, 0.18)',
+                                                        padding: 18,
+                                                        background: 'rgba(240, 255, 244, 0.92)',
+                                                        marginBottom: 16,
+                                                    }}
+                                                >
+                                                    <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                                        Invitation accepted
+                                                    </p>
+                                                    <p
+                                                        style={{
+                                                            margin: '8px 0 6px',
+                                                            fontSize: 18,
+                                                            fontWeight: 700,
+                                                            color: '#1d5f33',
+                                                        }}
+                                                    >
+                                                        Access granted
+                                                    </p>
+                                                    <p
+                                                        style={{
+                                                            margin: 0,
+                                                            fontSize: 14,
+                                                            lineHeight: 1.7,
+                                                            color: 'var(--color-text-primary)',
+                                                        }}
+                                                    >
+                                                        The full proof chain is complete. Redirecting you to the document workspace.
+                                                    </p>
+                                                    <p
+                                                        style={{
+                                                            margin: '10px 0 0',
+                                                            fontSize: 13,
+                                                            color: 'var(--color-text-secondary)',
+                                                        }}
+                                                    >
+                                                        Accepted {formatDate(acceptedState.acceptedAt)}
+                                                    </p>
+                                                </div>
+                                            )}
+
                                             <div
                                                 style={{
                                                     borderRadius: 18,
@@ -626,6 +690,7 @@ export function InvitationAcceptanceView({ token }: Props) {
                                                     onClick={handleDecline}
                                                     loading={submitting === 'decline'}
                                                     loadingText="Declining..."
+                                                    disabled={Boolean(acceptedState)}
                                                 >
                                                     Decline
                                                 </Button>
@@ -633,6 +698,7 @@ export function InvitationAcceptanceView({ token }: Props) {
                                                     onClick={handleAccept}
                                                     loading={submitting === 'accept'}
                                                     loadingText="Accepting..."
+                                                    disabled={Boolean(acceptedState)}
                                                 >
                                                     Accept invitation
                                                 </Button>
