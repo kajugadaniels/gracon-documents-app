@@ -30,6 +30,7 @@ interface DocumentSigningProgressPanelProps {
     currentUserId: string | null;
     canManageAccess: boolean;
     onOpenSigning: () => void;
+    onActivityRecorded: () => void;
     onDocumentRefresh: () => void;
 }
 
@@ -84,6 +85,7 @@ export function DocumentSigningProgressPanel({
     currentUserId,
     canManageAccess,
     onOpenSigning,
+    onActivityRecorded,
     onDocumentRefresh,
 }: DocumentSigningProgressPanelProps) {
     const [busyId, setBusyId] = useState<string | null>(null);
@@ -152,6 +154,7 @@ export function DocumentSigningProgressPanel({
                 [request.id]: nextReminderAt,
             }));
             setNow(Date.now());
+            onActivityRecorded();
             toast.success('Signature reminder sent.', {
                 description: `You can send another after ${formatReminderTime(nextReminderAt)}.`,
             });
@@ -170,6 +173,7 @@ export function DocumentSigningProgressPanel({
                 return;
             }
 
+            onActivityRecorded();
             toast.error(getApiErrorMessage(error, 'Unable to send reminder.'));
         } finally {
             setBusyId(null);
@@ -180,6 +184,7 @@ export function DocumentSigningProgressPanel({
         setBusyId(`${access.id}:invite`);
         try {
             const response = await resendDocumentInvitation(document.id, access.id);
+            onActivityRecorded();
             toast[response.emailStatus === 'failed' ? 'error' : 'success'](
                 response.emailStatus === 'failed'
                     ? 'Invitation refreshed, but email delivery failed.'
