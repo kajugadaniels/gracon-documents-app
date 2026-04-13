@@ -34,6 +34,7 @@ import { useEditorActions } from './use-editor-actions';
 interface DocEditorHeaderProps {
     editor: Editor | null;
     doc: DocumentDetail;
+    shareActivityRefreshKey: number;
     saveStatus: 'idle' | 'saving' | 'saved' | 'error';
     editingTitle: boolean;
     title: string;
@@ -50,6 +51,7 @@ interface DocEditorHeaderProps {
     canViewSignature: boolean;
     certificateStatus: DigitalCertificateActionStatus;
     onOpenComments?: () => void;
+    onShareActivityRecorded: () => void;
     onApplyForDigitalSignature: () => void;
     onFinalise: () => void;
     onViewSignature: () => void;
@@ -57,11 +59,12 @@ interface DocEditorHeaderProps {
 
 /** Full Google Docs-style two-row sticky header for the document editor. */
 export function DocEditorHeader({
-    editor, doc, saveStatus, editingTitle, title,
+    editor, doc, shareActivityRefreshKey, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
     isReadOnly, isLocked, isFinalised, canShare, canComment = false,
     canUseSigningAction, canViewSignature,
-    certificateStatus, onOpenComments, onApplyForDigitalSignature, onFinalise, onViewSignature,
+    certificateStatus, onOpenComments, onShareActivityRecorded,
+    onApplyForDigitalSignature, onFinalise, onViewSignature,
 }: DocEditorHeaderProps) {
     const [shareOpen, setShareOpen] = useState(false);
     const [findOpen,  setFindOpen]  = useState(false);
@@ -215,6 +218,8 @@ export function DocEditorHeader({
                     documentId={doc.id}
                     docTitle={doc.title}
                     canGrantManageAccess={doc.access?.isOwner ?? true}
+                    activityRefreshKey={shareActivityRefreshKey}
+                    onActivityRecorded={onShareActivityRecorded}
                     onClose={() => setShareOpen(false)}
                 />
             )}
