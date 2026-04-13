@@ -38,6 +38,8 @@ const EVENT_LABELS: Record<DocumentAccessAuditEvent, string> = {
     COMMENT_CREATED: 'Comment added',
     COMMENT_REPLIED: 'Comment replied',
     COMMENT_RESOLVED: 'Comment resolved',
+    DOCUMENT_SIGNED: 'Document signed',
+    DOCUMENT_LOCKED: 'Document locked',
     SIGNATURE_REMINDER_SENT: 'Signature reminder sent',
     SIGNATURE_REMINDER_FAILED: 'Signature reminder failed',
 };
@@ -96,6 +98,30 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
         return `${actor} resolved a comment from ${target}.`;
     }
 
+    if (event.eventType === 'DOCUMENT_SIGNED') {
+        const order = typeof event.metadata?.signingOrder === 'number'
+            ? ` (#${event.metadata.signingOrder})`
+            : '';
+        const pending = typeof event.metadata?.pendingSignatureCount === 'number'
+            ? event.metadata.pendingSignatureCount
+            : null;
+        const pendingText = pending === null
+            ? ''
+            : pending === 0
+                ? ' All required signatures are complete.'
+                : ` ${pending} signer${pending === 1 ? '' : 's'} still pending.`;
+        return `${actor} completed their signature${order}.${pendingText}`;
+    }
+
+    if (event.eventType === 'DOCUMENT_LOCKED') {
+        const completed = typeof event.metadata?.completedSignatureCount === 'number'
+            ? event.metadata.completedSignatureCount
+            : null;
+        return completed === null
+            ? `${actor} locked the document.`
+            : `${actor} locked the document after ${completed} completed signature${completed === 1 ? '' : 's'}.`;
+    }
+
     if (event.eventType === 'INVITE_CREATED' && event.metadata?.resent) {
         return `New invitation token issued for ${target}.`;
     }
@@ -123,6 +149,8 @@ function getTone(eventType: DocumentAccessAuditEvent) {
         eventType === 'INVITE_ACCEPTED' ||
         eventType === 'IDENTITY_VERIFICATION_PASSED' ||
         eventType === 'COMMENT_RESOLVED' ||
+        eventType === 'DOCUMENT_SIGNED' ||
+        eventType === 'DOCUMENT_LOCKED' ||
         eventType === 'SIGNATURE_REMINDER_SENT'
     ) return 'success';
     if (eventType === 'INVITE_REVOKED' || eventType === 'INVITE_DECLINED') return 'muted';
