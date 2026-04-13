@@ -12,7 +12,11 @@ import {
     type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { toDataURL } from 'qrcode';
-import { updateSignatureLayout, type DocumentSignatureSnapshot } from '@/api/documents.api';
+import {
+    updateSignatureLayout,
+    type DocumentCompletedSignature,
+    type DocumentSignatureSnapshot,
+} from '@/api/documents.api';
 import { toast } from '@/components/ui';
 import { DOCS_URL } from '@/lib/session';
 import { SignatureStripCard } from './SignatureStripCard';
@@ -31,6 +35,7 @@ interface DocumentSignatureBlockProps {
     documentId: string;
     documentTitle: string;
     snapshot: DocumentSignatureSnapshot | null;
+    completedSignatures: DocumentCompletedSignature[];
     canAdjustPlacement?: boolean;
     onSnapshotUpdated?: (snapshot: DocumentSignatureSnapshot | null) => void;
 }
@@ -42,12 +47,13 @@ export function DocumentSignatureBlock({
     documentId,
     documentTitle,
     snapshot,
+    completedSignatures,
     canAdjustPlacement = false,
     onSnapshotUpdated,
 }: DocumentSignatureBlockProps) {
     const persistedPosition = useMemo(
         () => getPersistedPosition(snapshot),
-        [snapshot?.x, snapshot?.y],
+        [snapshot],
     );
     const [constraints, setConstraints] = useState<Constraints>(DEFAULT_CONSTRAINTS);
     const [position, setPosition] = useState<Position>(persistedPosition);
@@ -237,6 +243,7 @@ export function DocumentSignatureBlock({
                 <SignatureStripCard
                     documentTitle={documentTitle}
                     signatureImageUrl={snapshot?.imageUrl ?? null}
+                    completedSignatures={completedSignatures}
                     qrCodeUrl={qrCodeUrl}
                     canAdjustPlacement={canAdjustPlacement}
                     dragging={dragging}
