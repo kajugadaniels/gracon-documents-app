@@ -1,5 +1,5 @@
 /**
- * Modal that signs a finalised document hash and locks the document record.
+ * Modal that signs a finalised document hash and records the user's signature.
  *
  * It performs its own certificate check as a defensive fallback because header
  * gating is only a UX layer; the signature service remains the source of truth.
@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from '@/components/ui';
-import { lockDocument, type DocumentDetail } from '@/api/documents.api';
+import { signDocument, type DocumentDetail } from '@/api/documents.api';
 import {
     getDigitalCertificateStatus,
     type DigitalCertificateStatus,
@@ -18,12 +18,12 @@ import { getDigitalCertificateUrl } from '@/lib/session';
 interface SigningModalProps {
     document: DocumentDetail;
     onClose: () => void;
-    onLocked: (updated: Partial<DocumentDetail>) => void;
+    onSigned: (updated: Partial<DocumentDetail>) => void;
 }
 
 type Step = 'review' | 'signing' | 'done';
 
-export function SigningModal({ document: doc, onClose, onLocked }: SigningModalProps) {
+export function SigningModal({ document: doc, onClose, onSigned }: SigningModalProps) {
     const [step, setStep] = useState<Step>('review');
     const [certificateStatus, setCertificateStatus] =
         useState<DigitalCertificateStatus | 'checking'>('checking');
@@ -86,9 +86,8 @@ export function SigningModal({ document: doc, onClose, onLocked }: SigningModalP
             const data: { signatureId: string; signatureBytes: string } = await res.json();
             setSignatureBytes(data.signatureBytes);
 
-            // Now lock the document in api/documents/
-            const locked = await lockDocument(doc.id, data.signatureId, doc.contentHash);
-            onLocked(locked);
+            const signed = await signDocument(doc.id, data.signatureId, doc.contentHash);
+            onSigned(signed);
             setStep('done');
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Signing failed. Ensure your certificate is active in the Profile app.';
@@ -115,7 +114,7 @@ export function SigningModal({ document: doc, onClose, onLocked }: SigningModalP
                         </h2>
                         <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
                             {doc.status === 'FINALISED'
-                                ? 'By signing, you confirm this document is accurate and complete. This action is irreversible.'
+                                ? 'By signing, you confirm this document is accurate and complete. Your signature will be recorded against the frozen document.'
                                 : 'This document has already been signed and locked.'}
                         </p>
 
@@ -174,9 +173,9 @@ export function SigningModal({ document: doc, onClose, onLocked }: SigningModalP
                     <>
                         <div style={{ textAlign: 'center', marginBottom: 24 }}>
                             <div style={{ fontSize: 48, marginBottom: 12 }}>🔐</div>
-                            <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)' }}>Document Signed & Locked</h2>
+                            <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)' }}>Signature Recorded</h2>
                             <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                                Your document has been cryptographically signed and is now permanently locked. No further changes can be made.
+                                Your document has been cryptographically signed. The owner can lock it once all required signatures are complete.
                             </p>
                         </div>
 
