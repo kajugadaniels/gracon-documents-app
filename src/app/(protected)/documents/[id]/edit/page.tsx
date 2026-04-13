@@ -401,6 +401,7 @@ export default function EditDocumentPage() {
             documentId={doc.id}
             documentTitle={doc.title}
             snapshot={doc.signatureSnapshot}
+            completedSignatures={doc.completedSignatures}
             canAdjustPlacement={isLocked}
             onSnapshotUpdated={(signatureSnapshot) => {
                 setDoc(prev => prev ? { ...prev, signatureSnapshot } : prev);
