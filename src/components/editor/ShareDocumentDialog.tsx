@@ -241,7 +241,7 @@ export function ShareDocumentDialog({
                 setExistingAccess(map);
             })
             .catch(() => { /* silent — badge is cosmetic; API rejects duplicates anyway */ });
-    }, [documentId, accessRefreshKey]);
+    }, [documentId, accessRefreshKey, activityRefreshKey]);
 
     // ── Search state ──
     const [searchMode,  setSearchMode]  = useState<UserSearchMode>('email');
@@ -370,6 +370,7 @@ export function ShareDocumentDialog({
     );
     const showEmpty   = hasSearched && !loading && results.length === 0 && !searchError;
     const showResults = results.length > 0;
+    const accessListRefreshKey = accessRefreshKey + activityRefreshKey;
 
     const footerNote = activeTab === 'activity'
         ? 'Owner-only view. Sensitive network details stay server-side.'
@@ -574,7 +575,7 @@ export function ShareDocumentDialog({
                         <ShareDocumentAccessManager
                             documentId={documentId}
                             canGrantManageAccess={canGrantManageAccess}
-                            refreshKey={accessRefreshKey}
+                            refreshKey={accessListRefreshKey}
                             onCountChange={setAccessCount}
                             onActivityRecorded={onActivityRecorded}
                         />
