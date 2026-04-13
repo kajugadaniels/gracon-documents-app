@@ -1731,7 +1731,10 @@ body {
 }
 
 .signing-progress__action {
+  display: grid;
+  gap: 4px;
   justify-self: end;
+  justify-items: end;
 }
 
 .signing-progress__action button {
@@ -1763,6 +1766,15 @@ body {
   font-weight: 800;
 }
 
+.signing-progress__hint {
+  color: var(--color-text-muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  max-width: 170px;
+  text-align: right;
+}
+
 @media (max-width: 760px) {
   .signing-progress__summary,
   .signing-progress__row {
@@ -1778,6 +1790,14 @@ body {
   .signing-progress__status,
   .signing-progress__action {
     justify-self: start;
+    text-align: left;
+  }
+
+  .signing-progress__action {
+    justify-items: start;
+  }
+
+  .signing-progress__hint {
     text-align: left;
   }
 }
