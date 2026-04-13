@@ -15,12 +15,15 @@ import { Card, Button, PremiumLoader } from '@/components/ui';
 import {
     acceptInvitation,
     declineInvitation,
+    getInvitationGateStatus,
     getInvitationPreview,
     getInvitationReview,
+    type InvitationGateStatus,
     type InvitationPreview,
     type InvitationReview,
 } from '@/api/invitations.api';
-import { APP_URL, getAccessToken } from '@/lib/session';
+import { getAccessToken } from '@/lib/session';
+import { InvitationVerificationPanel } from './InvitationVerificationPanel';
 
 type Props = {
     token: string;
@@ -60,10 +63,13 @@ export function InvitationAcceptanceView({ token }: Props) {
     const router = useRouter();
     const [preview, setPreview] = useState<InvitationPreview | null>(null);
     const [review, setReview] = useState<InvitationReview | null>(null);
+    const [gateStatus, setGateStatus] = useState<InvitationGateStatus | null>(null);
     const [loadingPreview, setLoadingPreview] = useState(true);
+    const [loadingGate, setLoadingGate] = useState(false);
     const [loadingReview, setLoadingReview] = useState(false);
     const [submitting, setSubmitting] = useState<'accept' | 'decline' | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
+    const [gateError, setGateError] = useState<string | null>(null);
     const [reviewError, setReviewError] = useState<string | null>(null);
 
     const hasSession = useMemo(() => Boolean(getAccessToken()), []);
@@ -104,6 +110,48 @@ export function InvitationAcceptanceView({ token }: Props) {
 
     useEffect(() => {
         if (!hasSession) {
+            setGateStatus(null);
+            setGateError(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        async function loadGate() {
+            setLoadingGate(true);
+            setGateError(null);
+
+            try {
+                const nextGateStatus = await getInvitationGateStatus(token);
+                if (cancelled) return;
+
+                setGateStatus(nextGateStatus);
+            } catch (error) {
+                if (cancelled) return;
+                setGateError(
+                    getApiMessage(
+                        error,
+                        'Sign in with the invited verified account to review this invitation.',
+                    ),
+                );
+            } finally {
+                if (!cancelled) setLoadingGate(false);
+            }
+        }
+
+        void loadGate();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [hasSession, token]);
+
+    useEffect(() => {
+        if (!hasSession || gateStatus?.nextStep !== 'review') {
+            setReview(null);
+            if (gateStatus?.nextStep !== 'review') {
+                setLoadingReview(false);
+            }
             return;
         }
 
@@ -123,7 +171,7 @@ export function InvitationAcceptanceView({ token }: Props) {
                 setReviewError(
                     getApiMessage(
                         error,
-                        'Sign in with the invited verified account to review this invitation.',
+                        'Unable to open the invitation review right now.',
                     ),
                 );
             } finally {
@@ -138,7 +186,7 @@ export function InvitationAcceptanceView({ token }: Props) {
         return () => {
             cancelled = true;
         };
-    }, [hasSession, token]);
+    }, [gateStatus?.nextStep, hasSession, token]);
 
     async function handleAccept() {
         setSubmitting('accept');
@@ -231,7 +279,7 @@ export function InvitationAcceptanceView({ token }: Props) {
                             }}
                         >
                             The document title stays hidden until the invited verified
-                            account is authenticated.
+                            account passes the invitation verification steps.
                         </p>
                     </div>
 
@@ -379,9 +427,8 @@ export function InvitationAcceptanceView({ token }: Props) {
                                             color: 'var(--color-text-secondary)',
                                             maxWidth: 360,
                                         }}
-                                    >
-                                        Sign in with the invited verified account to reveal the
-                                        document title and respond to this invitation.
+                                        >
+                                        Sign in with the invited account to start email verification, then complete identity verification before reviewing this invitation.
                                     </p>
                                     <a href={loginHref} style={{ textDecoration: 'none' }}>
                                         <Button>Sign in to continue</Button>
@@ -389,7 +436,7 @@ export function InvitationAcceptanceView({ token }: Props) {
                                 </div>
                             ) : (
                                 <div style={{ marginTop: 24 }}>
-                                    {loadingReview ? (
+                                    {loadingGate ? (
                                         <div
                                             style={{
                                                 display: 'flex',
@@ -399,7 +446,65 @@ export function InvitationAcceptanceView({ token }: Props) {
                                             }}
                                         >
                                             <PremiumLoader color="primary" />
-                                            <span>Checking invited account…</span>
+                                            <span>Checking invitation access…</span>
+                                        </div>
+                                    ) : gateError ? (
+                                        <div
+                                            role="alert"
+                                            style={{
+                                                borderRadius: 16,
+                                                border: '1px solid rgba(199, 77, 77, 0.2)',
+                                                background: 'rgba(255, 240, 240, 0.9)',
+                                                padding: '14px 16px',
+                                                color: '#8f2d2d',
+                                                fontSize: 13,
+                                                lineHeight: 1.6,
+                                            }}
+                                        >
+                                            {gateError}
+                                        </div>
+                                    ) : gateStatus && gateStatus.nextStep !== 'review' ? (
+                                        <>
+                                            {reviewError && (
+                                                <div
+                                                    role="alert"
+                                                    style={{
+                                                        marginBottom: 16,
+                                                        borderRadius: 16,
+                                                        border: '1px solid rgba(199, 77, 77, 0.2)',
+                                                        background: 'rgba(255, 240, 240, 0.9)',
+                                                        padding: '14px 16px',
+                                                        color: '#8f2d2d',
+                                                        fontSize: 13,
+                                                        lineHeight: 1.6,
+                                                    }}
+                                                >
+                                                    {reviewError}
+                                                </div>
+                                            )}
+                                            <InvitationVerificationPanel
+                                                token={token}
+                                                gateStatus={gateStatus}
+                                                onStatusChange={(nextStatus) => {
+                                                    setGateStatus(nextStatus);
+                                                    setReview(null);
+                                                    setGateError(null);
+                                                    setReviewError(null);
+                                                }}
+                                                onError={setReviewError}
+                                            />
+                                        </>
+                                    ) : loadingReview ? (
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 12,
+                                                color: 'var(--color-text-secondary)',
+                                            }}
+                                        >
+                                            <PremiumLoader color="primary" />
+                                            <span>Opening secure invitation review…</span>
                                         </div>
                                     ) : review ? (
                                         <>
@@ -482,18 +587,7 @@ export function InvitationAcceptanceView({ token }: Props) {
                                                 lineHeight: 1.7,
                                             }}
                                         >
-                                            {reviewError ??
-                                                'Complete identity verification in the main app before accepting this invitation.'}
-                                            <div style={{ marginTop: 12 }}>
-                                                <a
-                                                    href={`${APP_URL}/verify-identity`}
-                                                    style={{ textDecoration: 'none' }}
-                                                >
-                                                    <Button variant="ghost">
-                                                        Complete verification
-                                                    </Button>
-                                                </a>
-                                            </div>
+                                            {reviewError ?? 'Unable to open the invitation review right now.'}
                                         </div>
                                     )}
                                 </div>
