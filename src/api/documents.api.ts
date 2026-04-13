@@ -301,14 +301,17 @@ export async function copyDocument(id: string): Promise<DocumentSummary> {
 
 export async function finaliseDocument(
     id: string,
-    note?: string,
+    data: {
+        note?: string;
+        requireOwnerSignature?: boolean;
+    } = {},
 ): Promise<DocumentSummary & {
     contentHash: string;
     message: string;
     signatureRequests: DocumentSignatureRequestSummary[];
     pendingSignatureCount: number;
 }> {
-    const res = await apiClient.post(`/documents/${id}/finalise`, { note });
+    const res = await apiClient.post(`/documents/${id}/finalise`, data);
     return res.data;
 }
 
