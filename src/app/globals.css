@@ -1582,6 +1582,13 @@ body {
   align-items: center;
   gap: 8px;
 }
+.ded-status-banner__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  flex: 0 0 auto;
+}
 .ded-status-banner--locked {
   background: var(--color-success-subtle);
   border-bottom: 1px solid var(--color-success-border);
@@ -1596,6 +1603,24 @@ body {
   background: rgba(91,35,255,0.07);
   border-bottom: 1px solid var(--color-border-primary);
   color: var(--color-primary);
+}
+.ded-status-banner--revoked {
+  position: relative;
+  z-index: 20;
+  background: rgba(220, 38, 38, 0.08);
+  border-bottom: 1px solid rgba(220, 38, 38, 0.18);
+  color: var(--color-error);
+  font-weight: 700;
+}
+.ded-page--access-transition {
+  position: relative;
+}
+.ded-access-transition-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: rgba(248, 250, 252, 0.52);
+  backdrop-filter: blur(2px);
 }
 
 .signing-progress {
