@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     resendDocumentInvitation,
     sendSignatureReminder,
@@ -15,6 +15,15 @@ import {
     type DocumentSignatureRequestSummary,
 } from '@/api/documents.api';
 import { toast } from '@/components/ui';
+import {
+    REMINDER_CLOCK_TICK_MS,
+    formatRemainingTime,
+    formatReminderTime,
+    getApiErrorMessage,
+    getReminderCooldownFromSentAt,
+    getReminderRetryAt,
+    isFutureTimestamp,
+} from './signature-reminder-cooldown';
 
 interface DocumentSigningProgressPanelProps {
     document: DocumentDetail;
@@ -78,11 +87,42 @@ export function DocumentSigningProgressPanel({
     onDocumentRefresh,
 }: DocumentSigningProgressPanelProps) {
     const [busyId, setBusyId] = useState<string | null>(null);
-    const [remindedIds, setRemindedIds] = useState<Record<string, string>>({});
+    const [now, setNow] = useState(() => Date.now());
+    const [reminderCooldowns, setReminderCooldowns] = useState<Record<string, string>>({});
     const collaboratorByUserId = useMemo(
         () => new Map(document.collaborators.map((access) => [access.userId, access])),
         [document.collaborators],
     );
+
+    useEffect(() => {
+        setReminderCooldowns((current) => {
+            const next = { ...current };
+
+            for (const request of document.signatureRequests) {
+                if (isFutureTimestamp(request.nextReminderAvailableAt, Date.now())) {
+                    next[request.id] = request.nextReminderAvailableAt;
+                }
+            }
+
+            return next;
+        });
+    }, [document.signatureRequests]);
+
+    useEffect(() => {
+        const hasActiveCooldown = Object.values(reminderCooldowns).some((value) =>
+            isFutureTimestamp(value, Date.now()),
+        );
+
+        if (!hasActiveCooldown) {
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            setNow(Date.now());
+        }, REMINDER_CLOCK_TICK_MS);
+
+        return () => window.clearInterval(intervalId);
+    }, [reminderCooldowns]);
 
     if (
         !canManageAccess ||
@@ -103,12 +143,34 @@ export function DocumentSigningProgressPanel({
         setBusyId(`${request.id}:remind`);
         try {
             const response = await sendSignatureReminder(document.id, request.id);
-            setRemindedIds((current) => ({ ...current, [request.id]: response.sentAt }));
-            toast.success('Signature reminder sent.');
+            const nextReminderAt =
+                response.nextReminderAvailableAt ??
+                getReminderCooldownFromSentAt(response.sentAt);
+
+            setReminderCooldowns((current) => ({
+                ...current,
+                [request.id]: nextReminderAt,
+            }));
+            setNow(Date.now());
+            toast.success('Signature reminder sent.', {
+                description: `You can send another after ${formatReminderTime(nextReminderAt)}.`,
+            });
         } catch (error: unknown) {
-            const message = (error as { response?: { data?: { message?: string } } })
-                ?.response?.data?.message;
-            toast.error(typeof message === 'string' ? message : 'Unable to send reminder.');
+            const retryAt = getReminderRetryAt(error);
+
+            if (retryAt) {
+                setReminderCooldowns((current) => ({
+                    ...current,
+                    [request.id]: retryAt,
+                }));
+                setNow(Date.now());
+                toast.warning('Reminder is cooling down.', {
+                    description: `Try again in ${formatRemainingTime(retryAt, Date.now())}.`,
+                });
+                return;
+            }
+
+            toast.error(getApiErrorMessage(error, 'Unable to send reminder.'));
         } finally {
             setBusyId(null);
         }
@@ -161,7 +223,9 @@ export function DocumentSigningProgressPanel({
                     const canResendInvite = Boolean(
                         collaborator && !isAcceptedCollaborator(collaborator) && !isSigned,
                     );
-                    const lastReminder = remindedIds[request.id] ?? null;
+                    const reminderCooldownUntil =
+                        reminderCooldowns[request.id] ?? request.nextReminderAvailableAt ?? null;
+                    const isReminderCoolingDown = isFutureTimestamp(reminderCooldownUntil, now);
 
                     return (
                         <article key={request.id} className="signing-progress__row">
@@ -191,18 +255,32 @@ export function DocumentSigningProgressPanel({
                                         {busyId === `${collaborator.id}:invite` ? 'Sending...' : 'Resend invite'}
                                     </button>
                                 ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => void handleReminder(request)}
-                                        disabled={Boolean(lastReminder) || busyId === `${request.id}:remind`}
-                                        title={lastReminder ? `Reminder sent ${formatDate(lastReminder)}` : undefined}
-                                    >
-                                        {busyId === `${request.id}:remind`
-                                            ? 'Sending...'
-                                            : lastReminder
-                                                ? 'Reminder sent'
-                                                : 'Send reminder'}
-                                    </button>
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleReminder(request)}
+                                            disabled={
+                                                isReminderCoolingDown ||
+                                                busyId === `${request.id}:remind`
+                                            }
+                                            title={
+                                                isReminderCoolingDown && reminderCooldownUntil
+                                                    ? `Try again after ${formatReminderTime(reminderCooldownUntil)}`
+                                                    : undefined
+                                            }
+                                        >
+                                            {busyId === `${request.id}:remind`
+                                                ? 'Sending...'
+                                                : isReminderCoolingDown && reminderCooldownUntil
+                                                    ? `Try in ${formatRemainingTime(reminderCooldownUntil, now)}`
+                                                    : 'Send reminder'}
+                                        </button>
+                                        {isReminderCoolingDown && reminderCooldownUntil ? (
+                                            <span className="signing-progress__hint">
+                                                Available {formatReminderTime(reminderCooldownUntil)}
+                                            </span>
+                                        ) : null}
+                                    </>
                                 )}
                             </div>
                         </article>
