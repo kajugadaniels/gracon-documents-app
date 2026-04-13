@@ -175,6 +175,7 @@ export interface DocumentSignatureRequestSummary {
     signedAt: string | null;
     createdAt: string;
     updatedAt: string;
+    nextReminderAvailableAt?: string | null;
     requestedUser?: {
         id: string;
         email: string;
@@ -424,7 +425,12 @@ export async function resendDocumentInvitation(
 export async function sendSignatureReminder(
     id: string,
     requestId: string,
-): Promise<{ sent: boolean; requestId: string; sentAt: string }> {
+): Promise<{
+    sent: boolean;
+    requestId: string;
+    sentAt: string;
+    nextReminderAvailableAt: string;
+}> {
     const res = await apiClient.post(`/documents/${id}/signature-requests/${requestId}/remind`);
     return res.data;
 }
