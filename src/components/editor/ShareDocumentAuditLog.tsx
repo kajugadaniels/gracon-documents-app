@@ -25,6 +25,10 @@ const EVENT_LABELS: Record<DocumentAccessAuditEvent, string> = {
     INVITE_EMAIL_QUEUED: 'Email queued',
     INVITE_EMAIL_SENT: 'Email sent',
     INVITE_EMAIL_FAILED: 'Email failed',
+    INVITE_EMAIL_OTP_REQUIRED: 'Email OTP required',
+    INVITE_EMAIL_OTP_SENT: 'Email OTP sent',
+    INVITE_EMAIL_OTP_FAILED: 'Email OTP failed',
+    INVITE_EMAIL_OTP_PASSED: 'Email OTP passed',
     INVITE_OPENED: 'Invitation opened',
     AUTH_REQUIRED: 'Authentication required',
     LOGIN_COMPLETED: 'Login completed',
@@ -143,6 +147,10 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
     }
 
     if (event.eventType === 'INVITE_CREATED') return `${target} was invited.`;
+    if (event.eventType === 'INVITE_EMAIL_OTP_REQUIRED') return `${target} must verify their email before reviewing the invitation.`;
+    if (event.eventType === 'INVITE_EMAIL_OTP_SENT') return `Invitation verification code sent to ${target}.`;
+    if (event.eventType === 'INVITE_EMAIL_OTP_FAILED') return `Invitation email verification failed for ${target}.`;
+    if (event.eventType === 'INVITE_EMAIL_OTP_PASSED') return `${target} passed the invitation email verification step.`;
     if (event.eventType === 'INVITE_REVOKED') return `${target}'s access was removed.`;
     if (event.eventType === 'INVITE_ACCEPTED') return `${target} accepted the invitation.`;
     if (event.eventType === 'INVITE_DECLINED') return `${target} declined the invitation.`;
@@ -202,18 +210,24 @@ function getEventMetrics(event: DocumentAccessAuditEntry) {
 function getTone(eventType: DocumentAccessAuditEvent) {
     if (
         eventType === 'INVITE_EMAIL_FAILED' ||
+        eventType === 'INVITE_EMAIL_OTP_FAILED' ||
         eventType === 'IDENTITY_VERIFICATION_FAILED' ||
         eventType === 'SIGNATURE_REMINDER_FAILED'
     ) return 'danger';
     if (
         eventType === 'INVITE_ACCEPTED' ||
+        eventType === 'INVITE_EMAIL_OTP_PASSED' ||
         eventType === 'IDENTITY_VERIFICATION_PASSED' ||
         eventType === 'COMMENT_RESOLVED' ||
         eventType === 'DOCUMENT_SIGNED' ||
         eventType === 'DOCUMENT_LOCKED' ||
         eventType === 'SIGNATURE_REMINDER_SENT'
     ) return 'success';
-    if (eventType === 'INVITE_REVOKED' || eventType === 'INVITE_DECLINED') return 'muted';
+    if (
+        eventType === 'INVITE_REVOKED' ||
+        eventType === 'INVITE_DECLINED' ||
+        eventType === 'INVITE_EMAIL_OTP_REQUIRED'
+    ) return 'muted';
     return 'default';
 }
 
