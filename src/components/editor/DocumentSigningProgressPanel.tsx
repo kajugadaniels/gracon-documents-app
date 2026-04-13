@@ -129,7 +129,9 @@ export function DocumentSigningProgressPanel({
     if (
         !canManageAccess ||
         document.signatureRequests.length === 0 ||
-        (document.status !== 'FINALISED' && document.status !== 'LOCKED')
+        (document.status !== 'FINALISED' &&
+            document.status !== 'SIGNED' &&
+            document.status !== 'LOCKED')
     ) {
         return null;
     }
@@ -140,6 +142,7 @@ export function DocumentSigningProgressPanel({
     const totalCount = document.signatureRequests.length;
     const pendingCount = totalCount - signedCount;
     const progress = Math.round((signedCount / totalCount) * 100);
+    const isOwner = document.access?.isOwner ?? true;
 
     async function handleReminder(request: DocumentSignatureRequestSummary) {
         setBusyId(`${request.id}:remind`);
@@ -218,6 +221,16 @@ export function DocumentSigningProgressPanel({
                     </div>
                 </div>
             </div>
+
+            {pendingCount === 0 ? (
+                <p className="signing-progress__hint signing-progress__hint--summary">
+                    {document.status === 'LOCKED'
+                        ? 'This document is locked and immutable.'
+                        : isOwner
+                            ? 'All required signatures are complete. You can lock the document now.'
+                            : 'All required signatures are complete. Waiting for the owner to lock the document.'}
+                </p>
+            ) : null}
 
             <div className="signing-progress__list">
                 {document.signatureRequests.map((request) => {
