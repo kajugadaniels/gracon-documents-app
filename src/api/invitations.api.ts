@@ -125,7 +125,12 @@ export async function verifyInvitationEmailOtp(
 
 export async function acceptInvitation(
     token: string,
-): Promise<{ accepted: boolean; document: { id: string; title: string }; permissions: string[] }> {
+): Promise<{
+    accepted: boolean;
+    document: { id: string; title: string };
+    permissions: string[];
+    acceptedAt: string;
+}> {
     const res = await apiClient.post(
         `/documents/invitations/${encodeURIComponent(token)}/accept`,
     );
