@@ -166,6 +166,19 @@ export interface DocumentSignatureSnapshot {
     lockedAt: string | null;
 }
 
+export interface DocumentCompletedSignature {
+    signatureId: string;
+    certificateId: string | null;
+    signerId: string;
+    signerName: string;
+    signerEmail: string;
+    imageUrl: string | null;
+    mimeType: string | null;
+    sizeBytes: number | null;
+    signedAt: string;
+    isOwner: boolean;
+}
+
 export interface DocumentSignatureRequestSummary {
     id: string;
     requestedById: string;
@@ -191,6 +204,7 @@ export interface DocumentDetail extends DocumentSummary {
     contentHash: string | null;
     collaborators: DocumentCollaboratorAccess[];
     signatureSnapshot: DocumentSignatureSnapshot | null;
+    completedSignatures: DocumentCompletedSignature[];
     signatureRequests: DocumentSignatureRequestSummary[];
     pendingSignatureCount?: number;
 }
@@ -308,6 +322,7 @@ export async function finaliseDocument(
 ): Promise<DocumentSummary & {
     contentHash: string;
     message: string;
+    completedSignatures: DocumentCompletedSignature[];
     signatureRequests: DocumentSignatureRequestSummary[];
     pendingSignatureCount: number;
 }> {
@@ -322,6 +337,7 @@ export async function signDocument(
 ): Promise<DocumentSummary & {
     signatureId: string;
     message: string;
+    completedSignatures: DocumentCompletedSignature[];
     signatureSnapshot: DocumentSignatureSnapshot | null;
     signatureRequests: DocumentSignatureRequestSummary[];
     pendingSignatureCount: number;
@@ -334,6 +350,7 @@ export async function lockDocument(
     id: string,
 ): Promise<DocumentSummary & {
     message: string;
+    completedSignatures: DocumentCompletedSignature[];
     signatureSnapshot: DocumentSignatureSnapshot | null;
     signatureRequests: DocumentSignatureRequestSummary[];
     pendingSignatureCount: number;
