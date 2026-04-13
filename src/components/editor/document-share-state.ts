@@ -19,6 +19,7 @@ export function mergeDocumentShareState(
         signatureRequests: incoming.signatureRequests,
         pendingSignatureCount: incoming.pendingSignatureCount,
         signatureSnapshot: incoming.signatureSnapshot,
+        completedSignatures: incoming.completedSignatures,
         status: incoming.status,
         signedAt: incoming.signedAt,
         lockedAt: incoming.lockedAt,
