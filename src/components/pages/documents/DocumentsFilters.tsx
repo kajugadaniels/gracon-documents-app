@@ -13,7 +13,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { StarIcon, SortingIcon } from '@hugeicons/core-free-icons';
 import type { DocumentListScope, DocumentStatus } from '@/api/documents.api';
 
-export const STATUS_FILTER_TABS = [null, 'DRAFT', 'FINALISED', 'LOCKED'] as const;
+export const STATUS_FILTER_TABS = [null, 'DRAFT', 'FINALISED', 'SIGNED', 'LOCKED'] as const;
 export type StatusFilter = DocumentStatus | null;
 
 export const ACCESS_SCOPE_TABS: { value: DocumentListScope; label: string }[] = [
