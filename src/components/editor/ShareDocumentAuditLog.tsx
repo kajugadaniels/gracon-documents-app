@@ -38,6 +38,8 @@ const EVENT_LABELS: Record<DocumentAccessAuditEvent, string> = {
     COMMENT_CREATED: 'Comment added',
     COMMENT_REPLIED: 'Comment replied',
     COMMENT_RESOLVED: 'Comment resolved',
+    SIGNATURE_REMINDER_SENT: 'Signature reminder sent',
+    SIGNATURE_REMINDER_FAILED: 'Signature reminder failed',
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -73,22 +75,6 @@ function getActorLabel(event: DocumentAccessAuditEntry) {
     return 'System';
 }
 
-function isSignatureReminderEvent(event: DocumentAccessAuditEntry) {
-    return event.metadata?.signatureReminder === true;
-}
-
-function getEventLabel(event: DocumentAccessAuditEntry) {
-    if (isSignatureReminderEvent(event) && event.eventType === 'INVITE_EMAIL_SENT') {
-        return 'Signature reminder sent';
-    }
-
-    if (isSignatureReminderEvent(event) && event.eventType === 'INVITE_EMAIL_FAILED') {
-        return 'Signature reminder failed';
-    }
-
-    return EVENT_LABELS[event.eventType];
-}
-
 function getEventDescription(event: DocumentAccessAuditEntry) {
     const target = event.target?.displayName ?? 'recipient';
     const actor = event.actor?.displayName ?? 'Someone';
@@ -119,12 +105,8 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
     if (event.eventType === 'INVITE_ACCEPTED') return `${target} accepted the invitation.`;
     if (event.eventType === 'INVITE_DECLINED') return `${target} declined the invitation.`;
     if (event.eventType === 'INVITE_OPENED') return `${target} opened the invitation link.`;
-    if (isSignatureReminderEvent(event) && event.eventType === 'INVITE_EMAIL_FAILED') {
-        return `Signature reminder delivery failed for ${target}.`;
-    }
-    if (isSignatureReminderEvent(event) && event.eventType === 'INVITE_EMAIL_SENT') {
-        return `Signature reminder sent to ${target}.`;
-    }
+    if (event.eventType === 'SIGNATURE_REMINDER_FAILED') return `Signature reminder delivery failed for ${target}.`;
+    if (event.eventType === 'SIGNATURE_REMINDER_SENT') return `Signature reminder sent to ${target}.`;
     if (event.eventType === 'INVITE_EMAIL_FAILED') return `Email delivery failed for ${target}.`;
     if (event.eventType === 'INVITE_EMAIL_SENT') return `Invitation email sent to ${target}.`;
     if (event.eventType === 'INVITE_EMAIL_QUEUED') return `Invitation email queued for ${target}.`;
@@ -132,11 +114,16 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
 }
 
 function getTone(eventType: DocumentAccessAuditEvent) {
-    if (eventType === 'INVITE_EMAIL_FAILED' || eventType === 'IDENTITY_VERIFICATION_FAILED') return 'danger';
+    if (
+        eventType === 'INVITE_EMAIL_FAILED' ||
+        eventType === 'IDENTITY_VERIFICATION_FAILED' ||
+        eventType === 'SIGNATURE_REMINDER_FAILED'
+    ) return 'danger';
     if (
         eventType === 'INVITE_ACCEPTED' ||
         eventType === 'IDENTITY_VERIFICATION_PASSED' ||
-        eventType === 'COMMENT_RESOLVED'
+        eventType === 'COMMENT_RESOLVED' ||
+        eventType === 'SIGNATURE_REMINDER_SENT'
     ) return 'success';
     if (eventType === 'INVITE_REVOKED' || eventType === 'INVITE_DECLINED') return 'muted';
     return 'default';
@@ -207,7 +194,7 @@ export function ShareDocumentAuditLog({
                     <span className={`share-dialog__audit-dot share-dialog__audit-dot--${getTone(event.eventType)}`} />
                     <div className="share-dialog__audit-card">
                         <div className="share-dialog__audit-head">
-                            <p className="share-dialog__audit-title">{getEventLabel(event)}</p>
+                            <p className="share-dialog__audit-title">{EVENT_LABELS[event.eventType]}</p>
                             <time className="share-dialog__audit-time" dateTime={event.createdAt}>
                                 {formatDate(event.createdAt)}
                             </time>
