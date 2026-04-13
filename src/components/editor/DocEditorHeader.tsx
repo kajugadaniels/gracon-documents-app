@@ -44,16 +44,17 @@ interface DocEditorHeaderProps {
     onTitleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
     isReadOnly: boolean;
     isLocked: boolean;
-    isFinalised: boolean;
     canShare: boolean;
     canComment?: boolean;
-    canUseSigningAction: boolean;
+    canFinalise: boolean;
+    canSign: boolean;
     canViewSignature: boolean;
     certificateStatus: DigitalCertificateActionStatus;
     onOpenComments?: () => void;
     onShareActivityRecorded: () => void;
     onApplyForDigitalSignature: () => void;
     onFinalise: () => void;
+    onSign: () => void;
     onViewSignature: () => void;
 }
 
@@ -61,10 +62,10 @@ interface DocEditorHeaderProps {
 export function DocEditorHeader({
     editor, doc, shareActivityRefreshKey, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
-    isReadOnly, isLocked, isFinalised, canShare, canComment = false,
-    canUseSigningAction, canViewSignature,
+    isReadOnly, isLocked, canShare, canComment = false,
+    canFinalise, canSign, canViewSignature,
     certificateStatus, onOpenComments, onShareActivityRecorded,
-    onApplyForDigitalSignature, onFinalise, onViewSignature,
+    onApplyForDigitalSignature, onFinalise, onSign, onViewSignature,
 }: DocEditorHeaderProps) {
     const [shareOpen, setShareOpen] = useState(false);
     const [findOpen,  setFindOpen]  = useState(false);
@@ -175,12 +176,14 @@ export function DocEditorHeader({
                         <HugeiconsIcon icon={Comment01Icon} size={17} />
                     </button>
 
-                    {canUseSigningAction && !isLocked && (
+                    {!isLocked && (canFinalise || canSign) && (
                         <DocEditorSignatureAction
                             certificateStatus={certificateStatus}
-                            isFinalised={isFinalised}
+                            canFinalise={canFinalise}
+                            canSign={canSign}
                             onApplyForDigitalSignature={onApplyForDigitalSignature}
                             onFinalise={onFinalise}
+                            onSign={onSign}
                         />
                     )}
                     {canViewSignature && isLocked && (
