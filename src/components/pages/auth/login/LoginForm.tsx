@@ -26,6 +26,7 @@ export function LoginForm() {
     const [apiError, setApiError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const nextPath = normalizeDocsPath(searchParams.get('next'));
+    const isInvitationReturn = nextPath.startsWith('/invitations/');
 
     function validate(): boolean {
         const nextErrors: LoginErrors = {};
@@ -63,7 +64,7 @@ export function LoginForm() {
                 password,
             });
 
-            if (response.data.tokenType === 'limited') {
+            if (response.data.tokenType === 'limited' && !isInvitationReturn) {
                 const returnUrl = `${DOCS_URL}${nextPath}`;
                 window.location.href = `${APP_URL}/verify-identity?next=${encodeURIComponent(returnUrl)}`;
                 return;
