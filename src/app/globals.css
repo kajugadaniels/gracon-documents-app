@@ -1623,6 +1623,124 @@ body {
   backdrop-filter: blur(2px);
 }
 
+.docs-finalise-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(8px);
+}
+
+.docs-finalise-dialog {
+  width: min(100%, 520px);
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(22,16,58,0.10);
+  border-radius: 24px;
+  background: rgba(255,255,255,0.97);
+  box-shadow: 0 24px 60px rgba(22,16,58,0.18);
+}
+
+.docs-finalise-dialog__eyebrow {
+  margin: 0 0 8px;
+  color: #9a3412;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.docs-finalise-dialog__title {
+  margin: 0 0 8px;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.docs-finalise-dialog__copy {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.docs-finalise-dialog__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.docs-finalise-dialog__summary-item {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid rgba(22,16,58,0.08);
+  border-radius: 16px;
+  background: rgba(248,250,252,0.9);
+}
+
+.docs-finalise-dialog__summary-item span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.docs-finalise-dialog__summary-item strong {
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.docs-finalise-dialog__toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(22,16,58,0.10);
+  border-radius: 18px;
+  background: rgba(255,247,237,0.58);
+}
+
+.docs-finalise-dialog__toggle input {
+  margin-top: 2px;
+}
+
+.docs-finalise-dialog__toggle span {
+  display: grid;
+  gap: 4px;
+}
+
+.docs-finalise-dialog__toggle strong {
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+
+.docs-finalise-dialog__toggle small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.docs-finalise-dialog__warning {
+  margin: 0;
+  color: #b45309;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.docs-finalise-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .signing-progress {
   margin: 18px clamp(16px, 4vw, 48px) 0;
   padding: 16px;
@@ -1801,12 +1919,14 @@ body {
 }
 
 @media (max-width: 760px) {
+  .docs-finalise-dialog__summary,
   .signing-progress__summary,
   .signing-progress__row {
     align-items: stretch;
     grid-template-columns: 1fr;
   }
 
+  .docs-finalise-dialog__actions,
   .signing-progress__summary {
     display: grid;
   }
@@ -1816,6 +1936,10 @@ body {
   .signing-progress__action {
     justify-self: start;
     text-align: left;
+  }
+
+  .docs-finalise-dialog__actions .ded-action-btn {
+    width: 100%;
   }
 
   .signing-progress__action {
