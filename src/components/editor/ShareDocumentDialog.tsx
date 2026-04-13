@@ -201,8 +201,10 @@ function InviteForm({
 interface ShareDocumentDialogProps {
     documentId: string;
     docTitle: string;
+    activityRefreshKey: number;
     /** When false, the MANAGE_ACCESS permission option is hidden. */
     canGrantManageAccess?: boolean;
+    onActivityRecorded: () => void;
     onClose: () => void;
 }
 
@@ -213,7 +215,9 @@ interface ShareDocumentDialogProps {
 export function ShareDocumentDialog({
     documentId,
     docTitle,
+    activityRefreshKey,
     canGrantManageAccess = true,
+    onActivityRecorded,
     onClose,
 }: ShareDocumentDialogProps) {
     // ── Tab state ──
@@ -221,7 +225,6 @@ export function ShareDocumentDialog({
     const [accessCount,        setAccessCount]        = useState(0);
     const [activityCount,      setActivityCount]      = useState(0);
     const [accessRefreshKey,   setAccessRefreshKey]   = useState(0);
-    const [activityRefreshKey, setActivityRefreshKey] = useState(0);
 
     // ── Existing access map (userId → 'active' | 'pending') ──
     // Used to mark search results so the owner knows who already has access.
@@ -350,7 +353,7 @@ export function ShareDocumentDialog({
             setQuery(''); setResults([]); setSelectedId(null);
             setSelectedUser(null); setPermissions(['READ']); setNote('');
             setAccessRefreshKey((k) => k + 1);
-            setActivityRefreshKey((k) => k + 1);
+            onActivityRecorded();
             setActiveTab('people');
         } catch (err) {
             setShareError(extractApiError(err, 'Unable to send the invitation right now.'));
@@ -492,7 +495,7 @@ export function ShareDocumentDialog({
                             {!query && <p className="share-dialog__idle">{IDLE_COPY[searchMode]}</p>}
                             {showHint && <p className="share-dialog__hint">{SEARCH_HINT[searchMode]}</p>}
                             {searchError && <p className="share-dialog__error">{searchError}</p>}
-                            {showEmpty && <p className="share-dialog__empty">No users found matching "{query}"</p>}
+                            {showEmpty && <p className="share-dialog__empty">No users found matching &quot;{query}&quot;</p>}
 
                             {showResults && (
                                 <ul className="share-dialog__results" role="listbox" aria-label="Search results">
@@ -573,7 +576,7 @@ export function ShareDocumentDialog({
                             canGrantManageAccess={canGrantManageAccess}
                             refreshKey={accessRefreshKey}
                             onCountChange={setAccessCount}
-                            onActivityRecorded={() => setActivityRefreshKey((k) => k + 1)}
+                            onActivityRecorded={onActivityRecorded}
                         />
                     </div>
                 )}
