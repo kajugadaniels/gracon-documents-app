@@ -28,6 +28,8 @@ export type DocumentAccessAuditEvent =
     | 'COMMENT_CREATED'
     | 'COMMENT_REPLIED'
     | 'COMMENT_RESOLVED'
+    | 'DOCUMENT_SIGNED'
+    | 'DOCUMENT_LOCKED'
     | 'SIGNATURE_REMINDER_SENT'
     | 'SIGNATURE_REMINDER_FAILED';
 export type CollaboratorPermission =
@@ -514,6 +516,13 @@ export interface VerifyDocumentResponse {
     signedBy?: { name: string };
     signedAt?: string;
     lockedAt?: string;
+    signers?: Array<{
+        name: string;
+        email: string;
+        signedAt: string;
+        isOwner: boolean;
+        signingOrder: number;
+    }>;
     message?: string;
 }
 
