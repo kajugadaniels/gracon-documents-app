@@ -71,6 +71,22 @@ function formatPermissions(permissions: CollaboratorPermission[]) {
     return permissionsWithRead.map(formatPermission).join(', ');
 }
 
+function getNumericMetadata(
+    event: DocumentAccessAuditEntry,
+    key: string,
+) {
+    const value = event.metadata?.[key];
+    return typeof value === 'number' ? value : null;
+}
+
+function getStringMetadata(
+    event: DocumentAccessAuditEntry,
+    key: string,
+) {
+    const value = event.metadata?.[key];
+    return typeof value === 'string' && value.trim() ? value : null;
+}
+
 function getActorLabel(event: DocumentAccessAuditEntry) {
     if (event.actor) return event.actor.displayName;
     if (event.eventType === 'INVITE_OPENED') return 'Invitation link';
@@ -137,6 +153,50 @@ function getEventDescription(event: DocumentAccessAuditEntry) {
     if (event.eventType === 'INVITE_EMAIL_SENT') return `Invitation email sent to ${target}.`;
     if (event.eventType === 'INVITE_EMAIL_QUEUED') return `Invitation email queued for ${target}.`;
     return target;
+}
+
+function getEventMetrics(event: DocumentAccessAuditEntry) {
+    if (event.eventType === 'DOCUMENT_SIGNED') {
+        const signingOrder = getNumericMetadata(event, 'signingOrder');
+        const totalRequired = getNumericMetadata(event, 'totalRequired');
+        const totalSigned = getNumericMetadata(event, 'totalSigned');
+        const pending = getNumericMetadata(event, 'pendingSignatureCount');
+        const metrics: string[] = [];
+
+        if (signingOrder !== null && totalRequired !== null) {
+            metrics.push(`Order ${signingOrder}/${totalRequired}`);
+        } else if (signingOrder !== null) {
+            metrics.push(`Order #${signingOrder}`);
+        }
+
+        if (totalSigned !== null && totalRequired !== null) {
+            metrics.push(`Completed ${totalSigned}/${totalRequired}`);
+        }
+
+        if (pending !== null) {
+            metrics.push(`Pending ${pending}`);
+        }
+
+        return metrics;
+    }
+
+    if (event.eventType === 'DOCUMENT_LOCKED') {
+        const completed = getNumericMetadata(event, 'completedSignatureCount');
+        const lockedAt = getStringMetadata(event, 'lockedAt');
+        const metrics: string[] = [];
+
+        if (completed !== null) {
+            metrics.push(`Completed signatures ${completed}`);
+        }
+
+        if (lockedAt) {
+            metrics.push(`Locked ${formatDate(lockedAt)}`);
+        }
+
+        return metrics;
+    }
+
+    return [];
 }
 
 function getTone(eventType: DocumentAccessAuditEvent) {
@@ -231,7 +291,7 @@ export function ShareDocumentAuditLog({
                             {getEventDescription(event)}
                         </p>
                         <p className="share-dialog__audit-meta">
-                            Actor: {getActorLabel(event)}
+                            {['Actor: ' + getActorLabel(event), ...getEventMetrics(event)].join(' • ')}
                         </p>
                     </div>
                 </li>
