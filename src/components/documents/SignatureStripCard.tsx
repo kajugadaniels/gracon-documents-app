@@ -9,10 +9,12 @@
  * distinct from the glassmorphism app shell.
  */
 import type { PointerEventHandler } from 'react';
+import type { DocumentCompletedSignature } from '@/api/documents.api';
 
 interface SignatureStripCardProps {
     documentTitle: string;
     signatureImageUrl: string | null;
+    completedSignatures: DocumentCompletedSignature[];
     qrCodeUrl: string | null;
     canAdjustPlacement: boolean;
     dragging: boolean;
@@ -21,6 +23,14 @@ interface SignatureStripCardProps {
     onPointerDown: PointerEventHandler<HTMLDivElement>;
     onReset: () => void;
     onSave: () => void;
+}
+
+function formatSignedAt(value: string): string {
+    return new Date(value).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
 }
 
 /** Drag-handle icon for the placement hint row. */
@@ -82,6 +92,7 @@ function PlacementHint({
 export function SignatureStripCard({
     documentTitle,
     signatureImageUrl,
+    completedSignatures,
     qrCodeUrl,
     canAdjustPlacement,
     dragging,
@@ -92,7 +103,7 @@ export function SignatureStripCard({
     onSave,
 }: SignatureStripCardProps) {
     return (
-        <div style={{ display: 'grid', gap: 6, width: 344 }}>
+        <div style={{ display: 'grid', gap: 6, width: 360 }}>
 
             {/* ── Placement hint pill ── */}
             {canAdjustPlacement && (
@@ -122,9 +133,9 @@ export function SignatureStripCard({
                 {/* Signature display area */}
                 <div style={{
                     padding: '18px 16px 14px',
-                    minHeight: 80,
-                    display: 'flex',
-                    alignItems: 'flex-end',
+                    minHeight: 94,
+                    display: 'grid',
+                    gap: 12,
                     borderBottom: '1px solid rgba(0,0,0,0.07)',
                     position: 'relative',
                     background: '#fafafa',
@@ -160,6 +171,98 @@ export function SignatureStripCard({
                             Digitally signed
                         </span>
                     )}
+
+                    {completedSignatures.length > 0 ? (
+                        <div style={{
+                            position: 'relative',
+                            zIndex: 1,
+                            display: 'grid',
+                            gap: 8,
+                        }}>
+                            {completedSignatures.map((signature) => (
+                                <div
+                                    key={signature.signatureId}
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: signature.imageUrl ? 'minmax(0, 1fr) auto' : '1fr',
+                                        gap: 10,
+                                        alignItems: 'end',
+                                        paddingTop: 8,
+                                        borderTop: '1px dashed rgba(22,16,58,0.12)',
+                                    }}
+                                >
+                                    <div style={{ minWidth: 0 }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            flexWrap: 'wrap',
+                                            marginBottom: 3,
+                                        }}>
+                                            <span style={{
+                                                fontSize: 12,
+                                                fontWeight: 700,
+                                                color: '#16103a',
+                                                lineHeight: 1.25,
+                                            }}>
+                                                {signature.signerName}
+                                            </span>
+                                            {signature.isOwner ? (
+                                                <span style={{
+                                                    padding: '2px 6px',
+                                                    borderRadius: 999,
+                                                    background: 'rgba(91,35,255,0.08)',
+                                                    color: 'var(--color-primary)',
+                                                    fontSize: 9,
+                                                    fontWeight: 800,
+                                                    letterSpacing: '0.08em',
+                                                    textTransform: 'uppercase',
+                                                }}>
+                                                    Owner
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            flexWrap: 'wrap',
+                                            color: '#6b7280',
+                                            fontSize: 10.5,
+                                            lineHeight: 1.45,
+                                        }}>
+                                            <span>{signature.signerEmail}</span>
+                                            <span>Signed {formatSignedAt(signature.signedAt)}</span>
+                                        </div>
+                                    </div>
+
+                                    {signature.imageUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                            src={signature.imageUrl}
+                                            alt={`${signature.signerName} signature`}
+                                            style={{
+                                                maxWidth: 124,
+                                                maxHeight: 40,
+                                                objectFit: 'contain',
+                                            }}
+                                            draggable={false}
+                                        />
+                                    ) : (
+                                        <span style={{
+                                            fontFamily: 'Georgia, \"Times New Roman\", serif',
+                                            fontSize: 15,
+                                            fontStyle: 'italic',
+                                            color: '#374151',
+                                            justifySelf: 'end',
+                                        }}>
+                                            Digitally signed
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
 
                 {/* Bottom row: QR code + verification info */}
