@@ -1,17 +1,20 @@
 'use client';
 
 /**
+ * InvitationAcceptanceView
+ *
  * Public invitation review surface for the documents workspace.
  *
- * The page starts with a safe preview that does not reveal the document title.
- * Once the invited verified user is authenticated, it upgrades to a full
- * review state and allows accepting or declining the invitation.
+ * Loads a safe preview without revealing the document title. Once the
+ * invited verified user passes the two verification gates (email OTP +
+ * identity challenge), upgrades to the full review state with Accept /
+ * Decline controls.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AxiosError } from 'axios';
-import { Card, Button, PremiumLoader } from '@/components/ui';
+import { Button, PremiumLoader } from '@/components/ui';
 import {
     acceptInvitation,
     declineInvitation,
@@ -23,209 +26,140 @@ import {
     type InvitationReview,
 } from '@/api/invitations.api';
 import { getAccessToken } from '@/lib/session';
+import { InvitationInfoCard } from './InvitationInfoCard';
+import { InvitationReviewPanel } from './InvitationReviewPanel';
 import { InvitationVerificationPanel } from './InvitationVerificationPanel';
 
-type Props = {
-    token: string;
-};
+type Props = { token: string };
 
-function formatDate(value: string | null) {
-    if (!value) return 'No expiry set';
+// ─── Local helpers ────────────────────────────────────────────────────────────
 
-    try {
-        return new Intl.DateTimeFormat('en-GB', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        }).format(new Date(value));
-    } catch {
-        return value;
-    }
-}
-
-function formatAttemptId(value: string | null) {
-    if (!value) return null;
-    return value.length > 10 ? `${value.slice(0, 8)}...` : value;
-}
-
-function formatPermissions(permissions: string[]) {
-    return permissions
-        .map((permission) => permission.replaceAll('_', ' ').toLowerCase())
-        .join(', ');
-}
-
-function getApiMessage(error: unknown, fallback: string) {
+/** Extracts a human-readable error message from an Axios response. */
+function getApiMessage(error: unknown, fallback: string): string {
     const axiosError = error as AxiosError<{ message?: string; error?: string }>;
-    const message =
-        axiosError.response?.data?.message ?? axiosError.response?.data?.error;
-
-    return typeof message === 'string' && message.trim() ? message : fallback;
+    const msg = axiosError.response?.data?.message ?? axiosError.response?.data?.error;
+    return typeof msg === 'string' && msg.trim() ? msg : fallback;
 }
 
+/** Inline spinner row shown during async fetches. */
+function LoadingRow({ message }: { message: string }) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 0', color: 'var(--color-text-secondary)' }}>
+            <PremiumLoader color="primary" />
+            <span style={{ fontSize: 14 }}>{message}</span>
+        </div>
+    );
+}
+
+/** Inline alert block — error (red) or warning (amber) variant. */
+function AlertBanner({ variant, children }: { variant: 'error' | 'warning'; children: React.ReactNode }) {
+    const isError = variant === 'error';
+    return (
+        <div role="alert" style={{
+            borderRadius: 'var(--radius-md)',
+            border: `1px solid ${isError ? 'var(--color-error-border)' : 'rgba(217,119,6,0.28)'}`,
+            background: isError ? 'var(--color-error-subtle)' : 'var(--color-warning-subtle)',
+            padding: '14px 16px',
+            color: isError ? 'var(--color-error)' : 'var(--color-warning)',
+            fontSize: 13, lineHeight: 1.6,
+        }}>
+            {children}
+        </div>
+    );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+/** Full invitation acceptance page — handles loading, gate, and review states. */
 export function InvitationAcceptanceView({ token }: Props) {
     const router = useRouter();
-    const [preview, setPreview] = useState<InvitationPreview | null>(null);
-    const [review, setReview] = useState<InvitationReview | null>(null);
-    const [gateStatus, setGateStatus] = useState<InvitationGateStatus | null>(null);
-    const [acceptedState, setAcceptedState] = useState<{
-        documentId: string;
-        acceptedAt: string;
-    } | null>(null);
+
+    const [preview,       setPreview]       = useState<InvitationPreview | null>(null);
+    const [review,        setReview]        = useState<InvitationReview | null>(null);
+    const [gateStatus,    setGateStatus]    = useState<InvitationGateStatus | null>(null);
+    const [acceptedState, setAcceptedState] = useState<{ documentId: string; acceptedAt: string } | null>(null);
+
     const [loadingPreview, setLoadingPreview] = useState(true);
-    const [loadingGate, setLoadingGate] = useState(false);
-    const [loadingReview, setLoadingReview] = useState(false);
-    const [submitting, setSubmitting] = useState<'accept' | 'decline' | null>(null);
-    const [pageError, setPageError] = useState<string | null>(null);
-    const [gateError, setGateError] = useState<string | null>(null);
+    const [loadingGate,    setLoadingGate]    = useState(false);
+    const [loadingReview,  setLoadingReview]  = useState(false);
+    const [submitting,     setSubmitting]     = useState<'accept' | 'decline' | null>(null);
+
+    const [pageError,   setPageError]   = useState<string | null>(null);
+    const [gateError,   setGateError]   = useState<string | null>(null);
     const [reviewError, setReviewError] = useState<string | null>(null);
 
     const hasSession = useMemo(() => Boolean(getAccessToken()), []);
 
+    // Load the public preview (no authentication required).
     useEffect(() => {
         let cancelled = false;
+        setLoadingPreview(true);
+        setPageError(null);
 
-        async function load() {
-            setLoadingPreview(true);
-            setPageError(null);
+        getInvitationPreview(token)
+            .then((data) => { if (!cancelled) setPreview(data); })
+            .catch((err: unknown) => {
+                if (!cancelled) setPageError(getApiMessage(err, 'This invitation is invalid, expired, or no longer available.'));
+            })
+            .finally(() => { if (!cancelled) setLoadingPreview(false); });
 
-            try {
-                const previewData = await getInvitationPreview(token);
-                if (cancelled) return;
-
-                setPreview(previewData);
-            } catch (error) {
-                if (cancelled) return;
-                setPageError(
-                    getApiMessage(
-                        error,
-                        'This invitation is invalid, expired, or no longer available.',
-                    ),
-                );
-            } finally {
-                if (!cancelled) {
-                    setLoadingPreview(false);
-                }
-            }
-        }
-
-        void load();
-
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [token]);
 
+    // Load gate status once a session is present.
     useEffect(() => {
-        if (!hasSession) {
-            setGateStatus(null);
-            setGateError(null);
-            return;
-        }
-
+        if (!hasSession) { setGateStatus(null); setGateError(null); return; }
         let cancelled = false;
+        setLoadingGate(true);
 
-        async function loadGate() {
-            setLoadingGate(true);
-            setGateError(null);
+        getInvitationGateStatus(token)
+            .then((data) => { if (!cancelled) setGateStatus(data); })
+            .catch((err: unknown) => {
+                if (!cancelled) setGateError(getApiMessage(err, 'Sign in with the invited verified account to continue.'));
+            })
+            .finally(() => { if (!cancelled) setLoadingGate(false); });
 
-            try {
-                const nextGateStatus = await getInvitationGateStatus(token);
-                if (cancelled) return;
-
-                setGateStatus(nextGateStatus);
-            } catch (error) {
-                if (cancelled) return;
-                setGateError(
-                    getApiMessage(
-                        error,
-                        'Sign in with the invited verified account to review this invitation.',
-                    ),
-                );
-            } finally {
-                if (!cancelled) setLoadingGate(false);
-            }
-        }
-
-        void loadGate();
-
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [hasSession, token]);
 
+    // Load full review once the gate allows it.
     useEffect(() => {
         if (!hasSession || gateStatus?.nextStep !== 'review') {
             setReview(null);
-            if (gateStatus?.nextStep !== 'review') {
-                setLoadingReview(false);
-            }
+            if (gateStatus?.nextStep !== 'review') setLoadingReview(false);
             return;
         }
-
         let cancelled = false;
+        setLoadingReview(true);
 
-        async function loadReview() {
-            setLoadingReview(true);
-            setReviewError(null);
+        getInvitationReview(token)
+            .then((data) => { if (!cancelled) setReview(data); })
+            .catch((err: unknown) => {
+                if (!cancelled) setReviewError(getApiMessage(err, 'Unable to open the invitation review right now.'));
+            })
+            .finally(() => { if (!cancelled) setLoadingReview(false); });
 
-            try {
-                const reviewData = await getInvitationReview(token);
-                if (cancelled) return;
-
-                setReview(reviewData);
-            } catch (error) {
-                if (cancelled) return;
-                setReviewError(
-                    getApiMessage(
-                        error,
-                        'Unable to open the invitation review right now.',
-                    ),
-                );
-            } finally {
-                if (!cancelled) {
-                    setLoadingReview(false);
-                }
-            }
-        }
-
-        void loadReview();
-
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [gateStatus?.nextStep, hasSession, token]);
 
+    // Redirect to the document after acceptance.
     useEffect(() => {
         if (!acceptedState) return;
-
-        const timeoutId = window.setTimeout(() => {
-            router.replace(`/documents/${acceptedState.documentId}/edit`);
-        }, 1200);
-
-        return () => {
-            window.clearTimeout(timeoutId);
-        };
+        const id = window.setTimeout(
+            () => { router.replace(`/documents/${acceptedState.documentId}/edit`); },
+            1200,
+        );
+        return () => { window.clearTimeout(id); };
     }, [acceptedState, router]);
 
     async function handleAccept() {
         setSubmitting('accept');
         setReviewError(null);
-
         try {
-            const response = await acceptInvitation(token);
-            setAcceptedState({
-                documentId: response.document.id,
-                acceptedAt: response.acceptedAt,
-            });
-        } catch (error) {
-            setReviewError(
-                getApiMessage(
-                    error,
-                    'Unable to accept this invitation right now.',
-                ),
-            );
+            const res = await acceptInvitation(token);
+            setAcceptedState({ documentId: res.document.id, acceptedAt: res.acceptedAt });
+        } catch (err: unknown) {
+            setReviewError(getApiMessage(err, 'Unable to accept this invitation right now.'));
         } finally {
             setSubmitting(null);
         }
@@ -234,17 +168,11 @@ export function InvitationAcceptanceView({ token }: Props) {
     async function handleDecline() {
         setSubmitting('decline');
         setReviewError(null);
-
         try {
             await declineInvitation(token);
             router.replace('/documents');
-        } catch (error) {
-            setReviewError(
-                getApiMessage(
-                    error,
-                    'Unable to decline this invitation right now.',
-                ),
-            );
+        } catch (err: unknown) {
+            setReviewError(getApiMessage(err, 'Unable to decline this invitation right now.'));
         } finally {
             setSubmitting(null);
         }
@@ -253,478 +181,120 @@ export function InvitationAcceptanceView({ token }: Props) {
     const loginHref = `/login?next=${encodeURIComponent(`/invitations/${token}`)}`;
 
     return (
-        <div
-            style={{
-                minHeight: '100dvh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '40px 20px',
-                background:
-                    'radial-gradient(circle at top, rgba(102,87,193,0.10), transparent 42%), #f7f5fb',
-            }}
-        >
-            <Card strength="strong" style={{ width: '100%', maxWidth: 620 }}>
-                <div style={{ padding: '8px 0' }}>
-                    <div style={{ marginBottom: 24 }}>
-                        <div
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                borderRadius: 999,
-                                padding: '6px 12px',
-                                background: 'rgba(91,35,255,0.08)',
-                                color: 'var(--color-primary)',
-                                fontSize: 12,
-                                fontWeight: 700,
-                                letterSpacing: '0.08em',
-                                textTransform: 'uppercase',
-                            }}
-                        >
-                            Invitation Review
-                        </div>
-                        <h1
-                            style={{
-                                margin: '16px 0 8px',
-                                fontSize: 28,
-                                lineHeight: 1.15,
-                                color: 'var(--color-text-primary)',
-                            }}
-                        >
-                            Review shared document access
-                        </h1>
-                        <p
-                            style={{
-                                margin: 0,
-                                fontSize: 14,
-                                lineHeight: 1.7,
-                                color: 'var(--color-text-secondary)',
-                            }}
-                        >
-                            The document title stays hidden until the invited verified
-                            account passes the invitation verification steps.
-                        </p>
-                    </div>
-
-                    {loadingPreview ? (
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 12,
-                                padding: '18px 0',
-                                color: 'var(--color-text-secondary)',
-                            }}
-                        >
-                            <PremiumLoader color="primary" />
-                            <span>Loading invitation…</span>
-                        </div>
-                    ) : pageError ? (
-                        <div
-                            role="alert"
-                            style={{
-                                borderRadius: 16,
-                                border: '1px solid rgba(199, 77, 77, 0.2)',
-                                background: 'rgba(255, 240, 240, 0.9)',
-                                padding: '16px 18px',
-                                color: '#8f2d2d',
-                                fontSize: 14,
-                                lineHeight: 1.6,
-                            }}
-                        >
-                            {pageError}
-                        </div>
-                    ) : preview ? (
-                        <>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gap: 16,
-                                    borderRadius: 20,
-                                    padding: 20,
-                                    background: '#fbfaff',
-                                    border: '1px solid rgba(22,16,58,0.08)',
-                                }}
-                            >
-                                <div>
-                                    <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                        Shared by
-                                    </p>
-                                    <p
-                                        style={{
-                                            margin: '6px 0 0',
-                                            fontSize: 16,
-                                            fontWeight: 700,
-                                            color: 'var(--color-text-primary)',
-                                        }}
-                                    >
-                                        {preview.sender.displayName}
-                                    </p>
-                                </div>
-
-                                <div
-                                    style={{
-                                        display: 'grid',
-                                        gap: 14,
-                                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                                    }}
-                                >
-                                    <div>
-                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                            Access requested for
-                                        </p>
-                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
-                                            {preview.recipient.maskedEmail}
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                            Permissions
-                                        </p>
-                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
-                                            {formatPermissions(preview.invitation.permissions)}
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                            Expires
-                                        </p>
-                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
-                                            {formatDate(preview.invitation.expiresAt)}
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                            Invited
-                                        </p>
-                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
-                                            {formatDate(preview.invitation.invitedAt)}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {preview.invitation.note && (
-                                    <div
-                                        style={{
-                                            borderRadius: 16,
-                                            padding: 16,
-                                            background: 'rgba(91,35,255,0.05)',
-                                        }}
-                                    >
-                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                            Sender note
-                                        </p>
-                                        <p
-                                            style={{
-                                                margin: '8px 0 0',
-                                                fontSize: 14,
-                                                lineHeight: 1.7,
-                                                color: 'var(--color-text-primary)',
-                                            }}
-                                        >
-                                            {preview.invitation.note}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {!hasSession ? (
-                                <div
-                                    style={{
-                                        marginTop: 24,
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        gap: 12,
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                    }}
-                                >
-                                    <p
-                                        style={{
-                                            margin: 0,
-                                            fontSize: 13,
-                                            lineHeight: 1.7,
-                                            color: 'var(--color-text-secondary)',
-                                            maxWidth: 360,
-                                        }}
-                                        >
-                                        Sign in with the invited account to start email verification, then complete identity verification before reviewing this invitation.
-                                    </p>
-                                    <a href={loginHref} style={{ textDecoration: 'none' }}>
-                                        <Button>Sign in to continue</Button>
-                                    </a>
-                                </div>
-                            ) : (
-                                <div style={{ marginTop: 24 }}>
-                                    {loadingGate ? (
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 12,
-                                                color: 'var(--color-text-secondary)',
-                                            }}
-                                        >
-                                            <PremiumLoader color="primary" />
-                                            <span>Checking invitation access…</span>
-                                        </div>
-                                    ) : gateError ? (
-                                        <div
-                                            role="alert"
-                                            style={{
-                                                borderRadius: 16,
-                                                border: '1px solid rgba(199, 77, 77, 0.2)',
-                                                background: 'rgba(255, 240, 240, 0.9)',
-                                                padding: '14px 16px',
-                                                color: '#8f2d2d',
-                                                fontSize: 13,
-                                                lineHeight: 1.6,
-                                            }}
-                                        >
-                                            {gateError}
-                                        </div>
-                                    ) : gateStatus && gateStatus.nextStep !== 'review' ? (
-                                        <>
-                                            {reviewError && (
-                                                <div
-                                                    role="alert"
-                                                    style={{
-                                                        marginBottom: 16,
-                                                        borderRadius: 16,
-                                                        border: '1px solid rgba(199, 77, 77, 0.2)',
-                                                        background: 'rgba(255, 240, 240, 0.9)',
-                                                        padding: '14px 16px',
-                                                        color: '#8f2d2d',
-                                                        fontSize: 13,
-                                                        lineHeight: 1.6,
-                                                    }}
-                                                >
-                                                    {reviewError}
-                                                </div>
-                                            )}
-                                            <InvitationVerificationPanel
-                                                token={token}
-                                                gateStatus={gateStatus}
-                                                onStatusChange={(nextStatus) => {
-                                                    setGateStatus(nextStatus);
-                                                    setReview(null);
-                                                    setGateError(null);
-                                                    setReviewError(null);
-                                                }}
-                                                onError={setReviewError}
-                                            />
-                                        </>
-                                    ) : loadingReview ? (
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 12,
-                                                color: 'var(--color-text-secondary)',
-                                            }}
-                                        >
-                                            <PremiumLoader color="primary" />
-                                            <span>Opening secure invitation review…</span>
-                                        </div>
-                                    ) : review ? (
-                                        <>
-                                            {acceptedState && (
-                                                <div
-                                                    style={{
-                                                        borderRadius: 18,
-                                                        border: '1px solid rgba(55, 141, 82, 0.18)',
-                                                        padding: 18,
-                                                        background: 'rgba(240, 255, 244, 0.92)',
-                                                        marginBottom: 16,
-                                                    }}
-                                                >
-                                                    <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                                        Invitation accepted
-                                                    </p>
-                                                    <p
-                                                        style={{
-                                                            margin: '8px 0 6px',
-                                                            fontSize: 18,
-                                                            fontWeight: 700,
-                                                            color: '#1d5f33',
-                                                        }}
-                                                    >
-                                                        Access granted
-                                                    </p>
-                                                    <p
-                                                        style={{
-                                                            margin: 0,
-                                                            fontSize: 14,
-                                                            lineHeight: 1.7,
-                                                            color: 'var(--color-text-primary)',
-                                                        }}
-                                                    >
-                                                        The full proof chain is complete. Redirecting you to the document workspace.
-                                                    </p>
-                                                    <p
-                                                        style={{
-                                                            margin: '10px 0 0',
-                                                            fontSize: 13,
-                                                            color: 'var(--color-text-secondary)',
-                                                        }}
-                                                    >
-                                                        Accepted {formatDate(acceptedState.acceptedAt)}
-                                                    </p>
-                                                </div>
-                                            )}
-
-                                            <div
-                                                style={{
-                                                    borderRadius: 18,
-                                                    border: '1px solid rgba(22,16,58,0.08)',
-                                                    padding: 18,
-                                                    background: '#fbfaff',
-                                                    marginBottom: 16,
-                                                }}
-                                            >
-                                                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                                    Verification completed
-                                                </p>
-                                                <div
-                                                    style={{
-                                                        display: 'grid',
-                                                        gap: 14,
-                                                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                                                        marginTop: 12,
-                                                    }}
-                                                >
-                                                    <div>
-                                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                                            Email OTP passed
-                                                        </p>
-                                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
-                                                            {formatDate(review.verification.emailOtpVerifiedAt)}
-                                                        </p>
-                                                    </div>
-
-                                                    <div>
-                                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                                            Identity challenge started
-                                                        </p>
-                                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
-                                                            {formatDate(review.verification.identityChallengeStartedAt)}
-                                                        </p>
-                                                    </div>
-
-                                                    <div>
-                                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                                            Identity verification passed
-                                                        </p>
-                                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
-                                                            {formatDate(review.verification.identityVerifiedAt)}
-                                                        </p>
-                                                    </div>
-
-                                                    <div>
-                                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                                            Verification attempt
-                                                        </p>
-                                                        <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--color-text-primary)' }}>
-                                                            {formatAttemptId(review.verification.identityVerificationAttemptId) ?? 'Recorded'}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                style={{
-                                                    borderRadius: 18,
-                                                    border: '1px solid rgba(22,16,58,0.08)',
-                                                    padding: 18,
-                                                    background: '#ffffff',
-                                                    marginBottom: 16,
-                                                }}
-                                            >
-                                                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                                    Document
-                                                </p>
-                                                <p
-                                                    style={{
-                                                        margin: '8px 0 0',
-                                                        fontSize: 18,
-                                                        fontWeight: 700,
-                                                        color: 'var(--color-text-primary)',
-                                                    }}
-                                                >
-                                                    {review.document.title}
-                                                </p>
-                                            </div>
-
-                                            {reviewError && (
-                                                <div
-                                                    role="alert"
-                                                    style={{
-                                                        marginBottom: 16,
-                                                        borderRadius: 16,
-                                                        border: '1px solid rgba(199, 77, 77, 0.2)',
-                                                        background: 'rgba(255, 240, 240, 0.9)',
-                                                        padding: '14px 16px',
-                                                        color: '#8f2d2d',
-                                                        fontSize: 13,
-                                                        lineHeight: 1.6,
-                                                    }}
-                                                >
-                                                    {reviewError}
-                                                </div>
-                                            )}
-
-                                            <div
-                                                style={{
-                                                    display: 'flex',
-                                                    flexWrap: 'wrap',
-                                                    gap: 12,
-                                                    justifyContent: 'flex-end',
-                                                }}
-                                            >
-                                                <Button
-                                                    variant="ghost"
-                                                    onClick={handleDecline}
-                                                    loading={submitting === 'decline'}
-                                                    loadingText="Declining..."
-                                                    disabled={Boolean(acceptedState)}
-                                                >
-                                                    Decline
-                                                </Button>
-                                                <Button
-                                                    onClick={handleAccept}
-                                                    loading={submitting === 'accept'}
-                                                    loadingText="Accepting..."
-                                                    disabled={Boolean(acceptedState)}
-                                                >
-                                                    Accept invitation
-                                                </Button>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div
-                                            style={{
-                                                borderRadius: 16,
-                                                border: '1px solid rgba(240, 178, 30, 0.22)',
-                                                background: 'rgba(255, 248, 230, 0.95)',
-                                                padding: '16px 18px',
-                                                color: '#7d5c10',
-                                                fontSize: 13,
-                                                lineHeight: 1.7,
-                                            }}
-                                        >
-                                            {reviewError ?? 'Unable to open the invitation review right now.'}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </>
-                    ) : null}
+        <div style={{
+            minHeight: '100dvh', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', padding: '40px 20px',
+        }}>
+            {/* ── Branding mark ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+                <div style={{
+                    width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+                    background: 'var(--color-primary)', color: 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 800, fontSize: 18,
+                    boxShadow: '0 2px 14px var(--color-primary-glow)',
+                }}>
+                    G
                 </div>
-            </Card>
+                <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)', lineHeight: 1.1 }}>
+                        Gracon 360
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1.1 }}>
+                        Documents
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Main card ── */}
+            <div className="glass-strong" style={{ width: '100%', maxWidth: 600, borderRadius: 'var(--radius-xl)', padding: '32px 32px 28px' }}>
+                {/* Card header */}
+                <div style={{ marginBottom: 24 }}>
+                    <div style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        borderRadius: 999, padding: '5px 12px', marginBottom: 14,
+                        background: 'var(--color-primary-subtle)',
+                        color: 'var(--color-primary)',
+                        fontSize: 11, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase',
+                    }}>
+                        Invitation Review
+                    </div>
+                    <h1 style={{ margin: '0 0 8px', fontSize: 26, lineHeight: 1.2, fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                        You've been invited to access a document
+                    </h1>
+                    <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--color-text-secondary)' }}>
+                        The document title stays hidden until the invited verified account
+                        completes both verification steps below.
+                    </p>
+                </div>
+
+                {/* ── State-driven content ── */}
+                {loadingPreview ? (
+                    <LoadingRow message="Loading invitation…" />
+                ) : pageError ? (
+                    <AlertBanner variant="error">{pageError}</AlertBanner>
+                ) : preview ? (
+                    <>
+                        <InvitationInfoCard preview={preview} />
+
+                        <div style={{ height: 1, background: 'var(--color-border)', margin: '24px 0' }} />
+
+                        {!hasSession ? (
+                            /* Not signed in — prompt to log in */
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', justifyContent: 'space-between' }}>
+                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--color-text-secondary)', maxWidth: 340 }}>
+                                    Sign in with the invited account to start verification
+                                    and review this invitation.
+                                </p>
+                                <a href={loginHref} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                                    <Button>Sign in to continue</Button>
+                                </a>
+                            </div>
+                        ) : (
+                            /* Signed in — gate → verification → review */
+                            loadingGate
+                                ? <LoadingRow message="Checking invitation access…" />
+                            : gateError
+                                ? <AlertBanner variant="error">{gateError}</AlertBanner>
+                            : gateStatus && gateStatus.nextStep !== 'review'
+                                ? (
+                                    <>
+                                        {reviewError && (
+                                            <>
+                                                <AlertBanner variant="error">{reviewError}</AlertBanner>
+                                                <div style={{ height: 16 }} />
+                                            </>
+                                        )}
+                                        <InvitationVerificationPanel
+                                            token={token}
+                                            gateStatus={gateStatus}
+                                            onStatusChange={(s) => { setGateStatus(s); setReview(null); setGateError(null); setReviewError(null); }}
+                                            onError={setReviewError}
+                                        />
+                                    </>
+                                )
+                            : loadingReview
+                                ? <LoadingRow message="Opening secure invitation review…" />
+                            : review
+                                ? (
+                                    <InvitationReviewPanel
+                                        review={review}
+                                        acceptedState={acceptedState}
+                                        submitting={submitting}
+                                        reviewError={reviewError}
+                                        onAccept={() => { void handleAccept(); }}
+                                        onDecline={() => { void handleDecline(); }}
+                                    />
+                                )
+                            : (
+                                <AlertBanner variant="warning">
+                                    {reviewError ?? 'Unable to open the invitation review right now.'}
+                                </AlertBanner>
+                            )
+                        )}
+                    </>
+                ) : null}
+            </div>
         </div>
     );
 }
