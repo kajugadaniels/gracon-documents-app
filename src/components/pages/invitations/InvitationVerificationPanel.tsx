@@ -5,7 +5,8 @@
  *
  * Two-step verification gate for document invitation access.
  * Step 1 — email OTP: confirm ownership of the invited email address.
- * Step 2 — identity: complete a fresh ID and face challenge in the main app.
+ * Step 2 — identity: complete a fresh ID and face challenge inside the
+ * documents workspace.
  *
  * A visual step progress indicator shows which gate the user is currently on.
  */
@@ -18,7 +19,7 @@ import {
     verifyInvitationEmailOtp,
     type InvitationGateStatus,
 } from '@/api/invitations.api';
-import { APP_URL, DOCS_URL } from '@/lib/session';
+import { DOCS_URL } from '@/lib/session';
 
 interface InvitationVerificationPanelProps {
     token: string;
@@ -124,7 +125,7 @@ export function InvitationVerificationPanel({
 
     const verifyIdentityHref = useMemo(() => {
         const next = `${DOCS_URL}/invitations/${token}`;
-        return `${APP_URL}/verify-identity?challenge=invitation&next=${encodeURIComponent(next)}`;
+        return `/verify-identity?challenge=invitation&next=${encodeURIComponent(next)}`;
     }, [token]);
 
     async function handleSendCode() {
@@ -173,7 +174,7 @@ export function InvitationVerificationPanel({
                         </p>
                         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--color-text-secondary)' }}>
                             Your email has been confirmed. Complete a fresh ID and face
-                            verification challenge in the main app to unlock the review.
+                            verification challenge here to unlock the review.
                         </p>
                     </div>
                     {gateStatus.identityVerification?.challengeStartedAt && (
