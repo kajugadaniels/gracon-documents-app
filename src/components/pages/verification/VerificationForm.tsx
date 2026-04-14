@@ -4,14 +4,13 @@
  * Documents-native verification page form.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { VerificationFlow } from './VerificationFlow';
 import { createVerificationFlowConfig } from './verification-flow-config';
 import { useVerificationFlow } from './use-verification-flow';
 import { toast } from '@/components/ui';
 import { getAccessToken, redirectToLogin } from '@/lib/session';
-import { useState } from 'react';
 
 /**
  * Renders the verification flow inside the documents workspace.
@@ -60,6 +59,27 @@ export function VerificationForm() {
 
         router.push('/documents');
     }
+
+    const continueAfterVerificationEvent = useEffectEvent(
+        continueAfterVerification,
+    );
+
+    useEffect(() => {
+        if (challengeMode !== 'INVITATION' || !controller.result?.passed) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            continueAfterVerificationEvent();
+        }, 900);
+
+        return () => {
+            window.clearTimeout(timer);
+        };
+    }, [
+        challengeMode,
+        controller.result?.passed,
+    ]);
 
     function handleNidSubmit() {
         if (documentNumber.length !== 16) {
