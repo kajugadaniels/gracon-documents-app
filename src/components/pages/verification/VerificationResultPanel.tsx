@@ -2,11 +2,13 @@
  * Presents the verification outcome, previews, scores, and next actions.
  */
 
+import {
+    VerificationBiometricSummary,
+    VerificationIdentitySummary,
+    VerificationResultPreviews,
+    type VerificationResult,
+} from '@gracon/verification-ui';
 import { Button } from '@/components/ui';
-import type { VerificationResult } from '@/api/verification/verification-contract';
-import { VerificationBiometricSummary } from './VerificationBiometricSummary';
-import { VerificationIdentitySummary } from './VerificationIdentitySummary';
-import { VerificationResultPreviews } from './VerificationResultPreviews';
 
 type VerificationResultPanelProps = {
     result: VerificationResult;
