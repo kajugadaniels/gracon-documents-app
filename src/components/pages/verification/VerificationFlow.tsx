@@ -2,11 +2,11 @@
  * Config-driven composition wrapper for the documents verification UI.
  */
 
+import { VerificationStepProgress } from '@gracon/verification-ui';
 import { Card } from '@/components/ui';
 import { VerificationCaptureStep } from './VerificationCaptureStep';
 import { VerificationIdentityStep } from './VerificationIdentityStep';
 import { VerificationResultPanel } from './VerificationResultPanel';
-import { VerificationStepProgress } from './VerificationStepProgress';
 import type { VerificationFlowConfig } from './verification-flow-config';
 import type { VerificationFlowController } from './use-verification-flow';
 
