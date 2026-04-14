@@ -23,6 +23,13 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     return config;
 });
 
+// Auth-scoped proxy routes still need the bearer token forwarded explicitly.
+authClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    const token = getAccessToken();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+});
+
 // On 401 — attempt refresh via app/app, then retry once
 apiClient.interceptors.response.use(
     (r) => r,
