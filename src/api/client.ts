@@ -16,6 +16,34 @@ export const authClient = axios.create({
     withCredentials: true,
 });
 
+async function handleUnauthorizedRetry(
+    client: typeof apiClient | typeof authClient,
+    error: AxiosError,
+) {
+    const original = error.config as AxiosRequestConfig & { _retry?: boolean };
+
+    if (error.response?.status === 401 && !original._retry) {
+        original._retry = true;
+
+        const refresh = await refreshAccessToken();
+        if (refresh.status === 'refreshed') {
+            original.headers = {
+                ...original.headers,
+                Authorization: `Bearer ${refresh.accessToken}`,
+            };
+            return client(original);
+        }
+
+        if (refresh.status === 'unauthenticated') {
+            const intendedPath =
+                `${window.location.pathname}${window.location.search}${window.location.hash}`;
+            redirectToLogin(intendedPath);
+        }
+    }
+
+    return Promise.reject(error);
+}
+
 // Attach access token from shared cookie on every request
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = getAccessToken();
@@ -33,30 +61,10 @@ authClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 // On 401 — attempt refresh via app/app, then retry once
 apiClient.interceptors.response.use(
     (r) => r,
-    async (error: AxiosError) => {
-        const original = error.config as AxiosRequestConfig & { _retry?: boolean };
+    async (error: AxiosError) => handleUnauthorizedRetry(apiClient, error),
+);
 
-        if (error.response?.status === 401 && !original._retry) {
-            original._retry = true;
-
-            const refresh = await refreshAccessToken();
-            if (refresh.status === 'refreshed') {
-                original.headers = {
-                    ...original.headers,
-                    Authorization: `Bearer ${refresh.accessToken}`,
-                };
-                return apiClient(original);
-            }
-
-            if (refresh.status === 'unauthenticated') {
-                const intendedPath =
-                    `${window.location.pathname}${window.location.search}${window.location.hash}`;
-                redirectToLogin(intendedPath);
-            }
-
-            return Promise.reject(error);
-        }
-
-        return Promise.reject(error);
-    },
+authClient.interceptors.response.use(
+    (r) => r,
+    async (error: AxiosError) => handleUnauthorizedRetry(authClient, error),
 );
