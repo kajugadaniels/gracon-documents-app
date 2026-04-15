@@ -5,16 +5,14 @@
  */
 
 import { useEffect } from 'react';
-import { Button, PremiumLoader } from '@/components/ui';
-import {
-    useCamera,
-    type CameraFacing,
-} from './hooks/useCamera';
 import {
     CameraCaptureReview,
     CameraPermissionDenied,
     CameraQualityBar,
-} from './CameraCaptureUi';
+    useCamera,
+    type CameraFacing,
+} from '@gracon/verification-ui';
+import { Button, PremiumLoader } from '@/components/ui';
 
 interface CameraCaptureProps {
     mode: 'id-card' | 'selfie';
