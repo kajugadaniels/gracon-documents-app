@@ -29,6 +29,7 @@ import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension
 import { useDigitalCertificateStatus } from '@/components/editor/use-digital-certificate-status';
 import { useDocumentPagination } from '@/components/editor/use-document-pagination';
 import { useDocumentViewState } from '@/components/editor/use-document-view-state';
+import { useActiveParagraphLayout } from '@/components/editor/use-active-paragraph-layout';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import { buildViewMenuItems } from '@/constants/view-menu';
@@ -369,6 +370,7 @@ export default function EditDocumentPage() {
         () => buildDocumentLayoutStyle(documentLayout),
         [documentLayout],
     );
+    const activeParagraphLayout = useActiveParagraphLayout(editor);
     const applyHorizontalMarginsPreview = useCallback(
         (nextMargins: { left: number; right: number }) => {
             setDoc((current) => {
@@ -691,6 +693,7 @@ export default function EditDocumentPage() {
                                     width={A4_PAPER_WIDTH_PX}
                                     height={Math.max(pagination.contentHeight, pagination.pageHeight)}
                                     margins={documentLayout.margins}
+                                    paragraphIndent={activeParagraphLayout}
                                     disabled={baseIsReadOnly}
                                     onHorizontalMarginsPreview={(nextMargins) => {
                                         if (!rulerCommitLayoutRef.current) {
