@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { getAccessToken, refreshAccessToken, redirectToLogin } from '@/lib/session';
+import { handleUnauthorizedRetry } from './auth-retry';
 
 const DOCS_BASE = process.env.NEXT_PUBLIC_DOCS_API_URL ?? 'http://localhost:3005/api/v1';
 const AUTH_BASE = '/api/v1';
@@ -15,34 +16,6 @@ export const authClient = axios.create({
     timeout: 30_000,
     withCredentials: true,
 });
-
-async function handleUnauthorizedRetry(
-    client: typeof apiClient | typeof authClient,
-    error: AxiosError,
-) {
-    const original = error.config as AxiosRequestConfig & { _retry?: boolean };
-
-    if (error.response?.status === 401 && !original._retry) {
-        original._retry = true;
-
-        const refresh = await refreshAccessToken();
-        if (refresh.status === 'refreshed') {
-            original.headers = {
-                ...original.headers,
-                Authorization: `Bearer ${refresh.accessToken}`,
-            };
-            return client(original);
-        }
-
-        if (refresh.status === 'unauthenticated') {
-            const intendedPath =
-                `${window.location.pathname}${window.location.search}${window.location.hash}`;
-            redirectToLogin(intendedPath);
-        }
-    }
-
-    return Promise.reject(error);
-}
 
 // Attach access token from shared cookie on every request
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -61,10 +34,44 @@ authClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 // On 401 — attempt refresh via app/app, then retry once
 apiClient.interceptors.response.use(
     (r) => r,
-    async (error: AxiosError) => handleUnauthorizedRetry(apiClient, error),
+    async (error: AxiosError) =>
+        handleUnauthorizedRetry(error as AxiosError & { config?: AxiosRequestConfig & { _retry?: boolean } }, {
+            retryRequest: (config) => apiClient(config),
+            refreshAccessToken: async () => {
+                const refresh = await refreshAccessToken();
+                return refresh.status === 'refreshed'
+                    ? {
+                          status: 'refreshed' as const,
+                          accessToken: refresh.accessToken,
+                      }
+                    : refresh.status === 'unauthenticated'
+                      ? { status: 'unauthenticated' as const }
+                      : { status: 'failed' as const };
+            },
+            redirectToLogin,
+            getIntendedPath: () =>
+                `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        }),
 );
 
 authClient.interceptors.response.use(
     (r) => r,
-    async (error: AxiosError) => handleUnauthorizedRetry(authClient, error),
+    async (error: AxiosError) =>
+        handleUnauthorizedRetry(error as AxiosError & { config?: AxiosRequestConfig & { _retry?: boolean } }, {
+            retryRequest: (config) => authClient(config),
+            refreshAccessToken: async () => {
+                const refresh = await refreshAccessToken();
+                return refresh.status === 'refreshed'
+                    ? {
+                          status: 'refreshed' as const,
+                          accessToken: refresh.accessToken,
+                      }
+                    : refresh.status === 'unauthenticated'
+                      ? { status: 'unauthenticated' as const }
+                      : { status: 'failed' as const };
+            },
+            redirectToLogin,
+            getIntendedPath: () =>
+                `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        }),
 );
