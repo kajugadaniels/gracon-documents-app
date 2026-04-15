@@ -33,6 +33,7 @@ import { DocumentSignatureBlock } from '@/components/documents/DocumentSignature
 import { buildViewMenuItems } from '@/constants/view-menu';
 import { A4_PAPER_WIDTH_PX } from '@/constants';
 import { getDigitalCertificateUrl } from '@/lib/session';
+import { buildDocumentLayoutStyle, normalizeDocumentLayout } from '@/lib/document-layout';
 import { useSessionUser } from '@/app/(protected)/layout';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument, lockDocument,
@@ -337,6 +338,14 @@ export default function EditDocumentPage() {
         showRuler: viewState.showRuler,
         showFormattingMarks: viewState.showFormattingMarks,
     }), [baseIsReadOnly, viewState]);
+    const documentLayout = useMemo(
+        () => normalizeDocumentLayout(doc?.layout),
+        [doc?.layout],
+    );
+    const documentLayoutStyle = useMemo(
+        () => buildDocumentLayoutStyle(documentLayout),
+        [documentLayout],
+    );
 
     // ── Loading state ────────────────────────────────────────────────────────
     if (loading) {
@@ -540,7 +549,9 @@ export default function EditDocumentPage() {
                         >
                             {viewState.showRuler && (
                                 <DocumentRulerOverlay
+                                    width={A4_PAPER_WIDTH_PX}
                                     height={Math.max(pagination.contentHeight, pagination.pageHeight)}
+                                    margins={documentLayout.margins}
                                 />
                             )}
                             <RichTextEditor
@@ -555,6 +566,7 @@ export default function EditDocumentPage() {
                                 paperStatus={doc.status}
                                 pageNumber={1}
                                 pageCount={pagination.pageCount}
+                                paperStyle={documentLayoutStyle}
                                 overlayContent={signatureStrip}
                                 commentAnchors={commentAnchors}
                             />
