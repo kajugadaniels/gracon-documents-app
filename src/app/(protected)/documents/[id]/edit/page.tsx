@@ -12,6 +12,7 @@ import { useParams, useRouter } from 'next/navigation';
 import type { Editor } from '@tiptap/react';
 import { toast } from '@/components/ui';
 import { DocumentFinaliseDialog } from '@/components/editor/DocumentFinaliseDialog';
+import { DocumentPageSetupDialog } from '@/components/editor/DocumentPageSetupDialog';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocumentAccessTransitionBanner } from '@/components/editor/DocumentAccessTransitionBanner';
 import { DocumentRulerOverlay } from '@/components/editor/DocumentRulerOverlay';
@@ -33,7 +34,11 @@ import { DocumentSignatureBlock } from '@/components/documents/DocumentSignature
 import { buildViewMenuItems } from '@/constants/view-menu';
 import { A4_PAPER_WIDTH_PX } from '@/constants';
 import { getDigitalCertificateUrl } from '@/lib/session';
-import { buildDocumentLayoutStyle, normalizeDocumentLayout } from '@/lib/document-layout';
+import {
+    buildDocumentLayoutStyle,
+    normalizeDocumentLayout,
+    type DocumentLayout,
+} from '@/lib/document-layout';
 import { useSessionUser } from '@/app/(protected)/layout';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument, lockDocument,
@@ -69,6 +74,8 @@ export default function EditDocumentPage() {
     const [editingTitle, setEditingTitle] = useState(false);
     const [title, setTitle] = useState('');
     const [showFinaliseDialog, setShowFinaliseDialog] = useState(false);
+    const [showPageSetupDialog, setShowPageSetupDialog] = useState(false);
+    const [savingPageSetup, setSavingPageSetup] = useState(false);
     const [showSigning, setShowSigning] = useState(false);
     const [commentsOpen, setCommentsOpen] = useState(false);
     const [comments, setComments] = useState<DocumentComment[]>([]);
@@ -332,12 +339,26 @@ export default function EditDocumentPage() {
     const viewMenuItems = useMemo(() => buildViewMenuItems({
         printLayout: viewState.printLayout,
         canToggleMode: !baseIsReadOnly,
+        canConfigureLayout: !baseIsReadOnly,
         viewMode: viewState.viewMode,
         zoom: viewState.zoom,
         isFullscreen: viewState.isFullscreen,
         showRuler: viewState.showRuler,
         showFormattingMarks: viewState.showFormattingMarks,
     }), [baseIsReadOnly, viewState]);
+    const handleHeaderViewAction = useCallback((actionId: string) => {
+        if (actionId === 'view:page-setup') {
+            if (baseIsReadOnly) {
+                toast.warning('Page setup can only be changed while the document is still editable.');
+                return;
+            }
+
+            setShowPageSetupDialog(true);
+            return;
+        }
+
+        handleViewAction(actionId);
+    }, [baseIsReadOnly, handleViewAction]);
     const documentLayout = useMemo(
         () => normalizeDocumentLayout(doc?.layout),
         [doc?.layout],
@@ -433,6 +454,32 @@ export default function EditDocumentPage() {
     const scaledFrameWidth = Math.round(A4_PAPER_WIDTH_PX * zoomScale);
     const scaledFrameHeight = Math.max(pagination.contentHeight, pagination.pageHeight) * zoomScale;
 
+    async function handleSavePageSetup(nextLayout: DocumentLayout) {
+        if (!doc || baseIsReadOnly) {
+            return;
+        }
+
+        setSavingPageSetup(true);
+        try {
+            const updated = await updateDocumentMeta(id, { layout: nextLayout });
+            setDoc((current) => (
+                current
+                    ? {
+                        ...current,
+                        layout: updated.layout,
+                        updatedAt: updated.updatedAt,
+                      }
+                    : current
+            ));
+            setShowPageSetupDialog(false);
+            toast.success('Page setup updated.');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'Failed to update page setup.'));
+        } finally {
+            setSavingPageSetup(false);
+        }
+    }
+
     const signatureStrip = isLocked ? (
         <DocumentSignatureBlock
             documentId={doc.id}
@@ -499,7 +546,7 @@ export default function EditDocumentPage() {
                 onLock={handleLockDocument}
                 onSign={handleSignDocument}
                 onViewSignature={() => setShowSigning(true)}
-                onViewAction={handleViewAction}
+                onViewAction={handleHeaderViewAction}
             />
 
             {/* ── Status banner (read-only) ── */}
@@ -528,6 +575,15 @@ export default function EditDocumentPage() {
                 onClose={() => setShowFinaliseDialog(false)}
                 onConfirm={submitFinalise}
             />
+
+            {showPageSetupDialog && (
+                <DocumentPageSetupDialog
+                    layout={documentLayout}
+                    saving={savingPageSetup}
+                    onClose={() => setShowPageSetupDialog(false)}
+                    onSave={handleSavePageSetup}
+                />
+            )}
 
             {/* ── Paper canvas ── */}
             <div className="ded-canvas">
