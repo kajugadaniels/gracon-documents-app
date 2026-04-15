@@ -38,9 +38,9 @@ function measurePaperLayout(editorRoot: HTMLElement): DocumentPaginationLayout {
     const paperEl = editorRoot.closest('.document-paper-sheet');
     if (!(paperEl instanceof HTMLElement)) return INITIAL_LAYOUT;
 
-    const paperRect = paperEl.getBoundingClientRect();
-    const pageHeight = paperRect.width > 0
-        ? Math.max(Math.round(paperRect.width * A4_PAPER_ASPECT_RATIO), 1)
+    const paperWidth = paperEl.offsetWidth;
+    const pageHeight = paperWidth > 0
+        ? Math.max(Math.round(paperWidth * A4_PAPER_ASPECT_RATIO), 1)
         : A4_PAPER_HEIGHT_PX;
     const contentHeight = Math.max(
         paperEl.scrollHeight,
