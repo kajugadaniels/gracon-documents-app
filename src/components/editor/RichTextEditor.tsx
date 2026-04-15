@@ -14,7 +14,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import Highlight from '@tiptap/extension-highlight';
 import { useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
 import {
     CommentAnchorExtension,
@@ -35,6 +35,7 @@ interface RichTextEditorProps {
     paperStatus?: string;
     pageNumber?: number;
     pageCount?: number;
+    paperStyle?: CSSProperties;
     /**
      * Rendered as an absolutely-positioned overlay that fills the paper sheet.
      * Used for the draggable signature block so it can be placed anywhere on
@@ -56,6 +57,7 @@ export function RichTextEditor({
     paperStatus,
     pageNumber = 1,
     pageCount = 1,
+    paperStyle,
     overlayContent,
     commentAnchors = [],
 }: RichTextEditorProps) {
@@ -133,7 +135,7 @@ export function RichTextEditor({
             : `Page ${pageNumber}`;
 
         return (
-            <div className={paperEditorClassName}>
+            <div className={paperEditorClassName} style={paperStyle}>
                 {!readOnly && !hideToolbar && <EditorToolbar editor={editor} paperMode />}
                 <DocumentPaperSheet
                     className="document-paper-sheet--editor"
