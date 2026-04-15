@@ -1,36 +1,132 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# App Documents
 
-## Getting Started
+Rich-text document workspace for the Gracon platform.
 
-First, run the development server:
+This application lets users create, organize, edit, share, sign, verify, and review documents. Identity stays in `app/app`; this app focuses on the document experience and redirects to the main app when login or identity verification is required.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Overview
+
+- Runtime: Next.js 15 + React + TypeScript
+- Default port: `4002`
+- Styling: Tailwind CSS
+- State: Zustand + sessionStorage
+- Editor: Tiptap / ProseMirror
+- Document domain: folders, templates, collaboration, invitations, signing, verification
+
+## What This App Owns
+
+- Document list, creation, rename, copy, delete, and import UX
+- Rich-text editing and autosave experience
+- Share dialog, permission assignment, invitation review
+- Signature workflow UI and signing progress
+- Public verify page for authenticity checks
+- Invitation acceptance flow and proof-chain review
+
+## Core Skills Needed
+
+- Next.js App Router
+- Tiptap / ProseMirror editor integration
+- Complex state synchronization for document metadata
+- Collaboration and permission UX
+- Secure cross-app auth handoff
+
+## Techniques Used
+
+- Direct browser calls to `api/documents` for document operations
+- Next.js proxy routes for auth refresh/current user and signature operations
+- Zustand hydration from sessionStorage plus cookie-backed recovery
+- A4-style editor work, autosave, versions, and signing states
+- Invitation gate with OTP and identity-proof return flow
+- Cross-tab share activity refresh and document metadata merge patterns
+
+## Main Areas
+
+```text
+src/app/
+  (protected)/documents/   list and protected document workspace routes
+  (protected)/templates/   template entry
+  api/                     local auth/signature helper routes
+  invitations/[token]/     invitation review and acceptance
+  login/                   minimal local login handoff
+  verify/                  public authenticity page
+components/
+  editor/                  header, toolbar, sharing, signing, comments
+  documents/               document cards and signature strip
+  pages/
+    auth/login/
+    documents/
+    invitations/
+    verify/
+  layout/
+  shared/
+  ui/
+api/
+  documents.api.ts
+  folders.api.ts
+  invitations.api.ts
+  signature.api.ts
+  templates.api.ts
+  client.ts
+  auth-retry.ts
+lib/
+  store/
+  hooks/
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Folder Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+app/documents/
+  src/
+    app/
+    api/
+    components/
+    lib/
+    constants/
+    types/
+  public/
+  test/
+  package.json
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Local Commands
 
-## Learn More
+```bash
+npm install
+npm run dev
+npm run build
+npm run lint
+npm run test
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Environment Notes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Key variables:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```env
+NEXT_PUBLIC_DOCS_URL=http://localhost:4002
+NEXT_PUBLIC_APP_URL=http://localhost:4000
+NEXT_PUBLIC_DOCUMENTS_API_URL=http://localhost:3005/api/v1
+NEXT_PUBLIC_SIGNATURE_API_URL=http://localhost:3002/api/v1
+```
 
-## Deploy on Vercel
+## Integration Boundaries
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Talks directly to `api/documents`
+- Uses local proxy routes for auth/session recovery and signature endpoints
+- Redirects to `app/app` for login and identity verification
+- Should not host its own standalone identity-verification UI now
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Important Rules
+
+- Use hard navigation when jumping to `app/app`
+- Keep document permissions and signing state separate in the UI
+- Reflect the backend workflow correctly: finalise, sign, then owner lock
+- Treat invitation review as a security-sensitive flow, not a simple share acceptance
+
+## Contribution Checklist
+
+- Verify permission behavior before changing document actions
+- Keep editor changes isolated from auth behavior unless the flow truly crosses apps
+- Test invitation, share, signing, and public verify flows after document-domain changes
+
