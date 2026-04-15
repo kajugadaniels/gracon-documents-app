@@ -5,13 +5,12 @@
  *
  * Two-step verification gate for document invitation access.
  * Step 1 — email OTP: confirm ownership of the invited email address.
- * Step 2 — identity: complete a fresh ID and face challenge inside the
- * documents workspace.
+ * Step 2 — identity: complete a fresh ID and face challenge in the main app.
  *
  * A visual step progress indicator shows which gate the user is currently on.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AxiosError } from 'axios';
 import { Button, Input } from '@/components/ui';
 import {
@@ -19,9 +18,7 @@ import {
     verifyInvitationEmailOtp,
     type InvitationGateStatus,
 } from '@/api/invitations.api';
-import { getVerificationStatusApi } from '@/api/verification/get-status.api';
-import { DOCS_URL } from '@/lib/session';
-import type { VerificationStatusResponse } from '@/api/verification/verification-contract';
+import { APP_URL, DOCS_URL } from '@/lib/session';
 
 interface InvitationVerificationPanelProps {
     token: string;
@@ -124,47 +121,11 @@ export function InvitationVerificationPanel({
     const [email,      setEmail]      = useState(gateStatus.recipient?.email ?? '');
     const [code,       setCode]       = useState('');
     const [submitting, setSubmitting] = useState<'send' | 'verify' | null>(null);
-    const [verificationStatus, setVerificationStatus] =
-        useState<VerificationStatusResponse | null>(null);
-    const [loadingVerificationStatus, setLoadingVerificationStatus] =
-        useState(false);
 
     const verifyIdentityHref = useMemo(() => {
         const next = `${DOCS_URL}/invitations/${token}`;
-        return `/verify-identity?challenge=invitation&next=${encodeURIComponent(next)}`;
+        return `${APP_URL}/verify-identity?challenge=invitation&next=${encodeURIComponent(next)}`;
     }, [token]);
-
-    useEffect(() => {
-        if (gateStatus.nextStep !== 'identity_verification') {
-            setVerificationStatus(null);
-            setLoadingVerificationStatus(false);
-            return;
-        }
-
-        let cancelled = false;
-        setLoadingVerificationStatus(true);
-
-        getVerificationStatusApi()
-            .then((status) => {
-                if (!cancelled) {
-                    setVerificationStatus(status.data);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setVerificationStatus(null);
-                }
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setLoadingVerificationStatus(false);
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [gateStatus.nextStep]);
 
     async function handleSendCode() {
         setSubmitting('send');
@@ -212,7 +173,7 @@ export function InvitationVerificationPanel({
                         </p>
                         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--color-text-secondary)' }}>
                             Your email has been confirmed. Complete a fresh ID and face
-                            verification challenge here to unlock the review.
+                            verification challenge in the main app to unlock the review.
                         </p>
                     </div>
                     {gateStatus.identityVerification?.challengeStartedAt && (
@@ -220,48 +181,20 @@ export function InvitationVerificationPanel({
                             Challenge started {formatDate(gateStatus.identityVerification.challengeStartedAt)}.
                         </p>
                     )}
-                    {loadingVerificationStatus ? (
-                        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                            Loading verification attempt status…
-                        </p>
-                    ) : verificationStatus ? (
-                        <div
-                            style={{
-                                display: 'grid',
-                                gap: 6,
-                                fontSize: 12,
-                                color: 'var(--color-text-muted)',
-                            }}
-                        >
-                            <p style={{ margin: 0 }}>
-                                {verificationStatus.attemptsRemaining} verification attempt
-                                {verificationStatus.attemptsRemaining !== 1 ? 's' : ''}{' '}
-                                remaining in the current 24-hour window.
-                            </p>
-                            {verificationStatus.lockout.retryAvailableAt && (
-                                <p style={{ margin: 0 }}>
-                                    Another attempt will be available after{' '}
-                                    {formatDate(
-                                        verificationStatus.lockout.retryAvailableAt,
-                                    )}
-                                    .
-                                </p>
-                            )}
-                        </div>
-                    ) : null}
+                    <p
+                        style={{
+                            margin: 0,
+                            fontSize: 12,
+                            lineHeight: 1.7,
+                            color: 'var(--color-text-muted)',
+                        }}
+                    >
+                        You will be redirected to the main app for identity verification,
+                        then returned here to continue the invitation review.
+                    </p>
                     <div>
                         <a href={verifyIdentityHref} style={{ textDecoration: 'none' }}>
-                            <Button
-                                disabled={
-                                    verificationStatus?.attemptsRemaining === 0 &&
-                                    Boolean(
-                                        verificationStatus.lockout
-                                            .retryAvailableAt,
-                                    )
-                                }
-                            >
-                                Start identity challenge
-                            </Button>
+                            <Button>Continue to identity verification</Button>
                         </a>
                     </div>
                 </div>
