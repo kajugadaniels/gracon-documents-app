@@ -31,7 +31,7 @@ test('retries one unauthorized request after a successful refresh', async () => 
             redirectToLogin: () => {
                 throw new Error('redirect should not be called');
             },
-            getIntendedPath: () => '/verify-identity?challenge=invitation',
+            getIntendedPath: () => '/invitations/token-123',
         },
     );
 
@@ -62,12 +62,12 @@ test('redirects to login when refresh reports unauthenticated', async () => {
                 redirectToLogin: (path) => {
                     redirects.push(path);
                 },
-                getIntendedPath: () => '/verify-identity?next=%2Finvitations%2F123',
+                getIntendedPath: () => '/invitations/token-123',
             },
         ),
     );
 
-    assert.deepEqual(redirects, ['/verify-identity?next=%2Finvitations%2F123']);
+    assert.deepEqual(redirects, ['/invitations/token-123']);
 });
 
 test('does not retry non-401 or already retried requests', async () => {
