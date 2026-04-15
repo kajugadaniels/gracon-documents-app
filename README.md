@@ -40,6 +40,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Persisted document layout model powering paper margins, rulers, PDF, and DOCX export
 - Preset-driven page setup with live printable-area preview for margin tuning
 - Horizontal ruler handles for direct left/right margin editing on the page canvas
+- Selection-aware ruler markers for active paragraph left-indent and first-line-indent readout
 - Invitation gate with OTP and identity-proof return flow
 - Cross-tab share activity refresh and document metadata merge patterns
 
