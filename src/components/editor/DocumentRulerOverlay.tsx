@@ -1,29 +1,132 @@
 'use client';
 
+import type { PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { DocumentLayoutMargins } from '@/lib/document-layout';
+import {
+    clampHorizontalDocumentMargins,
+    MIN_DOCUMENT_MARGIN_PX,
+} from '@/lib/document-layout';
 
 const HORIZONTAL_TICKS = Array.from({ length: 17 }, (_, index) => index);
 const VERTICAL_TICKS = Array.from({ length: 23 }, (_, index) => index);
+const DPI = 96;
 
 interface DocumentRulerOverlayProps {
     width: number;
     height: number;
     margins: DocumentLayoutMargins;
+    disabled?: boolean;
+    onHorizontalMarginsPreview?: (margins: Pick<DocumentLayoutMargins, 'left' | 'right'>) => void;
+    onHorizontalMarginsCommit?: (margins: Pick<DocumentLayoutMargins, 'left' | 'right'>) => void;
 }
 
 function isMajorTick(index: number) {
     return index % 2 === 0;
 }
 
-export function DocumentRulerOverlay({ width, height, margins }: DocumentRulerOverlayProps) {
+function pxToInches(px: number) {
+    return (px / DPI).toFixed(2);
+}
+
+export function DocumentRulerOverlay({
+    width,
+    height,
+    margins,
+    disabled = false,
+    onHorizontalMarginsPreview,
+    onHorizontalMarginsCommit,
+}: DocumentRulerOverlayProps) {
+    const topRulerRef = useRef<HTMLDivElement | null>(null);
+    const dragStateRef = useRef<{
+        handle: 'left' | 'right';
+        pointerId: number;
+    } | null>(null);
     const leftMarginPercent = (margins.left / width) * 100;
     const rightMarginPercent = (margins.right / width) * 100;
     const topMarginPercent = (margins.top / height) * 100;
     const bottomMarginPercent = (margins.bottom / height) * 100;
+    const horizontalSummary = useMemo(
+        () => `${pxToInches(margins.left)} in left · ${pxToInches(margins.right)} in right`,
+        [margins.left, margins.right],
+    );
+
+    const resolveHorizontalMargins = useCallback((pointerClientX: number, handle: 'left' | 'right') => {
+        const rulerEl = topRulerRef.current;
+        if (!rulerEl) return null;
+
+        const bounds = rulerEl.getBoundingClientRect();
+        const localX = pointerClientX - bounds.left;
+
+        if (handle === 'left') {
+            return clampHorizontalDocumentMargins(width, {
+                left: Math.round(Math.min(Math.max(localX, MIN_DOCUMENT_MARGIN_PX), width)),
+                right: margins.right,
+            });
+        }
+
+        return clampHorizontalDocumentMargins(width, {
+            left: margins.left,
+            right: Math.round(Math.min(Math.max(width - localX, MIN_DOCUMENT_MARGIN_PX), width)),
+        });
+    }, [margins.left, margins.right, width]);
+
+    const stopDragging = useCallback(() => {
+        dragStateRef.current = null;
+        document.body.classList.remove('document-ruler--dragging');
+    }, []);
+
+    const handlePointerMove = useCallback((event: PointerEvent) => {
+        const dragState = dragStateRef.current;
+        if (!dragState) return;
+
+        const nextMargins = resolveHorizontalMargins(event.clientX, dragState.handle);
+        if (!nextMargins) return;
+        onHorizontalMarginsPreview?.(nextMargins);
+    }, [onHorizontalMarginsPreview, resolveHorizontalMargins]);
+
+    const detachDragListeners = useCallback((listener: (event: PointerEvent) => void) => {
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', listener);
+        window.removeEventListener('pointercancel', listener);
+    }, [handlePointerMove]);
+
+    function handlePointerUp(event: PointerEvent) {
+        const dragState = dragStateRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+        const nextMargins = resolveHorizontalMargins(event.clientX, dragState.handle);
+        if (nextMargins) {
+            onHorizontalMarginsPreview?.(nextMargins);
+            onHorizontalMarginsCommit?.(nextMargins);
+        }
+
+        stopDragging();
+        detachDragListeners(handlePointerUp);
+    }
+
+    function beginDrag(event: ReactPointerEvent<HTMLButtonElement>, handle: 'left' | 'right') {
+        if (disabled) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        dragStateRef.current = {
+            handle,
+            pointerId: event.pointerId,
+        };
+        document.body.classList.add('document-ruler--dragging');
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+    }
 
     return (
         <div className="document-ruler-overlay" aria-hidden="true">
-            <div className="document-ruler document-ruler--top">
+            <div
+                ref={topRulerRef}
+                className={`document-ruler document-ruler--top${disabled ? ' document-ruler--disabled' : ''}`}
+            >
                 <span
                     className="document-ruler__margin-zone document-ruler__margin-zone--left"
                     style={{ width: `${leftMarginPercent}%` }}
@@ -43,6 +146,28 @@ export function DocumentRulerOverlay({ width, height, margins }: DocumentRulerOv
                         )}
                     </span>
                 ))}
+                <button
+                    type="button"
+                    className="document-ruler__handle document-ruler__handle--left"
+                    style={{ left: `${leftMarginPercent}%` }}
+                    title={horizontalSummary}
+                    aria-label={`Left margin ${pxToInches(margins.left)} inches`}
+                    disabled={disabled}
+                    onPointerDown={(event) => beginDrag(event, 'left')}
+                >
+                    <span className="document-ruler__handle-tip">{pxToInches(margins.left)}″</span>
+                </button>
+                <button
+                    type="button"
+                    className="document-ruler__handle document-ruler__handle--right"
+                    style={{ right: `${rightMarginPercent}%` }}
+                    title={horizontalSummary}
+                    aria-label={`Right margin ${pxToInches(margins.right)} inches`}
+                    disabled={disabled}
+                    onPointerDown={(event) => beginDrag(event, 'right')}
+                >
+                    <span className="document-ruler__handle-tip">{pxToInches(margins.right)}″</span>
+                </button>
             </div>
 
             <div className="document-ruler document-ruler--left" style={{ height }}>
