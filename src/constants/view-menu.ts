@@ -24,7 +24,7 @@ export function buildViewMenuItems(state: DocumentViewMenuState): MenuItem[] {
         {
             type: 'action',
             label: state.canToggleMode
-                ? `Mode: ${state.viewMode === 'editing' ? 'Editing' : 'Viewing'}`
+                ? withCheckmark(state.viewMode === 'editing', 'Mode: Editing')
                 : 'Mode: View only',
             actionId: 'view:toggle-mode',
             disabled: !state.canToggleMode,
