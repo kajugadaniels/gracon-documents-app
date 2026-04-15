@@ -1,3 +1,9 @@
+/**
+ * Shared document layout utilities for the editor and export layers.
+ *
+ * Layout must stay normalized across API payloads, live paper rendering,
+ * rulers, and export pipelines so margins do not drift between surfaces.
+ */
 import type { CSSProperties } from 'react';
 import { A4_PAPER_MARGIN_PX, A4_PAPER_WIDTH_PX } from '@/constants/document-paper';
 
