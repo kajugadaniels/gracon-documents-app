@@ -540,7 +540,7 @@ body {
 .document-ruler__paragraph-marker {
   position: absolute;
   z-index: 1;
-  pointer-events: none;
+  pointer-events: auto;
 }
 .document-ruler__paragraph-marker--left-indent {
   bottom: -1px;
@@ -572,6 +572,28 @@ body {
   border-right: 7px solid transparent;
   border-top: 10px solid rgba(249, 115, 22, 0.96);
   filter: drop-shadow(0 4px 10px rgba(249, 115, 22, 0.18));
+}
+.document-ruler__paragraph-handle {
+  position: absolute;
+  inset: -8px;
+  border: none;
+  background: transparent;
+  cursor: ew-resize;
+  padding: 0;
+}
+.document-ruler__paragraph-handle:disabled {
+  cursor: default;
+}
+.document-ruler__paragraph-handle:focus-visible {
+  outline: none;
+}
+.document-ruler__paragraph-handle:hover .document-ruler__handle-tip,
+.document-ruler__paragraph-handle:focus-visible .document-ruler__handle-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.document-ruler__paragraph-marker--first-line .document-ruler__paragraph-handle {
+  inset: -10px -8px -2px -8px;
 }
 .document-ruler--top .document-ruler__tick {
   top: 100%;
