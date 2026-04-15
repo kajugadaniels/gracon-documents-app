@@ -154,6 +154,15 @@ export interface DocumentSummary {
     updatedAt: string;
     signedAt: string | null;
     lockedAt: string | null;
+    layout: {
+        paperSize: 'A4';
+        margins: {
+            top: number;
+            right: number;
+            bottom: number;
+            left: number;
+        };
+    };
     access?: DocumentAccessSummary;
 }
 
@@ -308,7 +317,19 @@ export async function autosaveDocument(
 
 export async function updateDocumentMeta(
     id: string,
-    data: { title?: string; tags?: string[] },
+    data: {
+        title?: string;
+        tags?: string[];
+        layout?: {
+            paperSize?: 'A4';
+            margins?: Partial<{
+                top: number;
+                right: number;
+                bottom: number;
+                left: number;
+            }>;
+        };
+    },
 ): Promise<DocumentSummary> {
     const res = await apiClient.patch(`/documents/${id}`, data);
     return res.data;
