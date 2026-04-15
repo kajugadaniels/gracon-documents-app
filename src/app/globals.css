@@ -422,6 +422,10 @@ body {
   z-index: 5;
   pointer-events: none;
 }
+.document-ruler--dragging {
+  cursor: ew-resize;
+  user-select: none;
+}
 .document-ruler {
   position: absolute;
   background: rgba(255,255,255,0.96);
@@ -440,6 +444,9 @@ body {
   left: -34px;
   width: 24px;
   border-radius: 10px 0 0 10px;
+}
+.document-ruler--disabled {
+  opacity: 0.76;
 }
 .document-ruler__tick {
   position: absolute;
@@ -463,6 +470,72 @@ body {
 }
 .document-ruler__margin-zone--bottom {
   inset: auto 0 0 0;
+}
+.document-ruler__handle {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 16px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,255,0.96));
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
+  cursor: ew-resize;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+.document-ruler__handle::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 -4px 0 #2563eb, 0 4px 0 #2563eb;
+}
+.document-ruler__handle:hover:not(:disabled),
+.document-ruler__handle:focus-visible {
+  transform: translate(-50%, -50%) scale(1.05);
+  border-color: rgba(37, 99, 235, 0.34);
+  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.18);
+  outline: none;
+}
+.document-ruler__handle:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+.document-ruler__handle--right {
+  transform: translate(50%, -50%);
+}
+.document-ruler__handle--right:hover:not(:disabled),
+.document-ruler__handle--right:focus-visible {
+  transform: translate(50%, -50%) scale(1.05);
+}
+.document-ruler__handle-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(2px);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.document-ruler__handle:hover .document-ruler__handle-tip,
+.document-ruler__handle:focus-visible .document-ruler__handle-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 .document-ruler--top .document-ruler__tick {
   top: 100%;
