@@ -1,8 +1,8 @@
 /**
- * Reusable camera-capture step used for both ID card and selfie collection.
+ * Documents-app adapter around the shared capture-step layout.
  */
 
-import { Button } from '@/components/ui';
+import { VerificationCaptureStepLayout } from '@gracon/verification-ui';
 import { CameraCapture } from './CameraCapture';
 
 type VerificationCaptureStepProps = {
@@ -40,51 +40,25 @@ export function VerificationCaptureStep({
     onContinue,
 }: VerificationCaptureStepProps) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div>
-                <h1
-                    style={{
-                        fontSize: 22,
-                        fontWeight: 700,
-                        color: 'var(--color-text-primary)',
-                        marginBottom: 8,
-                        letterSpacing: '-0.02em',
-                    }}
-                >
-                    {title}
-                </h1>
-                <p
-                    style={{
-                        fontSize: 14,
-                        color: 'var(--color-text-secondary)',
-                        lineHeight: 1.6,
-                    }}
-                >
-                    {description}
-                </p>
-            </div>
-
-            <CameraCapture
-                mode={mode}
-                onCapture={onCapture}
-                onRetake={onRetake}
-                captured={captured}
-            />
-
-            <div style={{ display: 'flex', gap: 12 }}>
-                <Button variant="ghost" onClick={onBack} style={{ flex: 1 }}>
-                    {backLabel}
-                </Button>
-                <Button
-                    disabled={!captured || loading}
-                    loading={loading}
-                    loadingText={loadingText}
-                    onClick={onContinue}
-                    style={{ flex: 2 }}
-                >
-                    {captured ? continueLabel : disabledLabel}
-                </Button>
-            </div>
-        </div>
+        <VerificationCaptureStepLayout
+            title={title}
+            description={description}
+            captured={captured}
+            loading={loading}
+            loadingText={loadingText}
+            backLabel={backLabel}
+            continueLabel={continueLabel}
+            disabledLabel={disabledLabel}
+            onBack={onBack}
+            onContinue={onContinue}
+            captureSlot={
+                <CameraCapture
+                    mode={mode}
+                    onCapture={onCapture}
+                    onRetake={onRetake}
+                    captured={captured}
+                />
+            }
+        />
     );
 }
