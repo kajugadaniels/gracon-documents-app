@@ -17,7 +17,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 
 - Document list, creation, rename, copy, delete, and import UX
 - Rich-text editing and autosave experience
-- Page setup, persisted margins, and margin-aware ruler rendering
+- Premium page setup dialog, persisted margins, and margin-aware ruler rendering
 - Share dialog, permission assignment, invitation review
 - Signature workflow UI and signing progress
 - Public verify page for authenticity checks
@@ -38,6 +38,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Zustand hydration from sessionStorage plus cookie-backed recovery
 - A4-style editor work, autosave, versions, and signing states
 - Persisted document layout model powering paper margins, rulers, PDF, and DOCX export
+- Preset-driven page setup with live printable-area preview for margin tuning
 - Invitation gate with OTP and identity-proof return flow
 - Cross-tab share activity refresh and document metadata merge patterns
 
