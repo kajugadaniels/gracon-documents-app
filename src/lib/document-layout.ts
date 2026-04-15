@@ -7,6 +7,10 @@
 import type { CSSProperties } from 'react';
 import { A4_PAPER_MARGIN_PX, A4_PAPER_WIDTH_PX } from '@/constants/document-paper';
 
+export const MIN_DOCUMENT_MARGIN_PX = 48;
+export const MAX_DOCUMENT_MARGIN_PX = 192;
+export const MIN_DOCUMENT_PRINTABLE_WIDTH_PX = 320;
+
 export interface DocumentLayoutMargins {
     top: number;
     right: number;
@@ -34,7 +38,7 @@ function clampMargin(value: unknown, fallback: number) {
         return fallback;
     }
 
-    return Math.min(192, Math.max(48, Math.round(value)));
+    return Math.min(MAX_DOCUMENT_MARGIN_PX, Math.max(MIN_DOCUMENT_MARGIN_PX, Math.round(value)));
 }
 
 export function normalizeDocumentLayout(raw: unknown): DocumentLayout {
@@ -84,6 +88,36 @@ export function buildDocumentLayoutStyle(layout: DocumentLayout): CSSProperties 
     };
 
     return style as CSSProperties;
+}
+
+/**
+ * Clamps horizontal margins so the writable area always remains valid.
+ *
+ * This is shared by page setup controls and ruler dragging so all layout
+ * editing paths preserve the same printable-width guardrails.
+ */
+export function clampHorizontalDocumentMargins(
+    width: number,
+    margins: Pick<DocumentLayoutMargins, 'left' | 'right'>,
+): Pick<DocumentLayoutMargins, 'left' | 'right'> {
+    const widthSafe = Math.max(width, MIN_DOCUMENT_PRINTABLE_WIDTH_PX + (MIN_DOCUMENT_MARGIN_PX * 2));
+    const left = clampMargin(margins.left, DEFAULT_DOCUMENT_LAYOUT.margins.left);
+    const right = clampMargin(margins.right, DEFAULT_DOCUMENT_LAYOUT.margins.right);
+    const maxLeft = Math.max(
+        MIN_DOCUMENT_MARGIN_PX,
+        widthSafe - right - MIN_DOCUMENT_PRINTABLE_WIDTH_PX,
+    );
+    const nextLeft = Math.min(left, maxLeft);
+    const maxRight = Math.max(
+        MIN_DOCUMENT_MARGIN_PX,
+        widthSafe - nextLeft - MIN_DOCUMENT_PRINTABLE_WIDTH_PX,
+    );
+    const nextRight = Math.min(right, maxRight);
+
+    return {
+        left: nextLeft,
+        right: nextRight,
+    };
 }
 
 function parsePx(value: string, fallback: number) {
