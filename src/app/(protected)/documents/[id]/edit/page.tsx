@@ -14,6 +14,7 @@ import { toast } from '@/components/ui';
 import { DocumentFinaliseDialog } from '@/components/editor/DocumentFinaliseDialog';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocumentAccessTransitionBanner } from '@/components/editor/DocumentAccessTransitionBanner';
+import { DocumentRulerOverlay } from '@/components/editor/DocumentRulerOverlay';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
@@ -26,8 +27,11 @@ import {
 import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
 import { useDigitalCertificateStatus } from '@/components/editor/use-digital-certificate-status';
 import { useDocumentPagination } from '@/components/editor/use-document-pagination';
+import { useDocumentViewState } from '@/components/editor/use-document-view-state';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
+import { buildViewMenuItems } from '@/constants/view-menu';
+import { A4_PAPER_WIDTH_PX } from '@/constants';
 import { getDigitalCertificateUrl } from '@/lib/session';
 import { useSessionUser } from '@/app/(protected)/layout';
 import {
@@ -74,6 +78,7 @@ export default function EditDocumentPage() {
     const [shareActivityRefreshKey, setShareActivityRefreshKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
     const pagination = useDocumentPagination(editor);
+    const pageRootRef = useRef<HTMLDivElement>(null);
     const signatureRequests = doc?.signatureRequests ?? [];
     const currentSignatureRequest = signatureRequests.find(
         request => request.requestedUserId === user?.userId,
@@ -317,6 +322,22 @@ export default function EditDocumentPage() {
         window.location.href = getDigitalCertificateUrl();
     }
 
+    const canEdit = hasDocumentPermission(doc, 'EDIT');
+    const baseIsReadOnly = doc?.status !== 'DRAFT' || !canEdit;
+    const { viewState, handleViewAction } = useDocumentViewState({
+        canToggleMode: !baseIsReadOnly,
+        fullscreenTargetRef: pageRootRef,
+    });
+    const viewMenuItems = useMemo(() => buildViewMenuItems({
+        printLayout: viewState.printLayout,
+        canToggleMode: !baseIsReadOnly,
+        viewMode: viewState.viewMode,
+        zoom: viewState.zoom,
+        isFullscreen: viewState.isFullscreen,
+        showRuler: viewState.showRuler,
+        showFormattingMarks: viewState.showFormattingMarks,
+    }), [baseIsReadOnly, viewState]);
+
     // ── Loading state ────────────────────────────────────────────────────────
     if (loading) {
         return (
@@ -360,12 +381,12 @@ export default function EditDocumentPage() {
         );
     }
 
-    const canEdit = hasDocumentPermission(doc, 'EDIT');
     const canComment = hasDocumentPermission(doc, 'COMMENT');
     const canSign = hasDocumentPermission(doc, 'SIGN');
     const canManageAccess = hasDocumentPermission(doc, 'MANAGE_ACCESS');
     const isOwner = doc.access?.isOwner ?? true;
-    const isReadOnly = doc.status !== 'DRAFT' || !canEdit;
+    const isViewingMode = !baseIsReadOnly && viewState.viewMode === 'viewing';
+    const isReadOnly = baseIsReadOnly || isViewingMode;
     const isLocked = doc.status === 'LOCKED';
     const pendingSignatureCount = signatureRequests.filter(
         request => request.status !== 'SIGNED',
@@ -377,7 +398,9 @@ export default function EditDocumentPage() {
         collaborator.permissions.includes('SIGN'),
     ).length;
     const remainingSignerLabel = `${pendingSignatureCount} remaining signer${pendingSignatureCount === 1 ? '' : 's'}`;
-    const readOnlyBannerText = !canEdit && doc.status === 'DRAFT'
+    const readOnlyBannerText = isViewingMode
+        ? 'Viewing mode is on. Switch back to editing from View when you want to make changes.'
+        : !canEdit && doc.status === 'DRAFT'
         ? 'You can view this shared document, but you do not have edit permission.'
         : isLocked
             ? 'This document is permanently locked. It has been signed and cannot be modified.'
@@ -390,11 +413,16 @@ export default function EditDocumentPage() {
                     : doc.status === 'SIGNED'
                         ? 'All required signatures are complete. Waiting for the owner to lock this document.'
                         : `This document is finalised. Its content is frozen. Waiting for ${remainingSignerLabel}.`;
-    const readOnlyBannerClass = !canEdit && doc.status === 'DRAFT'
+    const readOnlyBannerClass = isViewingMode
+        ? 'readonly'
+        : !canEdit && doc.status === 'DRAFT'
         ? 'readonly'
         : isLocked
             ? 'locked'
             : 'finalised';
+    const zoomScale = viewState.zoom / 100;
+    const scaledFrameWidth = Math.round(A4_PAPER_WIDTH_PX * zoomScale);
+    const scaledFrameHeight = Math.max(pagination.contentHeight, pagination.pageHeight) * zoomScale;
 
     const signatureStrip = isLocked ? (
         <DocumentSignatureBlock
@@ -426,7 +454,10 @@ export default function EditDocumentPage() {
     }
 
     return (
-        <div className={`ded-page${accessTransitionMessage ? ' ded-page--access-transition' : ''}`}>
+        <div
+            ref={pageRootRef}
+            className={`ded-page${accessTransitionMessage ? ' ded-page--access-transition' : ''}`}
+        >
             {/* ── Sticky Google Docs-style header ── */}
             <DocEditorHeader
                 editor={editor}
@@ -450,6 +481,7 @@ export default function EditDocumentPage() {
                 canLock={canLockDocument}
                 canSign={canSignDocument}
                 canViewSignature={canViewSignature}
+                viewMenuItems={viewMenuItems}
                 certificateStatus={certificateStatus.status}
                 onOpenComments={() => setCommentsOpen(true)}
                 onShareActivityRecorded={handleShareActivityRecorded}
@@ -458,6 +490,7 @@ export default function EditDocumentPage() {
                 onLock={handleLockDocument}
                 onSign={handleSignDocument}
                 onViewSignature={() => setShowSigning(true)}
+                onViewAction={handleViewAction}
             />
 
             {/* ── Status banner (read-only) ── */}
@@ -490,23 +523,43 @@ export default function EditDocumentPage() {
             {/* ── Paper canvas ── */}
             <div className="ded-canvas">
                 <div className="document-workspace-stage">
-                    <div className="document-layout-frame">
-                        <RichTextEditor
-                            key={doc.id}
-                            initialContent={doc.content}
-                            onContentChange={isReadOnly ? undefined : handleContentChange}
-                            onEditorReady={setEditor}
-                            hideToolbar
-                            readOnly={isReadOnly}
-                            paperMode
-                            paperTitle={doc.title}
-                            paperStatus={doc.status}
-                            pageNumber={1}
-                            pageCount={pagination.pageCount}
-                            overlayContent={signatureStrip}
-                            commentAnchors={commentAnchors}
-                        />
-                        <DocumentPageGuides pages={pagination.pages} />
+                    <div
+                        className="document-layout-shell"
+                        style={{ width: scaledFrameWidth, minHeight: scaledFrameHeight }}
+                    >
+                        <div
+                            className={[
+                                'document-layout-frame',
+                                !viewState.printLayout ? 'document-layout-frame--web-layout' : '',
+                                viewState.showFormattingMarks ? 'document-layout-frame--show-marks' : '',
+                            ].filter(Boolean).join(' ')}
+                            style={{
+                                transform: `scale(${zoomScale})`,
+                                transformOrigin: 'top center',
+                            }}
+                        >
+                            {viewState.showRuler && (
+                                <DocumentRulerOverlay
+                                    height={Math.max(pagination.contentHeight, pagination.pageHeight)}
+                                />
+                            )}
+                            <RichTextEditor
+                                key={doc.id}
+                                initialContent={doc.content}
+                                onContentChange={isReadOnly ? undefined : handleContentChange}
+                                onEditorReady={setEditor}
+                                hideToolbar
+                                readOnly={isReadOnly}
+                                paperMode
+                                paperTitle={doc.title}
+                                paperStatus={doc.status}
+                                pageNumber={1}
+                                pageCount={pagination.pageCount}
+                                overlayContent={signatureStrip}
+                                commentAnchors={commentAnchors}
+                            />
+                            {viewState.printLayout && <DocumentPageGuides pages={pagination.pages} />}
+                        </div>
                     </div>
                 </div>
             </div>
