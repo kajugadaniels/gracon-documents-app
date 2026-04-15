@@ -3,6 +3,7 @@ import type { MenuItem } from './types';
 export interface DocumentViewMenuState {
     printLayout: boolean;
     canToggleMode: boolean;
+    canConfigureLayout: boolean;
     viewMode: 'editing' | 'viewing';
     zoom: number;
     isFullscreen: boolean;
@@ -66,12 +67,20 @@ export function buildViewMenuItems(state: DocumentViewMenuState): MenuItem[] {
             label: withCheckmark(state.showFormattingMarks, 'Show formatting marks'),
             actionId: 'view:marks',
         },
+        { type: 'divider' },
+        {
+            type: 'action',
+            label: 'Page setup…',
+            actionId: 'view:page-setup',
+            disabled: !state.canConfigureLayout,
+        },
     ];
 }
 
 export const VIEW_MENU_ITEMS = buildViewMenuItems({
     printLayout: true,
     canToggleMode: true,
+    canConfigureLayout: true,
     viewMode: 'editing',
     zoom: 100,
     isFullscreen: false,
