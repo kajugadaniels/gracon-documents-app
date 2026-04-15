@@ -64,12 +64,17 @@
   --editor-font-size:        15px;
   --editor-max-width:        780px;
   --paper-margin:            96px;
-  --editor-page-padding-x:   var(--paper-margin);
-  --editor-page-padding-top: var(--paper-margin);
-  --editor-page-padding-bottom: var(--paper-margin);
+  --paper-margin-left:       var(--paper-margin);
+  --paper-margin-right:      var(--paper-margin);
+  --paper-margin-top:        var(--paper-margin);
+  --paper-margin-bottom:     var(--paper-margin);
+  --editor-page-padding-left:  var(--paper-margin-left);
+  --editor-page-padding-right: var(--paper-margin-right);
+  --editor-page-padding-top: var(--paper-margin-top);
+  --editor-page-padding-bottom: var(--paper-margin-bottom);
   --paper-width:             794px;
   --paper-height:            1123px;
-  --paper-printable-width:   calc(var(--paper-width) - (var(--paper-margin) * 2));
+  --paper-printable-width:   calc(var(--paper-width) - var(--paper-margin-left) - var(--paper-margin-right));
   --paper-gap:               20px;
   --paper-edge:              #ffffff;
   --paper-shadow:            0 1px 3px rgba(0,0,0,0.22), 0 4px 14px rgba(0,0,0,0.1);
@@ -337,19 +342,19 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 10px var(--editor-page-padding-x) 8px;
+  padding: 10px var(--editor-page-padding-right) 8px var(--editor-page-padding-left);
   border-bottom: 1px solid rgba(0,0,0,0.07);
   min-width: 0;
 }
 .document-paper-sheet__footer {
-  padding: 8px var(--editor-page-padding-x) 10px;
+  padding: 8px var(--editor-page-padding-right) 10px var(--editor-page-padding-left);
   border-top: 1px solid rgba(0,0,0,0.07);
   border-bottom: none;
 }
 .document-paper-sheet__body {
   position: relative;
   z-index: 1;
-  padding: 18px var(--editor-page-padding-x) 28px;
+  padding: 18px var(--editor-page-padding-right) 28px var(--editor-page-padding-left);
   min-width: 0;
 }
 .document-paper-sheet__body--editor {
@@ -443,6 +448,22 @@ body {
   font-weight: 700;
   line-height: 1;
 }
+.document-ruler__margin-zone {
+  position: absolute;
+  background: rgba(91,35,255,0.08);
+}
+.document-ruler__margin-zone--left {
+  inset: 0 auto 0 0;
+}
+.document-ruler__margin-zone--right {
+  inset: 0 0 0 auto;
+}
+.document-ruler__margin-zone--top {
+  inset: 0 0 auto 0;
+}
+.document-ruler__margin-zone--bottom {
+  inset: auto 0 0 0;
+}
 .document-ruler--top .document-ruler__tick {
   top: 100%;
   width: 1px;
@@ -522,7 +543,11 @@ body {
   max-width: var(--paper-width);
   min-height: calc(var(--paper-height) - 148px);
   margin: 0;
-  padding: var(--editor-page-padding-top) var(--editor-page-padding-x) var(--editor-page-padding-bottom);
+  padding:
+    var(--editor-page-padding-top)
+    var(--editor-page-padding-right)
+    var(--editor-page-padding-bottom)
+    var(--editor-page-padding-left);
   background: transparent;
   box-sizing: border-box;
 }
@@ -667,6 +692,10 @@ body {
 @media (max-width: 900px) {
   :root {
     --paper-margin: 24px;
+    --paper-margin-left: 24px;
+    --paper-margin-right: 24px;
+    --paper-margin-top: 32px;
+    --paper-margin-bottom: 48px;
     --editor-page-padding-top: 32px;
     --editor-page-padding-bottom: 48px;
   }
@@ -713,8 +742,8 @@ body {
 
   .tiptap-editor.tiptap-editor-paper .ProseMirror {
     min-height: 70dvh;
-    padding-left: var(--editor-page-padding-x);
-    padding-right: var(--editor-page-padding-x);
+    padding-left: var(--editor-page-padding-left);
+    padding-right: var(--editor-page-padding-right);
     padding-top: var(--editor-page-padding-top);
     padding-bottom: var(--editor-page-padding-bottom);
   }
