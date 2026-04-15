@@ -17,6 +17,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 
 - Document list, creation, rename, copy, delete, and import UX
 - Rich-text editing and autosave experience
+- Page setup, persisted margins, and margin-aware ruler rendering
 - Share dialog, permission assignment, invitation review
 - Signature workflow UI and signing progress
 - Public verify page for authenticity checks
@@ -36,6 +37,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Next.js proxy routes for auth refresh/current user and signature operations
 - Zustand hydration from sessionStorage plus cookie-backed recovery
 - A4-style editor work, autosave, versions, and signing states
+- Persisted document layout model powering paper margins, rulers, PDF, and DOCX export
 - Invitation gate with OTP and identity-proof return flow
 - Cross-tab share activity refresh and document metadata merge patterns
 
@@ -71,6 +73,7 @@ api/
 lib/
   store/
   hooks/
+  document-layout.ts       shared paper-layout normalization and css-var helpers
 ```
 
 ## Folder Structure
@@ -122,6 +125,7 @@ NEXT_PUBLIC_SIGNATURE_API_URL=http://localhost:3002/api/v1
 - Use hard navigation when jumping to `app/app`
 - Keep document permissions and signing state separate in the UI
 - Reflect the backend workflow correctly: finalise, sign, then owner lock
+- Keep page layout data consistent across editor rendering and export
 - Treat invitation review as a security-sensitive flow, not a simple share acceptance
 
 ## Contribution Checklist
@@ -129,4 +133,3 @@ NEXT_PUBLIC_SIGNATURE_API_URL=http://localhost:3002/api/v1
 - Verify permission behavior before changing document actions
 - Keep editor changes isolated from auth behavior unless the flow truly crosses apps
 - Test invitation, share, signing, and public verify flows after document-domain changes
-
