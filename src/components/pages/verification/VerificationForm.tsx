@@ -9,6 +9,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useVerificationDocumentNumber } from '@gracon/verification-ui';
 import { VerificationFlow } from './VerificationFlow';
 import { createVerificationFlowConfig } from './verification-flow-config';
+import {
+    resolveDocumentsVerificationRedirect,
+    shouldAutoReturnInvitationVerification,
+} from './verification-routing';
 import { useVerificationFlow } from './use-verification-flow';
 import { toast } from '@/components/ui';
 import { getAccessToken, redirectToLogin } from '@/lib/session';
@@ -44,25 +48,17 @@ export function VerificationForm() {
     }, []);
 
     function continueAfterVerification() {
-        const next = searchParams.get('next');
+        const redirect = resolveDocumentsVerificationRedirect(
+            searchParams.get('next'),
+            window.location.origin,
+        );
 
-        if (!next) {
-            router.push('/documents');
+        if (redirect.kind === 'external') {
+            window.location.href = redirect.destination;
             return;
         }
 
-        try {
-            const docsOrigin = window.location.origin;
-            const targetUrl = new URL(next);
-            if (targetUrl.origin === docsOrigin) {
-                window.location.href = targetUrl.toString();
-                return;
-            }
-        } catch {
-            // Fall back to the documents index when next is not a safe URL.
-        }
-
-        router.push('/documents');
+        router.push(redirect.destination);
     }
 
     const continueAfterVerificationEvent = useEffectEvent(
@@ -70,7 +66,12 @@ export function VerificationForm() {
     );
 
     useEffect(() => {
-        if (challengeMode !== 'INVITATION' || !controller.result?.passed) {
+        if (
+            !shouldAutoReturnInvitationVerification(
+                challengeMode,
+                Boolean(controller.result?.passed),
+            )
+        ) {
             return;
         }
 
