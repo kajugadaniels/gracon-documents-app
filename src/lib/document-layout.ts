@@ -10,6 +10,7 @@ import { A4_PAPER_MARGIN_PX, A4_PAPER_WIDTH_PX } from '@/constants/document-pape
 export const MIN_DOCUMENT_MARGIN_PX = 48;
 export const MAX_DOCUMENT_MARGIN_PX = 192;
 export const MIN_DOCUMENT_PRINTABLE_WIDTH_PX = 320;
+export const MIN_PARAGRAPH_CONTENT_WIDTH_PX = 72;
 
 export interface DocumentLayoutMargins {
     top: number;
@@ -21,6 +22,11 @@ export interface DocumentLayoutMargins {
 export interface DocumentLayout {
     paperSize: 'A4';
     margins: DocumentLayoutMargins;
+}
+
+export interface ParagraphIndentation {
+    leftIndent: number;
+    firstLineIndent: number;
 }
 
 export const DEFAULT_DOCUMENT_LAYOUT: DocumentLayout = {
@@ -117,6 +123,43 @@ export function clampHorizontalDocumentMargins(
     return {
         left: nextLeft,
         right: nextRight,
+    };
+}
+
+/**
+ * Clamps paragraph indentation against the current printable area.
+ *
+ * Left indent is measured from the page's writable left edge.
+ * First-line indent is measured relative to the paragraph's left indent and
+ * may be negative to support hanging indents.
+ */
+export function clampParagraphIndentation(
+    pageWidth: number,
+    margins: Pick<DocumentLayoutMargins, 'left' | 'right'>,
+    indentation: ParagraphIndentation,
+): ParagraphIndentation {
+    const printableWidth = Math.max(
+        MIN_PARAGRAPH_CONTENT_WIDTH_PX,
+        pageWidth - margins.left - margins.right,
+    );
+    const maxLeftIndent = Math.max(0, printableWidth - MIN_PARAGRAPH_CONTENT_WIDTH_PX);
+    const leftIndent = Math.min(
+        maxLeftIndent,
+        Math.max(0, Math.round(indentation.leftIndent)),
+    );
+    const minFirstLineIndent = -leftIndent;
+    const maxFirstLineIndent = Math.max(
+        0,
+        printableWidth - leftIndent - MIN_PARAGRAPH_CONTENT_WIDTH_PX,
+    );
+    const firstLineIndent = Math.min(
+        maxFirstLineIndent,
+        Math.max(minFirstLineIndent, Math.round(indentation.firstLineIndent)),
+    );
+
+    return {
+        leftIndent,
+        firstLineIndent,
     };
 }
 
