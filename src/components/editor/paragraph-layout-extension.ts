@@ -9,6 +9,20 @@
  */
 import { Extension } from '@tiptap/core';
 
+declare module '@tiptap/core' {
+    interface Commands<ReturnType> {
+        paragraphLayout: {
+            /**
+             * Applies paragraph indentation attrs to selected paragraphs/headings.
+             */
+            setParagraphIndentation: (attrs: {
+                leftIndent: number;
+                firstLineIndent: number;
+            }) => ReturnType;
+        };
+    }
+}
+
 function normalizeIndent(value: unknown) {
     return typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 0;
 }
@@ -21,6 +35,47 @@ function parseIndentFromStyle(styleValue: string | null) {
 
 export const ParagraphLayoutExtension = Extension.create({
     name: 'paragraphLayout',
+
+    addCommands() {
+        return {
+            setParagraphIndentation: (attrs) => ({ state, dispatch }) => {
+                const nextLeftIndent = normalizeIndent(attrs.leftIndent);
+                const nextFirstLineIndent = normalizeIndent(attrs.firstLineIndent);
+                let tr = state.tr;
+                let changed = false;
+
+                state.doc.nodesBetween(state.selection.from, state.selection.to, (node, pos) => {
+                    if (node.type.name !== 'paragraph' && node.type.name !== 'heading') {
+                        return;
+                    }
+
+                    if (
+                        normalizeIndent(node.attrs.leftIndent) === nextLeftIndent &&
+                        normalizeIndent(node.attrs.firstLineIndent) === nextFirstLineIndent
+                    ) {
+                        return;
+                    }
+
+                    tr = tr.setNodeMarkup(pos, undefined, {
+                        ...node.attrs,
+                        leftIndent: nextLeftIndent,
+                        firstLineIndent: nextFirstLineIndent,
+                    });
+                    changed = true;
+                });
+
+                if (!changed) {
+                    return true;
+                }
+
+                if (dispatch) {
+                    dispatch(tr);
+                }
+
+                return true;
+            },
+        };
+    },
 
     addGlobalAttributes() {
         return [
@@ -39,13 +94,24 @@ export const ParagraphLayoutExtension = Extension.create({
                         },
                         renderHTML: (attributes) => {
                             const leftIndent = normalizeIndent(attributes.leftIndent);
+                            const firstLineIndent = normalizeIndent(attributes.firstLineIndent);
+                            const styleParts: string[] = [];
 
-                            if (!leftIndent) {
+                            if (leftIndent) {
+                                styleParts.push(`margin-left: ${leftIndent}px`);
+                            }
+
+                            if (firstLineIndent) {
+                                styleParts.push(`text-indent: ${firstLineIndent}px`);
+                            }
+
+                            if (!leftIndent && !firstLineIndent) {
                                 return {};
                             }
 
                             return {
                                 'data-left-indent': String(leftIndent),
+                                style: styleParts.join('; '),
                             };
                         },
                     },
