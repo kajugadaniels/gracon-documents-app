@@ -27,6 +27,8 @@ interface UseEditorActionsOptions {
     onTitleSave: () => void | Promise<void>;
     /** Called when the Edit → Find menu item is dispatched. */
     onFindToggle: () => void;
+    /** Called when a View menu action is dispatched. */
+    onViewAction?: (actionId: string) => void;
 }
 
 interface UseEditorActionsReturn {
@@ -48,7 +50,7 @@ interface UseEditorActionsReturn {
  */
 export function useEditorActions({
     editor, doc, editingTitle, title, isReadOnly,
-    onTitleEditStart, onTitleSave, onFindToggle,
+    onTitleEditStart, onTitleSave, onFindToggle, onViewAction,
 }: UseEditorActionsOptions): UseEditorActionsReturn {
     const router = useRouter();
     const [importing, setImporting] = useState(false);
@@ -78,6 +80,14 @@ export function useEditorActions({
     }, [router]);
 
     const handleAction = useCallback((actionId: string) => {
+        if (actionId.startsWith('view:')) {
+            if (editingTitle) {
+                void Promise.resolve(onTitleSave());
+            }
+            onViewAction?.(actionId);
+            return;
+        }
+
         // ── File: New ──────────────────────────────────────────────────────────
         if (actionId === 'file:new') {
             // Open a placeholder tab synchronously so popup blockers do not fire.
@@ -195,7 +205,7 @@ export function useEditorActions({
     }, [
         copying, doc.id, doc.status, doc.title, doc.wordCount,
         editingTitle, editor, importing, isReadOnly,
-        onFindToggle, onTitleEditStart, onTitleSave,
+        onFindToggle, onTitleEditStart, onTitleSave, onViewAction,
         router, savingAs, title,
     ]);
 
