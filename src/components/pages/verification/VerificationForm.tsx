@@ -4,8 +4,9 @@
  * Documents-native verification page form.
  */
 
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useVerificationDocumentNumber } from '@gracon/verification-ui';
 import { VerificationFlow } from './VerificationFlow';
 import { createVerificationFlowConfig } from './verification-flow-config';
 import { useVerificationFlow } from './use-verification-flow';
@@ -18,8 +19,6 @@ import { getAccessToken, redirectToLogin } from '@/lib/session';
 export function VerificationForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [documentNumber, setDocumentNumber] = useState('');
-    const [documentNumberError, setDocumentNumberError] = useState<string>();
     const challengeMode =
         searchParams.get('challenge') === 'invitation'
             ? 'INVITATION'
@@ -28,6 +27,12 @@ export function VerificationForm() {
     const controller = useVerificationFlow({
         challengeMode: config.challengeMode,
         getSuccessDescription: config.getSuccessDescription,
+    });
+    const documentNumberState = useVerificationDocumentNumber({
+        onConfirm: controller.confirmDocumentNumber,
+        onInvalidLength: (message) => {
+            toast.error('Invalid National ID', { description: message });
+        },
     });
 
     useEffect(() => {
@@ -81,31 +86,14 @@ export function VerificationForm() {
         controller.result?.passed,
     ]);
 
-    function handleNidSubmit() {
-        if (documentNumber.length !== 16) {
-            const message = 'National ID must be exactly 16 digits';
-            setDocumentNumberError(message);
-            toast.error('Invalid National ID', { description: message });
-            return;
-        }
-
-        setDocumentNumberError(undefined);
-        controller.confirmDocumentNumber(documentNumber);
-    }
-
     return (
         <VerificationFlow
             config={config}
             controller={controller}
-            documentNumber={documentNumber}
-            documentNumberError={documentNumberError}
-            onDocumentNumberChange={(value) => {
-                setDocumentNumber(value);
-                if (documentNumberError) {
-                    setDocumentNumberError(undefined);
-                }
-            }}
-            onNidSubmit={handleNidSubmit}
+            documentNumber={documentNumberState.documentNumber}
+            documentNumberError={documentNumberState.documentNumberError}
+            onDocumentNumberChange={documentNumberState.setDocumentNumber}
+            onNidSubmit={documentNumberState.submitDocumentNumber}
             onContinue={continueAfterVerification}
             onDashboard={() => router.push('/documents')}
         />
