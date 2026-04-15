@@ -537,6 +537,42 @@ body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+.document-ruler__paragraph-marker {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+.document-ruler__paragraph-marker--left-indent {
+  bottom: -1px;
+  width: 14px;
+  height: 10px;
+  transform: translateX(-50%);
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.92), rgba(2, 132, 199, 0.96));
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.18);
+}
+.document-ruler__paragraph-marker--left-indent::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(14, 165, 233, 0.96);
+}
+.document-ruler__paragraph-marker--first-line {
+  top: -1px;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 10px solid rgba(249, 115, 22, 0.96);
+  filter: drop-shadow(0 4px 10px rgba(249, 115, 22, 0.18));
+}
 .document-ruler--top .document-ruler__tick {
   top: 100%;
   width: 1px;
