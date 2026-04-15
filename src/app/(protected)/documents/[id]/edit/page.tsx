@@ -40,6 +40,7 @@ import {
     clampHorizontalDocumentMargins,
     normalizeDocumentLayout,
     type DocumentLayout,
+    type ParagraphIndentation,
 } from '@/lib/document-layout';
 import { useSessionUser } from '@/app/(protected)/layout';
 import {
@@ -371,6 +372,16 @@ export default function EditDocumentPage() {
         [documentLayout],
     );
     const activeParagraphLayout = useActiveParagraphLayout(editor);
+    const applyParagraphIndentation = useCallback((indentation: ParagraphIndentation) => {
+        if (!editor || baseIsReadOnly || !activeParagraphLayout) {
+            return;
+        }
+
+        editor.commands.setParagraphIndentation({
+            leftIndent: indentation.leftIndent,
+            firstLineIndent: indentation.firstLineIndent,
+        });
+    }, [activeParagraphLayout, baseIsReadOnly, editor]);
     const applyHorizontalMarginsPreview = useCallback(
         (nextMargins: { left: number; right: number }) => {
             setDoc((current) => {
@@ -702,6 +713,8 @@ export default function EditDocumentPage() {
                                         applyHorizontalMarginsPreview(nextMargins);
                                     }}
                                     onHorizontalMarginsCommit={commitHorizontalMargins}
+                                    onParagraphIndentPreview={applyParagraphIndentation}
+                                    onParagraphIndentCommit={applyParagraphIndentation}
                                 />
                             )}
                             <RichTextEditor
