@@ -8,16 +8,14 @@
 
 import {
     A4_PAPER_HEIGHT_TWIP,
-    A4_PAPER_MARGIN_PX,
     A4_PAPER_WIDTH_TWIP,
 } from '@/constants/document-paper';
+import { readDocumentLayoutFromElement } from '@/lib/document-layout';
 import { convertEditorDomToDocxChildren } from './export-document-docx-dom';
 
 type DocxModule = typeof import('docx');
 
 const CSS_PX_TO_TWIP = 15;
-const DOCX_PAGE_MARGIN_TWIP = A4_PAPER_MARGIN_PX * CSS_PX_TO_TWIP;
-
 function getEditorElement(sheetEl: HTMLElement) {
     const editorEl = sheetEl.querySelector('.ProseMirror');
     if (!(editorEl instanceof HTMLElement)) {
@@ -60,7 +58,9 @@ function createNumberingConfig(docx: DocxModule) {
     };
 }
 
-function createPageProperties() {
+function createPageProperties(sheetEl: HTMLElement) {
+    const layout = readDocumentLayoutFromElement(sheetEl);
+
     return {
         page: {
             size: {
@@ -68,10 +68,10 @@ function createPageProperties() {
                 height: A4_PAPER_HEIGHT_TWIP,
             },
             margin: {
-                top: DOCX_PAGE_MARGIN_TWIP,
-                right: DOCX_PAGE_MARGIN_TWIP,
-                bottom: DOCX_PAGE_MARGIN_TWIP,
-                left: DOCX_PAGE_MARGIN_TWIP,
+                top: layout.margins.top * CSS_PX_TO_TWIP,
+                right: layout.margins.right * CSS_PX_TO_TWIP,
+                bottom: layout.margins.bottom * CSS_PX_TO_TWIP,
+                left: layout.margins.left * CSS_PX_TO_TWIP,
                 header: 0,
                 footer: 0,
                 gutter: 0,
@@ -91,7 +91,7 @@ export async function createEditableDocxBlob(sheetEl: HTMLElement) {
         numbering: createNumberingConfig(docx),
         sections: [
             {
-                properties: createPageProperties(),
+                properties: createPageProperties(sheetEl),
                 children,
             },
         ],
