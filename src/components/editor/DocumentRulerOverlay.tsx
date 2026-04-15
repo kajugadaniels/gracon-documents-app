@@ -12,10 +12,17 @@ const HORIZONTAL_TICKS = Array.from({ length: 17 }, (_, index) => index);
 const VERTICAL_TICKS = Array.from({ length: 23 }, (_, index) => index);
 const DPI = 96;
 
+interface ParagraphIndentReadout {
+    nodeType: 'paragraph' | 'heading';
+    leftIndent: number;
+    firstLineIndent: number;
+}
+
 interface DocumentRulerOverlayProps {
     width: number;
     height: number;
     margins: DocumentLayoutMargins;
+    paragraphIndent?: ParagraphIndentReadout | null;
     disabled?: boolean;
     onHorizontalMarginsPreview?: (margins: Pick<DocumentLayoutMargins, 'left' | 'right'>) => void;
     onHorizontalMarginsCommit?: (margins: Pick<DocumentLayoutMargins, 'left' | 'right'>) => void;
@@ -33,6 +40,7 @@ export function DocumentRulerOverlay({
     width,
     height,
     margins,
+    paragraphIndent = null,
     disabled = false,
     onHorizontalMarginsPreview,
     onHorizontalMarginsCommit,
@@ -46,10 +54,21 @@ export function DocumentRulerOverlay({
     const rightMarginPercent = (margins.right / width) * 100;
     const topMarginPercent = (margins.top / height) * 100;
     const bottomMarginPercent = (margins.bottom / height) * 100;
+    const paragraphLeftPercent = paragraphIndent
+        ? ((margins.left + paragraphIndent.leftIndent) / width) * 100
+        : null;
+    const firstLinePercent = paragraphIndent
+        ? ((margins.left + paragraphIndent.leftIndent + paragraphIndent.firstLineIndent) / width) * 100
+        : null;
     const horizontalSummary = useMemo(
         () => `${pxToInches(margins.left)} in left · ${pxToInches(margins.right)} in right`,
         [margins.left, margins.right],
     );
+    const paragraphSummary = useMemo(() => {
+        if (!paragraphIndent) return null;
+
+        return `${paragraphIndent.nodeType === 'heading' ? 'Heading' : 'Paragraph'} · left ${pxToInches(paragraphIndent.leftIndent)} in · first line ${pxToInches(paragraphIndent.firstLineIndent)} in`;
+    }, [paragraphIndent]);
 
     const resolveHorizontalMargins = useCallback((pointerClientX: number, handle: 'left' | 'right') => {
         const rulerEl = topRulerRef.current;
@@ -146,6 +165,20 @@ export function DocumentRulerOverlay({
                         )}
                     </span>
                 ))}
+                {paragraphIndent && paragraphLeftPercent !== null && firstLinePercent !== null && (
+                    <>
+                        <span
+                            className="document-ruler__paragraph-marker document-ruler__paragraph-marker--left-indent"
+                            style={{ left: `${paragraphLeftPercent}%` }}
+                            title={paragraphSummary ?? undefined}
+                        />
+                        <span
+                            className="document-ruler__paragraph-marker document-ruler__paragraph-marker--first-line"
+                            style={{ left: `${firstLinePercent}%` }}
+                            title={paragraphSummary ?? undefined}
+                        />
+                    </>
+                )}
                 <button
                     type="button"
                     className="document-ruler__handle document-ruler__handle--left"
