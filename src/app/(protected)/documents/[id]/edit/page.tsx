@@ -36,6 +36,7 @@ import { A4_PAPER_WIDTH_PX } from '@/constants';
 import { getDigitalCertificateUrl } from '@/lib/session';
 import {
     buildDocumentLayoutStyle,
+    clampHorizontalDocumentMargins,
     normalizeDocumentLayout,
     type DocumentLayout,
 } from '@/lib/document-layout';
@@ -109,6 +110,7 @@ export default function EditDocumentPage() {
     const dirtyRef = useRef(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const rulerCommitLayoutRef = useRef<DocumentLayout | null>(null);
     const beginAccessTransition = useCallback((message: string) => {
         setAccessTransitionMessage((current) => current ?? message);
 
@@ -367,6 +369,87 @@ export default function EditDocumentPage() {
         () => buildDocumentLayoutStyle(documentLayout),
         [documentLayout],
     );
+    const applyHorizontalMarginsPreview = useCallback(
+        (nextMargins: { left: number; right: number }) => {
+            setDoc((current) => {
+                if (!current) return current;
+
+                const nextHorizontalMargins = clampHorizontalDocumentMargins(
+                    A4_PAPER_WIDTH_PX,
+                    nextMargins,
+                );
+
+                return {
+                    ...current,
+                    layout: {
+                        ...normalizeDocumentLayout(current.layout),
+                        margins: {
+                            ...normalizeDocumentLayout(current.layout).margins,
+                            ...nextHorizontalMargins,
+                        },
+                    },
+                };
+            });
+        },
+        [],
+    );
+    const commitHorizontalMargins = useCallback(
+        async (nextMargins: { left: number; right: number }) => {
+            const baselineLayout = rulerCommitLayoutRef.current;
+            const currentLayout = doc ? normalizeDocumentLayout(doc.layout) : null;
+            const sourceLayout = baselineLayout ?? currentLayout;
+
+            if (!doc || baseIsReadOnly || !sourceLayout) {
+                return;
+            }
+
+            const nextHorizontalMargins = clampHorizontalDocumentMargins(
+                A4_PAPER_WIDTH_PX,
+                nextMargins,
+            );
+            const nextLayout: DocumentLayout = {
+                ...sourceLayout,
+                margins: {
+                    ...sourceLayout.margins,
+                    ...nextHorizontalMargins,
+                },
+            };
+
+            rulerCommitLayoutRef.current = null;
+
+            if (
+                nextLayout.margins.left === sourceLayout.margins.left &&
+                nextLayout.margins.right === sourceLayout.margins.right
+            ) {
+                return;
+            }
+
+            try {
+                const updated = await updateDocumentMeta(id, { layout: nextLayout });
+                setDoc((current) => (
+                    current
+                        ? {
+                            ...current,
+                            layout: updated.layout,
+                            updatedAt: updated.updatedAt,
+                        }
+                        : current
+                ));
+                toast.success('Margins updated.');
+            } catch (error: unknown) {
+                setDoc((current) => (
+                    current
+                        ? {
+                            ...current,
+                            layout: sourceLayout,
+                        }
+                        : current
+                ));
+                toast.error(getErrorMessage(error, 'Failed to update ruler margins.'));
+            }
+        },
+        [baseIsReadOnly, doc, id],
+    );
 
     // ── Loading state ────────────────────────────────────────────────────────
     if (loading) {
@@ -608,6 +691,14 @@ export default function EditDocumentPage() {
                                     width={A4_PAPER_WIDTH_PX}
                                     height={Math.max(pagination.contentHeight, pagination.pageHeight)}
                                     margins={documentLayout.margins}
+                                    disabled={baseIsReadOnly}
+                                    onHorizontalMarginsPreview={(nextMargins) => {
+                                        if (!rulerCommitLayoutRef.current) {
+                                            rulerCommitLayoutRef.current = documentLayout;
+                                        }
+                                        applyHorizontalMarginsPreview(nextMargins);
+                                    }}
+                                    onHorizontalMarginsCommit={commitHorizontalMargins}
                                 />
                             )}
                             <RichTextEditor
