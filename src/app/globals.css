@@ -277,15 +277,39 @@ body {
   min-width: 0;
   width: 100%;
 }
+.document-layout-shell {
+  position: relative;
+  min-width: 0;
+  margin: 0 auto;
+}
 .document-layout-frame {
   position: relative;
-  width: min(100%, var(--paper-width));
-  max-width: var(--paper-width);
+  width: var(--paper-width);
+  max-width: none;
   margin: 0 auto;
+  transition: transform 160ms ease;
 }
 .document-layout-frame .tiptap-editor-paper,
 .document-layout-frame .document-paper-sheet {
   width: 100%;
+}
+.document-layout-frame--web-layout .document-paper-sheet {
+  min-height: auto;
+  border-radius: 18px;
+  box-shadow: 0 20px 48px rgba(22,16,58,0.08);
+  overflow: visible;
+}
+.document-layout-frame--web-layout .document-paper-sheet__header,
+.document-layout-frame--web-layout .document-paper-sheet__footer {
+  display: none;
+}
+.document-layout-frame--web-layout .tiptap-editor.tiptap-editor-paper {
+  gap: 0;
+}
+.document-layout-frame--web-layout .tiptap-editor.tiptap-editor-paper .ProseMirror {
+  min-height: 600px;
+  padding-top: 56px;
+  padding-bottom: 80px;
 }
 .document-paper-sheet {
   width: min(100%, var(--paper-width));
@@ -387,6 +411,70 @@ body {
   z-index: 4;
   pointer-events: none;
 }
+.document-ruler-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.document-ruler {
+  position: absolute;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(22,16,58,0.12);
+  box-shadow: 0 8px 24px rgba(22,16,58,0.08);
+}
+.document-ruler--top {
+  top: -34px;
+  left: 0;
+  right: 0;
+  height: 24px;
+  border-radius: 10px 10px 0 0;
+}
+.document-ruler--left {
+  top: 0;
+  left: -34px;
+  width: 24px;
+  border-radius: 10px 0 0 10px;
+}
+.document-ruler__tick {
+  position: absolute;
+  color: rgba(22,16,58,0.52);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+.document-ruler--top .document-ruler__tick {
+  top: 100%;
+  width: 1px;
+  height: 8px;
+  background: rgba(22,16,58,0.18);
+}
+.document-ruler--top .document-ruler__tick--major {
+  height: 12px;
+  background: rgba(22,16,58,0.3);
+}
+.document-ruler--top .document-ruler__label {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.document-ruler--left .document-ruler__tick {
+  left: 100%;
+  width: 8px;
+  height: 1px;
+  background: rgba(22,16,58,0.18);
+}
+.document-ruler--left .document-ruler__tick--major {
+  width: 12px;
+  background: rgba(22,16,58,0.3);
+}
+.document-ruler--left .document-ruler__label {
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+}
 .document-page-guide {
   position: absolute;
   left: 0;
@@ -441,6 +529,17 @@ body {
 .tiptap-editor.tiptap-editor-paper-signed .ProseMirror {
   min-height: 0;
   padding-bottom: 24px;
+}
+.document-layout-frame--show-marks .tiptap-editor .ProseMirror p:not(:empty)::after {
+  content: '¶';
+  display: inline-block;
+  margin-left: 0.28em;
+  color: rgba(22,16,58,0.24);
+  font-size: 0.82em;
+  font-weight: 700;
+}
+.document-layout-frame--show-marks .tiptap-editor .ProseMirror li::marker {
+  color: rgba(22,16,58,0.4);
 }
 .tiptap-editor .ProseMirror {
   max-width:   var(--editor-max-width);
@@ -1572,7 +1671,7 @@ body {
 .ded-canvas {
   flex: 1;
   padding: 32px clamp(16px, 4vw, 48px) 64px;
-  overflow-y: auto;
+  overflow: auto;
 }
 
 .ded-status-banner {
