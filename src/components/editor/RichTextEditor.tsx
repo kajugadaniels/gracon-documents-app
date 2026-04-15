@@ -20,6 +20,7 @@ import {
     CommentAnchorExtension,
     type CommentAnchorInput,
 } from './comment-anchor-extension';
+import { ParagraphLayoutExtension } from './paragraph-layout-extension';
 
 interface RichTextEditorProps {
     initialContent?: Record<string, unknown> | null;
@@ -92,6 +93,7 @@ export function RichTextEditor({
             Placeholder.configure({ placeholder }),
             CharacterCount,
             CommentAnchorExtension,
+            ParagraphLayoutExtension,
         ],
         content: initialContent ?? { type: 'doc', content: [{ type: 'paragraph' }] },
         editable: !readOnly,
