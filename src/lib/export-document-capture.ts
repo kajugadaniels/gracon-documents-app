@@ -9,9 +9,9 @@
 import {
     A4_PAPER_ASPECT_RATIO,
     A4_PAPER_HEIGHT_PX,
-    A4_PAPER_MARGIN_PX,
     A4_PAPER_WIDTH_PX,
 } from '@/constants/document-paper';
+import { DEFAULT_DOCUMENT_LAYOUT, readDocumentLayoutFromElement } from '@/lib/document-layout';
 
 async function waitForRenderableAssets(sheetEl: HTMLElement) {
     if ('fonts' in document) {
@@ -31,13 +31,21 @@ async function waitForRenderableAssets(sheetEl: HTMLElement) {
     })));
 }
 
-function applyExportPaperGeometry(sheetEl: HTMLElement) {
-    const printableWidth = A4_PAPER_WIDTH_PX - A4_PAPER_MARGIN_PX * 2;
+function applyExportPaperGeometry(
+    sheetEl: HTMLElement,
+    margins = DEFAULT_DOCUMENT_LAYOUT.margins,
+) {
+    const printableWidth = A4_PAPER_WIDTH_PX - margins.left - margins.right;
 
-    sheetEl.style.setProperty('--paper-margin', `${A4_PAPER_MARGIN_PX}px`);
-    sheetEl.style.setProperty('--editor-page-padding-x', `${A4_PAPER_MARGIN_PX}px`);
-    sheetEl.style.setProperty('--editor-page-padding-top', `${A4_PAPER_MARGIN_PX}px`);
-    sheetEl.style.setProperty('--editor-page-padding-bottom', `${A4_PAPER_MARGIN_PX}px`);
+    sheetEl.style.setProperty('--paper-margin-left', `${margins.left}px`);
+    sheetEl.style.setProperty('--paper-margin-right', `${margins.right}px`);
+    sheetEl.style.setProperty('--paper-margin-top', `${margins.top}px`);
+    sheetEl.style.setProperty('--paper-margin-bottom', `${margins.bottom}px`);
+    sheetEl.style.setProperty('--paper-margin', `${margins.left}px`);
+    sheetEl.style.setProperty('--editor-page-padding-left', `${margins.left}px`);
+    sheetEl.style.setProperty('--editor-page-padding-right', `${margins.right}px`);
+    sheetEl.style.setProperty('--editor-page-padding-top', `${margins.top}px`);
+    sheetEl.style.setProperty('--editor-page-padding-bottom', `${margins.bottom}px`);
     sheetEl.style.setProperty('--paper-width', `${A4_PAPER_WIDTH_PX}px`);
     sheetEl.style.setProperty('--paper-height', `${A4_PAPER_HEIGHT_PX}px`);
     sheetEl.style.setProperty('--paper-printable-width', `${printableWidth}px`);
@@ -60,6 +68,10 @@ function removeExportOnlyUi(rootEl: HTMLElement) {
 function createExportSheet(sourceSheetEl: HTMLElement) {
     const hostEl = document.createElement('div');
     const sourceWrapperEl = sourceSheetEl.closest('.tiptap-editor-paper');
+    const sourceLayoutEl = sourceWrapperEl instanceof HTMLElement
+        ? sourceWrapperEl
+        : sourceSheetEl;
+    const sourceLayout = readDocumentLayoutFromElement(sourceLayoutEl);
     const exportRootEl = sourceWrapperEl instanceof HTMLElement
         ? sourceWrapperEl.cloneNode(true) as HTMLElement
         : sourceSheetEl.cloneNode(true) as HTMLElement;
@@ -80,17 +92,21 @@ function createExportSheet(sourceSheetEl: HTMLElement) {
     hostEl.style.zIndex = '-1';
 
     removeExportOnlyUi(exportRootEl);
-    applyExportPaperGeometry(sheetEl);
+    applyExportPaperGeometry(sheetEl, sourceLayout.margins);
     hostEl.appendChild(exportRootEl);
     document.body.appendChild(hostEl);
 
     return {
         sheetEl,
+        sourceLayout,
         cleanup: () => hostEl.remove(),
     };
 }
 
-async function renderExportSheet(sheetEl: HTMLElement) {
+async function renderExportSheet(
+    sheetEl: HTMLElement,
+    margins = DEFAULT_DOCUMENT_LAYOUT.margins,
+) {
     await waitForRenderableAssets(sheetEl);
 
     const { default: html2canvas } = await import('html2canvas');
@@ -112,7 +128,7 @@ async function renderExportSheet(sheetEl: HTMLElement) {
             if (!clonedSheet) return;
 
             removeExportOnlyUi(clonedSheet);
-            applyExportPaperGeometry(clonedSheet);
+            applyExportPaperGeometry(clonedSheet, margins);
         },
     });
 }
@@ -161,7 +177,10 @@ export async function captureRenderedDocumentPages(sheetEl: HTMLElement) {
     const exportSheet = createExportSheet(sheetEl);
 
     try {
-        const snapshotCanvas = await renderExportSheet(exportSheet.sheetEl);
+        const snapshotCanvas = await renderExportSheet(
+            exportSheet.sheetEl,
+            exportSheet.sourceLayout.margins,
+        );
         const cssHeight = Math.max(
             exportSheet.sheetEl.scrollHeight,
             exportSheet.sheetEl.offsetHeight,
