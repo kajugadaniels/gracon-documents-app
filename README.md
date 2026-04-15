@@ -41,6 +41,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Preset-driven page setup with live printable-area preview for margin tuning
 - Horizontal ruler handles for direct left/right margin editing on the page canvas
 - Selection-aware ruler markers for active paragraph left-indent and first-line-indent readout
+- Draggable paragraph ruler markers that write left-indent and first-line-indent back into editor content
 - Invitation gate with OTP and identity-proof return flow
 - Cross-tab share activity refresh and document metadata merge patterns
 
