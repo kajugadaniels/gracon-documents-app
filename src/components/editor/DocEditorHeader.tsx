@@ -20,6 +20,7 @@ import {
     ArrowLeft01Icon, StarIcon, FolderOpenIcon,
     Share01Icon, Comment01Icon, Clock01Icon,
 } from '@hugeicons/core-free-icons';
+import type { MenuItem } from '@/constants';
 import type { DigitalCertificateActionStatus } from '@/components/editor/use-digital-certificate-status';
 import type { DocumentDetail } from '@/api/documents.api';
 import { MENU_BAR } from '@/constants';
@@ -50,6 +51,7 @@ interface DocEditorHeaderProps {
     canLock: boolean;
     canSign: boolean;
     canViewSignature: boolean;
+    viewMenuItems: readonly MenuItem[];
     certificateStatus: DigitalCertificateActionStatus;
     onOpenComments?: () => void;
     onShareActivityRecorded: () => void;
@@ -58,6 +60,7 @@ interface DocEditorHeaderProps {
     onLock: () => void;
     onSign: () => void;
     onViewSignature: () => void;
+    onViewAction: (actionId: string) => void;
 }
 
 /** Full Google Docs-style two-row sticky header for the document editor. */
@@ -65,9 +68,9 @@ export function DocEditorHeader({
     editor, doc, shareActivityRefreshKey, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
     isReadOnly, isLocked, canShare, canComment = false,
-    canFinalise, canLock, canSign, canViewSignature,
+    canFinalise, canLock, canSign, canViewSignature, viewMenuItems,
     certificateStatus, onOpenComments, onShareActivityRecorded,
-    onApplyForDigitalSignature, onFinalise, onLock, onSign, onViewSignature,
+    onApplyForDigitalSignature, onFinalise, onLock, onSign, onViewSignature, onViewAction,
 }: DocEditorHeaderProps) {
     const [shareOpen, setShareOpen] = useState(false);
     const [findOpen,  setFindOpen]  = useState(false);
@@ -77,6 +80,7 @@ export function DocEditorHeader({
         editor, doc, editingTitle, title, isReadOnly,
         onTitleEditStart, onTitleSave,
         onFindToggle: () => setFindOpen((v) => !v),
+        onViewAction,
     });
 
     // Focus and select the title input whenever editing begins
@@ -160,7 +164,12 @@ export function DocEditorHeader({
                 {/* Menu strip */}
                 <nav className="ded-menubar__nav" aria-label="Document menu">
                     {MENU_BAR.map(m => (
-                        <MenuDropdown key={m.label} label={m.label} items={m.items} onAction={handleAction} />
+                        <MenuDropdown
+                            key={m.label}
+                            label={m.label}
+                            items={m.label === 'View' ? viewMenuItems : m.items}
+                            onAction={handleAction}
+                        />
                     ))}
                 </nav>
 
