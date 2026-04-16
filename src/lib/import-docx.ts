@@ -19,6 +19,11 @@ import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
+import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
+import {
+    annotateImportedDocxHtml,
+    collectImportedParagraphLayouts,
+} from '@/lib/import-docx-layout';
 
 /**
  * The subset of TipTap extensions used when parsing imported HTML.
@@ -38,6 +43,7 @@ const IMPORT_EXTENSIONS = [
     TableHeader,
     TableCell,
     Highlight.configure({ multicolor: false }),
+    ParagraphLayoutExtension,
 ];
 
 /**
@@ -81,10 +87,19 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
 
     const arrayBuffer = await file.arrayBuffer();
 
-    const { value: html } = await mammoth.convertToHtml(
+    let paragraphLayouts = collectImportedParagraphLayouts(null);
+
+    const { value: rawHtml } = await mammoth.convertToHtml(
         { arrayBuffer },
-        { styleMap: MAMMOTH_STYLE_MAP },
+        {
+            styleMap: MAMMOTH_STYLE_MAP,
+            transformDocument: (document) => {
+                paragraphLayouts = collectImportedParagraphLayouts(document);
+                return document;
+            },
+        },
     );
+    const html = annotateImportedDocxHtml(rawHtml, paragraphLayouts);
 
     if (!html.trim()) {
         throw new Error('The document appears to be empty or could not be parsed.');
