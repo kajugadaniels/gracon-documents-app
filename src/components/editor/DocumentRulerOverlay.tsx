@@ -4,7 +4,7 @@ import type {
     MouseEvent as ReactMouseEvent,
     PointerEvent as ReactPointerEvent,
 } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
     DocumentLayoutMargins,
     ParagraphIndentation,
@@ -15,7 +15,6 @@ import {
     clampHorizontalDocumentMargins,
     clampParagraphIndentation,
     MIN_DOCUMENT_MARGIN_PX,
-    PARAGRAPH_TAB_STOP_ALIGNS,
     normalizeParagraphTabStops,
     TAB_STOP_SNAP_PX,
 } from '@/lib/document-layout';
@@ -23,6 +22,16 @@ import {
 const HORIZONTAL_TICKS = Array.from({ length: 17 }, (_, index) => index);
 const VERTICAL_TICKS = Array.from({ length: 23 }, (_, index) => index);
 const DPI = 96;
+const TAB_STOP_ALIGN_OPTIONS: {
+    align: ParagraphTabStopAlign;
+    label: string;
+    description: string;
+}[] = [
+    { align: 'left', label: 'Left', description: 'Text starts at the stop' },
+    { align: 'center', label: 'Center', description: 'Text centers on the stop' },
+    { align: 'right', label: 'Right', description: 'Text ends at the stop' },
+    { align: 'decimal', label: 'Decimal', description: 'Numbers align on decimals' },
+];
 
 interface ParagraphIndentReadout {
     nodeType: 'paragraph' | 'heading';
@@ -70,9 +79,8 @@ function getTabStopGlyph(align: ParagraphTabStopAlign) {
     return 'L';
 }
 
-function getNextTabStopAlign(align: ParagraphTabStopAlign): ParagraphTabStopAlign {
-    const index = PARAGRAPH_TAB_STOP_ALIGNS.indexOf(align);
-    return PARAGRAPH_TAB_STOP_ALIGNS[(index + 1) % PARAGRAPH_TAB_STOP_ALIGNS.length];
+function getTabStopKey(tabStop: ParagraphTabStop) {
+    return `${tabStop.position}:${tabStop.align}`;
 }
 
 export function DocumentRulerOverlay({
@@ -95,6 +103,7 @@ export function DocumentRulerOverlay({
     const [activeDragHandle, setActiveDragHandle] = useState<
         'left' | 'right' | 'paragraph-left-indent' | 'paragraph-first-line' | null
     >(null);
+    const [activeTabStopKey, setActiveTabStopKey] = useState<string | null>(null);
     const leftMarginPercent = (margins.left / width) * 100;
     const rightMarginPercent = (margins.right / width) * 100;
     const topMarginPercent = (margins.top / height) * 100;
@@ -225,7 +234,7 @@ export function DocumentRulerOverlay({
         )) ?? []);
     }, [paragraphIndent?.tabStops, updateTabStops]);
 
-    const cycleTabStopAlign = useCallback((tabStop: ParagraphTabStop) => {
+    const setTabStopAlign = useCallback((tabStop: ParagraphTabStop, align: ParagraphTabStopAlign) => {
         updateTabStops(paragraphIndent?.tabStops.map((value) => {
             if (value.position !== tabStop.position || value.align !== tabStop.align) {
                 return value;
@@ -233,16 +242,55 @@ export function DocumentRulerOverlay({
 
             return {
                 ...value,
-                align: getNextTabStopAlign(value.align),
+                align,
             };
         }) ?? []);
+        setActiveTabStopKey(null);
     }, [paragraphIndent?.tabStops, updateTabStops]);
+
+    const toggleTabStopPopover = useCallback((tabStop: ParagraphTabStop) => {
+        const key = getTabStopKey(tabStop);
+        setActiveTabStopKey((current) => current === key ? null : key);
+    }, []);
 
     const stopDragging = useCallback(() => {
         dragStateRef.current = null;
         setActiveDragHandle(null);
         document.body.classList.remove('document-ruler--dragging');
     }, []);
+
+    useEffect(() => {
+        if (!activeTabStopKey) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            if (!(event.target instanceof Element)) {
+                setActiveTabStopKey(null);
+                return;
+            }
+
+            if (
+                event.target.closest('.document-ruler__tab-stop') ||
+                event.target.closest('.document-ruler__tab-stop-popover')
+            ) {
+                return;
+            }
+
+            setActiveTabStopKey(null);
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setActiveTabStopKey(null);
+            }
+        };
+
+        window.addEventListener('pointerdown', handlePointerDown);
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('pointerdown', handlePointerDown);
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [activeTabStopKey]);
 
     const handlePointerMove = useCallback((event: PointerEvent) => {
         const dragState = dragStateRef.current;
@@ -388,48 +436,103 @@ export function DocumentRulerOverlay({
                     </>
                 )}
                 {paragraphIndent?.tabStops.map((tabStop) => (
-                    <button
-                        key={`${tabStop.position}-${tabStop.align}`}
-                        type="button"
+                    <span
+                        key={getTabStopKey(tabStop)}
                         className={[
-                            'document-ruler__tab-stop',
-                            `document-ruler__tab-stop--${tabStop.align}`,
-                            paragraphIndent.hasMixedTabStops ? 'document-ruler__tab-stop--mixed' : '',
+                            'document-ruler__tab-stop-wrap',
+                            activeTabStopKey === getTabStopKey(tabStop) ? 'document-ruler__tab-stop-wrap--open' : '',
                         ].filter(Boolean).join(' ')}
                         style={{ left: `${((margins.left + tabStop.position) / width) * 100}%` }}
-                        title={`${tabStopSummary ?? getTabStopLabel(tabStop.align)} · ${getTabStopLabel(tabStop.align)} at ${pxToInches(tabStop.position)} inches · right-click to change type · double-click to remove`}
-                        aria-label={`${getTabStopLabel(tabStop.align)} ${pxToInches(tabStop.position)} inches from the left margin`}
-                        disabled={disabled}
-                        onContextMenu={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            cycleTabStopAlign(tabStop);
-                        }}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                cycleTabStopAlign(tabStop);
-                                return;
-                            }
-
-                            if (event.key === 'Backspace' || event.key === 'Delete') {
-                                event.preventDefault();
-                                removeTabStop(tabStop);
-                            }
-                        }}
-                        onDoubleClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            removeTabStop(tabStop);
-                        }}
                     >
-                        <span aria-hidden="true" className="document-ruler__tab-stop-glyph">
-                            {getTabStopGlyph(tabStop.align)}
-                        </span>
-                        <span className="document-ruler__handle-tip">
-                            {pxToInches(tabStop.position)}″ {tabStop.align}
-                        </span>
-                    </button>
+                        <button
+                            type="button"
+                            className={[
+                                'document-ruler__tab-stop',
+                                `document-ruler__tab-stop--${tabStop.align}`,
+                                activeTabStopKey === getTabStopKey(tabStop) ? 'document-ruler__tab-stop--open' : '',
+                                paragraphIndent.hasMixedTabStops ? 'document-ruler__tab-stop--mixed' : '',
+                            ].filter(Boolean).join(' ')}
+                            title={`${tabStopSummary ?? getTabStopLabel(tabStop.align)} · ${getTabStopLabel(tabStop.align)} at ${pxToInches(tabStop.position)} inches · click to choose type · double-click to remove`}
+                            aria-label={`${getTabStopLabel(tabStop.align)} ${pxToInches(tabStop.position)} inches from the left margin`}
+                            aria-expanded={activeTabStopKey === getTabStopKey(tabStop)}
+                            disabled={disabled}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                toggleTabStopPopover(tabStop);
+                            }}
+                            onContextMenu={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                toggleTabStopPopover(tabStop);
+                            }}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    toggleTabStopPopover(tabStop);
+                                    return;
+                                }
+
+                                if (event.key === 'Backspace' || event.key === 'Delete') {
+                                    event.preventDefault();
+                                    removeTabStop(tabStop);
+                                }
+                            }}
+                            onDoubleClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setActiveTabStopKey(null);
+                                removeTabStop(tabStop);
+                            }}
+                        >
+                            <span aria-hidden="true" className="document-ruler__tab-stop-glyph">
+                                {getTabStopGlyph(tabStop.align)}
+                            </span>
+                            <span className="document-ruler__handle-tip">
+                                {pxToInches(tabStop.position)}″ {tabStop.align}
+                            </span>
+                        </button>
+                        {activeTabStopKey === getTabStopKey(tabStop) && (
+                            <span
+                                className="document-ruler__tab-stop-popover"
+                                role="menu"
+                                aria-label={`Choose tab type for ${pxToInches(tabStop.position)} inch tab stop`}
+                            >
+                                <span className="document-ruler__tab-stop-popover-kicker">Tab stop</span>
+                                <span className="document-ruler__tab-stop-popover-title">
+                                    {pxToInches(tabStop.position)}″ from margin
+                                </span>
+                                <span className="document-ruler__tab-stop-popover-grid">
+                                    {TAB_STOP_ALIGN_OPTIONS.map((option) => (
+                                        <button
+                                            key={option.align}
+                                            type="button"
+                                            role="menuitemradio"
+                                            aria-checked={tabStop.align === option.align}
+                                            className={[
+                                                'document-ruler__tab-stop-option',
+                                                `document-ruler__tab-stop-option--${option.align}`,
+                                                tabStop.align === option.align ? 'document-ruler__tab-stop-option--active' : '',
+                                            ].filter(Boolean).join(' ')}
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                event.stopPropagation();
+                                                setTabStopAlign(tabStop, option.align);
+                                            }}
+                                        >
+                                            <span className="document-ruler__tab-stop-option-glyph">
+                                                {getTabStopGlyph(option.align)}
+                                            </span>
+                                            <span>
+                                                <strong>{option.label}</strong>
+                                                <small>{option.description}</small>
+                                            </span>
+                                        </button>
+                                    ))}
+                                </span>
+                            </span>
+                        )}
+                    </span>
                 ))}
                 <button
                     type="button"
