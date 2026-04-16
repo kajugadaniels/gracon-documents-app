@@ -13,13 +13,14 @@ import { A4_PAPER_WIDTH_PX } from '@/constants';
 import {
     DEFAULT_DOCUMENT_LAYOUT,
     normalizeParagraphTabStops,
+    type ParagraphTabStop,
 } from '@/lib/document-layout';
 
 export interface ActiveParagraphLayout {
     nodeType: 'paragraph' | 'heading';
     leftIndent: number;
     firstLineIndent: number;
-    tabStops: number[];
+    tabStops: ParagraphTabStop[];
     blockCount: number;
     hasMixedLeftIndent: boolean;
     hasMixedFirstLineIndent: boolean;
@@ -38,8 +39,11 @@ function normalizeTabStops(value: unknown) {
     );
 }
 
-function sameTabStops(left: number[], right: number[]) {
-    return left.length === right.length && left.every((value, index) => value === right[index]);
+function sameTabStops(left: ParagraphTabStop[], right: ParagraphTabStop[]) {
+    return left.length === right.length && left.every((value, index) => (
+        value.position === right[index].position &&
+        value.align === right[index].align
+    ));
 }
 
 /**
