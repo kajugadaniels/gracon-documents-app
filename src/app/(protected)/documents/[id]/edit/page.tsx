@@ -15,7 +15,7 @@ import { DocumentFinaliseDialog } from '@/components/editor/DocumentFinaliseDial
 import { DocumentPageSetupDialog } from '@/components/editor/DocumentPageSetupDialog';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocumentAccessTransitionBanner } from '@/components/editor/DocumentAccessTransitionBanner';
-import { DocumentRulerOverlay, DocumentPageRulers } from '@/components/editor/DocumentRulerOverlay';
+import { DocumentRulerOverlay, DocumentPageRulerSidebar } from '@/components/editor/DocumentRulerOverlay';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
@@ -91,6 +91,7 @@ export default function EditDocumentPage() {
     const [editor, setEditor] = useState<Editor | null>(null);
     const pagination = useDocumentPagination(editor);
     const pageRootRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLDivElement>(null);
     const signatureRequests = doc?.signatureRequests ?? [];
     const currentSignatureRequest = signatureRequests.find(
         request => request.requestedUserId === user?.userId,
@@ -711,8 +712,23 @@ export default function EditDocumentPage() {
                 />
             )}
 
+            {/* ── Page body: fixed ruler sidebar + scrollable document canvas ── */}
+            <div className="ded-page-body">
+                {/* Vertical ruler sidebar — scroll is driven by canvas, not the user */}
+                {viewState.showRuler && (
+                    <div className="ded-ruler-sidebar">
+                        <DocumentPageRulerSidebar
+                            canvasRef={canvasRef}
+                            pages={pagination.pages}
+                            pageHeight={pagination.pageHeight}
+                            margins={documentLayout.margins}
+                            disabled={baseIsReadOnly}
+                        />
+                    </div>
+                )}
+
             {/* ── Paper canvas ── */}
-            <div className="ded-canvas">
+            <div ref={canvasRef} className="ded-canvas">
                 <div className="document-workspace-stage">
                     <div
                         className="document-layout-shell"
@@ -729,15 +745,6 @@ export default function EditDocumentPage() {
                                 transformOrigin: 'top center',
                             }}
                         >
-                            {/* One vertical ruler per page — each shows 0→11" independently */}
-                            {viewState.showRuler && (
-                                <DocumentPageRulers
-                                    pages={pagination.pages}
-                                    pageHeight={pagination.pageHeight}
-                                    margins={documentLayout.margins}
-                                    disabled={baseIsReadOnly}
-                                />
-                            )}
                             <RichTextEditor
                                 key={doc.id}
                                 initialContent={doc.content}
@@ -759,6 +766,7 @@ export default function EditDocumentPage() {
                     </div>
                 </div>
             </div>
+            </div>{/* /.ded-page-body */}
 
             <DocumentCommentsPanel
                 documentId={doc.id}
