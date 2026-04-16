@@ -60,7 +60,11 @@ describe('DOCX import layout conversion', () => {
             ],
         });
 
-        assert.deepEqual(layout.tabStops, [48, 96, 602]);
+        assert.deepEqual(layout.tabStops, [
+            { position: 48, align: 'left' },
+            { position: 96, align: 'left' },
+            { position: 602, align: 'left' },
+        ]);
     });
 
     it('collects one layout entry for every Mammoth paragraph in document order', () => {
@@ -118,7 +122,8 @@ describe('DOCX import layout conversion', () => {
                         <w:pPr>
                             <w:tabs>
                                 <w:tab w:val="center" w:pos="2160"/>
-                                <w:tab w:val="left" w:pos="2880"/>
+                                <w:tab w:val="right" w:pos="2880"/>
+                                <w:tab w:val="decimal" w:pos="3600"/>
                             </w:tabs>
                         </w:pPr>
                     </w:p>
@@ -127,7 +132,18 @@ describe('DOCX import layout conversion', () => {
             </w:document>
         `);
 
-        assert.deepEqual(tabStops, [[48, 96], [192], []]);
+        assert.deepEqual(tabStops, [
+            [
+                { position: 48, align: 'left' },
+                { position: 96, align: 'left' },
+            ],
+            [
+                { position: 144, align: 'center' },
+                { position: 192, align: 'right' },
+                { position: 240, align: 'decimal' },
+            ],
+            [],
+        ]);
     });
 
     it('merges raw DOCX tab stops into Mammoth paragraph layouts by paragraph order', () => {
@@ -137,13 +153,23 @@ describe('DOCX import layout conversion', () => {
                 { leftIndent: 0, firstLineIndent: -24, tabStops: [] },
             ],
             [
-                [48, 96],
+                [
+                    { position: 48, align: 'left' },
+                    { position: 96, align: 'right' },
+                ],
                 [],
             ],
         );
 
         assert.deepEqual(layouts, [
-            { leftIndent: 48, firstLineIndent: 0, tabStops: [48, 96] },
+            {
+                leftIndent: 48,
+                firstLineIndent: 0,
+                tabStops: [
+                    { position: 48, align: 'left' },
+                    { position: 96, align: 'right' },
+                ],
+            },
             { leftIndent: 0, firstLineIndent: -24, tabStops: [] },
         ]);
     });
