@@ -6,6 +6,7 @@ declare module 'mammoth' {
     interface ConvertOptions {
         styleMap?: string[];
         includeDefaultStyleMap?: boolean;
+        transformDocument?: (document: unknown) => unknown;
     }
 
     interface ConversionResult {
