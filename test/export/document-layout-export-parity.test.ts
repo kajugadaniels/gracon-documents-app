@@ -56,13 +56,35 @@ test('converts paragraph indents and tab stops to shared export geometry', () =>
     assert.deepEqual(paragraph.dataAttributes, {
         leftIndent: '48',
         firstLineIndent: '24',
-        tabStops: '[48,96,602]',
+        tabStops: '[{"position":48,"align":"left"},{"position":96,"align":"left"},{"position":602,"align":"left"}]',
     });
     assert.deepEqual(paragraph.docxIndentTwips, {
         left: 720,
         firstLine: 360,
     });
-    assert.deepEqual(paragraph.docxTabStopTwips, [720, 1440, 9030]);
+    assert.deepEqual(paragraph.docxTabStops, [
+        { position: 720, align: 'left' },
+        { position: 1440, align: 'left' },
+        { position: 9030, align: 'left' },
+    ]);
+});
+
+test('converts typed paragraph tab stops to DOCX tab-stop geometry', () => {
+    const paragraph = createParagraphExportGeometry({
+        tabStops: [
+            { position: 48, align: 'left' },
+            { position: 96, align: 'center' },
+            { position: 120, align: 'right' },
+            { position: 144, align: 'decimal' },
+        ],
+    });
+
+    assert.deepEqual(paragraph.docxTabStops, [
+        { position: 720, align: 'left' },
+        { position: 1440, align: 'center' },
+        { position: 1800, align: 'right' },
+        { position: 2160, align: 'decimal' },
+    ]);
 });
 
 test('exports hanging first-line indents as DOCX hanging indents', () => {
