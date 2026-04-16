@@ -833,6 +833,38 @@ body {
   white-space: pre-wrap;
   tab-size: 4;
 }
+.tiptap-editor .ProseMirror .document-tab-render {
+  position: relative;
+  display: inline-block;
+  width: var(--document-tab-width, 2em);
+  min-width: 10px;
+  max-width: 100%;
+  color: transparent;
+  white-space: pre;
+  vertical-align: baseline;
+}
+.tiptap-editor .ProseMirror .document-tab-render::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 0.12em;
+  border-bottom: 1px dotted rgba(22, 16, 58, 0.16);
+  opacity: 0;
+  pointer-events: none;
+}
+.document-layout-frame--show-marks .tiptap-editor .ProseMirror .document-tab-render::after {
+  opacity: 1;
+}
+.document-layout-frame--show-marks .tiptap-editor .ProseMirror .document-tab-render--center::after {
+  border-bottom-color: rgba(14, 165, 233, 0.3);
+}
+.document-layout-frame--show-marks .tiptap-editor .ProseMirror .document-tab-render--right::after {
+  border-bottom-color: rgba(245, 158, 11, 0.32);
+}
+.document-layout-frame--show-marks .tiptap-editor .ProseMirror .document-tab-render--decimal::after {
+  border-bottom-color: rgba(168, 85, 247, 0.32);
+}
 .tiptap-editor .ProseMirror > * {
   max-width: 100%;
   min-width: 0;
