@@ -456,6 +456,30 @@ body {
   width: 24px;
   border-radius: 10px 0 0 10px;
 }
+/* Per-page ruler: no rounded corners between pages, only on the very first */
+.document-ruler--page {
+  border-radius: 0;
+  border-top: none;
+}
+.document-ruler--page:first-of-type {
+  border-radius: 10px 0 0 0;
+  border-top: 1px solid rgba(22,16,58,0.12);
+}
+/* Page number badge — tiny label at the top-left of each ruler segment */
+.document-ruler__page-badge {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(91,35,255,0.45);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  z-index: 3;
+}
 .document-ruler--disabled {
   opacity: 0.76;
 }
