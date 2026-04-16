@@ -541,6 +541,7 @@ body {
   position: absolute;
   z-index: 1;
   pointer-events: auto;
+  transition: filter 140ms ease, transform 140ms ease;
 }
 .document-ruler__paragraph-marker--left-indent {
   bottom: -1px;
@@ -573,6 +574,28 @@ body {
   border-top: 10px solid rgba(249, 115, 22, 0.96);
   filter: drop-shadow(0 4px 10px rgba(249, 115, 22, 0.18));
 }
+.document-ruler__paragraph-marker--mixed {
+  opacity: 0.74;
+}
+.document-ruler__paragraph-marker--mixed::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px dashed rgba(15, 23, 42, 0.24);
+  border-radius: 999px;
+}
+.document-ruler__paragraph-marker--active,
+.document-ruler__paragraph-marker:hover {
+  filter: saturate(1.15) drop-shadow(0 8px 16px rgba(15, 23, 42, 0.18));
+}
+.document-ruler__paragraph-marker--left-indent.document-ruler__paragraph-marker--active,
+.document-ruler__paragraph-marker--left-indent:hover {
+  transform: translateX(-50%) translateY(-1px);
+}
+.document-ruler__paragraph-marker--first-line.document-ruler__paragraph-marker--active,
+.document-ruler__paragraph-marker--first-line:hover {
+  transform: translateX(-50%) translateY(1px);
+}
 .document-ruler__paragraph-handle {
   position: absolute;
   inset: -8px;
@@ -588,7 +611,8 @@ body {
   outline: none;
 }
 .document-ruler__paragraph-handle:hover .document-ruler__handle-tip,
-.document-ruler__paragraph-handle:focus-visible .document-ruler__handle-tip {
+.document-ruler__paragraph-handle:focus-visible .document-ruler__handle-tip,
+.document-ruler__paragraph-marker--active .document-ruler__handle-tip {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
