@@ -3,15 +3,16 @@
 import type {
     MouseEvent as ReactMouseEvent,
     PointerEvent as ReactPointerEvent,
+    RefObject,
 } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { DocumentPaginationPage } from './use-document-pagination';
 import type {
     DocumentLayoutMargins,
     ParagraphIndentation,
     ParagraphTabStop,
     ParagraphTabStopAlign,
 } from '@/lib/document-layout';
-import type { DocumentPaginationPage } from './use-document-pagination';
 import {
     clampHorizontalDocumentMargins,
     clampParagraphIndentation,
@@ -620,9 +621,11 @@ export function DocumentRulerOverlay({
     );
 }
 
-// ─── Per-page vertical rulers ────────────────────────────────────────────────
+// ─── Per-page ruler sidebar with scroll sync ─────────────────────────────────
 
-interface DocumentPageRulersProps {
+interface DocumentPageRulerSidebarProps {
+    /** Ref to the scrollable canvas element — used to sync ruler scroll position. */
+    canvasRef: RefObject<HTMLDivElement | null>;
     pages: DocumentPaginationPage[];
     pageHeight: number;
     margins: DocumentLayoutMargins;
@@ -630,16 +633,47 @@ interface DocumentPageRulersProps {
 }
 
 /**
- * Renders one vertical ruler per page, each starting at 0 and covering the
- * full A4 page height. Rulers are absolutely positioned at each page's top
- * offset so they remain aligned with the paper as the document grows.
+ * Renders one vertical ruler per page (0 → 11"), stacked inside a non-user-
+ * scrollable sidebar. The sidebar's inner scroll position is kept in sync with
+ * the canvas scroll via an event listener, so each page ruler stays aligned
+ * with its corresponding page in the document. The user cannot scroll the
+ * ruler independently — only the document canvas drives the scroll.
  */
-export function DocumentPageRulers({
+export function DocumentPageRulerSidebar({
+    canvasRef,
     pages,
     pageHeight,
     margins,
     disabled = false,
-}: DocumentPageRulersProps) {
+}: DocumentPageRulerSidebarProps) {
+    const innerRef = useRef<HTMLDivElement | null>(null);
+
+    // Mirror the canvas scroll position into the inner ruler strip.
+    // Uses both canvas scroll events and window scroll events so the ruler
+    // stays aligned regardless of which element is the scroll container.
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const inner = innerRef.current;
+        if (!canvas || !inner) return;
+
+        function syncFromCanvas() {
+            if (inner && canvas) inner.scrollTop = canvas.scrollTop;
+        }
+
+        function syncFromWindow() {
+            if (inner) inner.scrollTop = window.scrollY;
+        }
+
+        canvas.addEventListener('scroll', syncFromCanvas, { passive: true });
+        window.addEventListener('scroll', syncFromWindow, { passive: true });
+        syncFromCanvas();
+
+        return () => {
+            canvas.removeEventListener('scroll', syncFromCanvas);
+            window.removeEventListener('scroll', syncFromWindow);
+        };
+    }, [canvasRef]);
+
     const topMarginPercent = (margins.top / pageHeight) * 100;
     const bottomMarginPercent = (margins.bottom / pageHeight) * 100;
     const topMarginIn = margins.top / DPI;
@@ -656,17 +690,18 @@ export function DocumentPageRulers({
     });
 
     return (
-        <>
+        <div
+            ref={innerRef}
+            className="ded-ruler-sidebar__inner"
+            aria-hidden="true"
+        >
             {pages.map((page) => (
                 <div
                     key={page.pageNumber}
                     className={`document-ruler document-ruler--left document-ruler--page${disabled ? ' document-ruler--disabled' : ''}`}
-                    style={{ top: page.top, height: pageHeight }}
-                    aria-hidden="true"
+                    style={{ height: pageHeight }}
                 >
-                    {/* Page number badge at the top of each ruler segment */}
                     <span className="document-ruler__page-badge">{page.pageNumber}</span>
-
                     <span
                         className="document-ruler__margin-zone document-ruler__margin-zone--top"
                         style={{ height: `${topMarginPercent}%` }}
@@ -688,6 +723,6 @@ export function DocumentPageRulers({
                     ))}
                 </div>
             ))}
-        </>
+        </div>
     );
 }
