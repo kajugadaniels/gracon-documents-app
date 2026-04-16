@@ -8,6 +8,9 @@
  * directly in later steps without relying on fragile DOM inspection.
  */
 import { Extension } from '@tiptap/core';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { Plugin } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { A4_PAPER_WIDTH_PX } from '@/constants';
 import {
     DEFAULT_DOCUMENT_LAYOUT,
@@ -67,6 +70,113 @@ function sameTabStops(left: ParagraphTabStop[], right: ParagraphTabStop[]) {
         value.position === right[index].position &&
         value.align === right[index].align
     ));
+}
+
+const DEFAULT_TAB_INTERVAL_PX = 48;
+const ESTIMATED_CHARACTER_WIDTH_PX = 7.2;
+const MIN_RENDERED_TAB_WIDTH_PX = 10;
+
+function estimateTextWidth(text: string) {
+    return text.length * ESTIMATED_CHARACTER_WIDTH_PX;
+}
+
+function estimateDecimalOffset(text: string) {
+    const decimalIndex = text.search(/[.,]/);
+    return estimateTextWidth(decimalIndex >= 0 ? text.slice(0, decimalIndex) : text);
+}
+
+function getFallbackTabStop(cursorPx: number): ParagraphTabStop {
+    return {
+        position: Math.ceil((cursorPx + 1) / DEFAULT_TAB_INTERVAL_PX) * DEFAULT_TAB_INTERVAL_PX,
+        align: 'left',
+    };
+}
+
+function resolveTabStop(tabStops: ParagraphTabStop[], cursorPx: number) {
+    return tabStops.find((tabStop) => tabStop.position > cursorPx + 1) ?? getFallbackTabStop(cursorPx);
+}
+
+function getTextUntilNextTab(text: string, offset: number) {
+    const nextTabIndex = text.indexOf('\t', offset + 1);
+    return nextTabIndex === -1 ? text.slice(offset + 1) : text.slice(offset + 1, nextTabIndex);
+}
+
+function calculateRenderedTabWidth(tabStop: ParagraphTabStop, cursorPx: number, followingText: string) {
+    let alignmentOffset = 0;
+
+    if (tabStop.align === 'center') {
+        alignmentOffset = estimateTextWidth(followingText) / 2;
+    } else if (tabStop.align === 'right') {
+        alignmentOffset = estimateTextWidth(followingText);
+    } else if (tabStop.align === 'decimal') {
+        alignmentOffset = estimateDecimalOffset(followingText);
+    }
+
+    return Math.max(
+        MIN_RENDERED_TAB_WIDTH_PX,
+        Math.round(tabStop.position - cursorPx - alignmentOffset),
+    );
+}
+
+function collectBlockTextTabs(blockNode: ProseMirrorNode, blockPos: number) {
+    const tabs: { pos: number; offset: number }[] = [];
+    let textOffset = 0;
+
+    blockNode.descendants((childNode, childPos) => {
+        if (!childNode.isText) {
+            return;
+        }
+
+        const text = childNode.text ?? '';
+
+        for (let index = 0; index < text.length; index += 1) {
+            if (text[index] === '\t') {
+                tabs.push({
+                    pos: blockPos + 1 + childPos + index,
+                    offset: textOffset + index,
+                });
+            }
+        }
+
+        textOffset += text.length;
+    });
+
+    return tabs;
+}
+
+function buildTabStopDecorations(doc: ProseMirrorNode) {
+    const decorations: Decoration[] = [];
+
+    doc.descendants((node, pos) => {
+        if (node.type.name !== 'paragraph' && node.type.name !== 'heading') {
+            return;
+        }
+
+        const tabStops = normalizeTabStops(node.attrs.tabStops);
+        const text = node.textContent;
+        const tabs = collectBlockTextTabs(node, pos);
+        let cursorPx = 0;
+        let previousTextOffset = 0;
+
+        tabs.forEach((tab) => {
+            cursorPx += estimateTextWidth(text.slice(previousTextOffset, tab.offset));
+
+            const tabStop = resolveTabStop(tabStops, cursorPx);
+            const followingText = getTextUntilNextTab(text, tab.offset);
+            const width = calculateRenderedTabWidth(tabStop, cursorPx, followingText);
+
+            decorations.push(Decoration.inline(tab.pos, tab.pos + 1, {
+                class: `document-tab-render document-tab-render--${tabStop.align}`,
+                'data-tab-align': tabStop.align,
+                style: `--document-tab-width: ${width}px;`,
+            }));
+
+            cursorPx = tabStop.position;
+            previousTextOffset = tab.offset + 1;
+        });
+    });
+
+    return DecorationSet.create(doc, decorations);
 }
 
 export const ParagraphLayoutExtension = Extension.create({
@@ -207,6 +317,18 @@ export const ParagraphLayoutExtension = Extension.create({
             Tab: () => this.editor.commands.insertContent('\t'),
             'Shift-Tab': () => false,
         };
+    },
+
+    addProseMirrorPlugins() {
+        return [
+            new Plugin({
+                props: {
+                    decorations(state) {
+                        return buildTabStopDecorations(state.doc);
+                    },
+                },
+            }),
+        ];
     },
 
     addGlobalAttributes() {
