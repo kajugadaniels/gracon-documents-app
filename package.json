@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --no-warnings --experimental-strip-types --test --test-concurrency=1 test/verification/*.test.ts"
+    "test": "node --no-warnings --experimental-strip-types --test --test-concurrency=1 test/verification/*.test.ts test/export/*.test.ts"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.1.1",
