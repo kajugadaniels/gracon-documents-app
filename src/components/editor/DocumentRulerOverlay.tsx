@@ -20,7 +20,7 @@ import {
 } from '@/lib/document-layout';
 
 const HORIZONTAL_TICKS = Array.from({ length: 17 }, (_, index) => index);
-const VERTICAL_TICKS = Array.from({ length: 23 }, (_, index) => index);
+const VERTICAL_TICKS = Array.from({ length: 24 }, (_, index) => index);
 const DPI = 96;
 const A4_HEIGHT_IN = 11.69;
 const TAB_STOP_ALIGN_OPTIONS: {
@@ -51,6 +51,8 @@ interface DocumentRulerOverlayProps {
     margins: DocumentLayoutMargins;
     paragraphIndent?: ParagraphIndentReadout | null;
     disabled?: boolean;
+    /** Controls which ruler axes are rendered. Defaults to 'full'. */
+    rulerMode?: 'full' | 'top-only' | 'left-only';
     onHorizontalMarginsPreview?: (margins: Pick<DocumentLayoutMargins, 'left' | 'right'>) => void;
     onHorizontalMarginsCommit?: (margins: Pick<DocumentLayoutMargins, 'left' | 'right'>) => void;
     onParagraphIndentPreview?: (indentation: ParagraphIndentation) => void;
@@ -90,6 +92,7 @@ export function DocumentRulerOverlay({
     margins,
     paragraphIndent = null,
     disabled = false,
+    rulerMode = 'full',
     onHorizontalMarginsPreview,
     onHorizontalMarginsCommit,
     onParagraphIndentPreview,
@@ -357,14 +360,52 @@ export function DocumentRulerOverlay({
         window.addEventListener('pointercancel', handlePointerUp);
     }
 
-    return (
-        <div className="document-ruler-overlay">
-            <div
-                ref={topRulerRef}
-                className={`document-ruler document-ruler--top${disabled ? ' document-ruler--disabled' : ''}`}
-                title={paragraphIndent ? 'Double-click the ruler to add a left tab stop.' : undefined}
-                onDoubleClick={addTabStopAtPointer}
-            >
+    const verticalRuler = (
+        <div className="document-ruler document-ruler--left" style={{ height }}>
+            <span
+                className="document-ruler__margin-zone document-ruler__margin-zone--top"
+                style={{ height: `${topMarginPercent}%` }}
+            />
+            <span
+                className="document-ruler__margin-zone document-ruler__margin-zone--bottom"
+                style={{ height: `${bottomMarginPercent}%` }}
+            />
+            {VERTICAL_TICKS.map((tick) => {
+                const tickInches = tick / 2;
+                const topMarginIn = margins.top / DPI;
+                const bottomMarginIn = margins.bottom / DPI;
+                const inMarginZone =
+                    tickInches < topMarginIn ||
+                    tickInches > A4_HEIGHT_IN - bottomMarginIn;
+                // Position each tick at its physical inch position, not even distribution.
+                // This ensures 1 inch on the ruler == 96px, matching the paper geometry.
+                const topPct = (tickInches * DPI / height) * 100;
+                return (
+                    <span
+                        key={`left-${tick}`}
+                        className={`document-ruler__tick${isMajorTick(tick) ? ' document-ruler__tick--major' : ''}`}
+                        style={{ top: `${topPct}%` }}
+                    >
+                        {isMajorTick(tick) && !inMarginZone && (
+                            <span className="document-ruler__label">{tickInches}</span>
+                        )}
+                    </span>
+                );
+            })}
+        </div>
+    );
+
+    if (rulerMode === 'left-only') {
+        return verticalRuler;
+    }
+
+    const horizontalRuler = (
+        <div
+            ref={topRulerRef}
+            className={`document-ruler document-ruler--top${disabled ? ' document-ruler--disabled' : ''}`}
+            title={paragraphIndent ? 'Double-click the ruler to add a left tab stop.' : undefined}
+            onDoubleClick={addTabStopAtPointer}
+        >
                 <span
                     className="document-ruler__margin-zone document-ruler__margin-zone--left"
                     style={{ width: `${leftMarginPercent}%` }}
@@ -558,36 +599,22 @@ export function DocumentRulerOverlay({
                     <span className="document-ruler__handle-tip">{pxToInches(margins.right)}″</span>
                 </button>
             </div>
+    );
 
-            <div className="document-ruler document-ruler--left" style={{ height }}>
-                <span
-                    className="document-ruler__margin-zone document-ruler__margin-zone--top"
-                    style={{ height: `${topMarginPercent}%` }}
-                />
-                <span
-                    className="document-ruler__margin-zone document-ruler__margin-zone--bottom"
-                    style={{ height: `${bottomMarginPercent}%` }}
-                />
-                {VERTICAL_TICKS.map((tick) => {
-                    const tickInches = tick / 2;
-                    const topMarginIn = margins.top / DPI;
-                    const bottomMarginIn = margins.bottom / DPI;
-                    const inMarginZone =
-                        tickInches < topMarginIn ||
-                        tickInches > A4_HEIGHT_IN - bottomMarginIn;
-                    return (
-                        <span
-                            key={`left-${tick}`}
-                            className={`document-ruler__tick${isMajorTick(tick) ? ' document-ruler__tick--major' : ''}`}
-                            style={{ top: `${(tick / (VERTICAL_TICKS.length - 1)) * 100}%` }}
-                        >
-                            {isMajorTick(tick) && !inMarginZone && (
-                                <span className="document-ruler__label">{tick / 2}</span>
-                            )}
-                        </span>
-                    );
-                })}
+    if (rulerMode === 'top-only') {
+        return (
+            <div className="ded-sticky-ruler">
+                <div className="ded-sticky-ruler__inner" style={{ width }}>
+                    {horizontalRuler}
+                </div>
             </div>
+        );
+    }
+
+    return (
+        <div className="document-ruler-overlay">
+            {horizontalRuler}
+            {verticalRuler}
         </div>
     );
 }
