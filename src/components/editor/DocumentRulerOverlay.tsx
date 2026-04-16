@@ -22,6 +22,7 @@ import {
 const HORIZONTAL_TICKS = Array.from({ length: 17 }, (_, index) => index);
 const VERTICAL_TICKS = Array.from({ length: 23 }, (_, index) => index);
 const DPI = 96;
+const A4_HEIGHT_IN = 11.69;
 const TAB_STOP_ALIGN_OPTIONS: {
     align: ParagraphTabStopAlign;
     label: string;
@@ -567,17 +568,25 @@ export function DocumentRulerOverlay({
                     className="document-ruler__margin-zone document-ruler__margin-zone--bottom"
                     style={{ height: `${bottomMarginPercent}%` }}
                 />
-                {VERTICAL_TICKS.map((tick) => (
-                    <span
-                        key={`left-${tick}`}
-                        className={`document-ruler__tick${isMajorTick(tick) ? ' document-ruler__tick--major' : ''}`}
-                        style={{ top: `${(tick / (VERTICAL_TICKS.length - 1)) * 100}%` }}
-                    >
-                        {isMajorTick(tick) && (
-                            <span className="document-ruler__label">{tick / 2}</span>
-                        )}
-                    </span>
-                ))}
+                {VERTICAL_TICKS.map((tick) => {
+                    const tickInches = tick / 2;
+                    const topMarginIn = margins.top / DPI;
+                    const bottomMarginIn = margins.bottom / DPI;
+                    const inMarginZone =
+                        tickInches < topMarginIn ||
+                        tickInches > A4_HEIGHT_IN - bottomMarginIn;
+                    return (
+                        <span
+                            key={`left-${tick}`}
+                            className={`document-ruler__tick${isMajorTick(tick) ? ' document-ruler__tick--major' : ''}`}
+                            style={{ top: `${(tick / (VERTICAL_TICKS.length - 1)) * 100}%` }}
+                        >
+                            {isMajorTick(tick) && !inMarginZone && (
+                                <span className="document-ruler__label">{tick / 2}</span>
+                            )}
+                        </span>
+                    );
+                })}
             </div>
         </div>
     );

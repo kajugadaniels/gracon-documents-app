@@ -450,6 +450,7 @@ body {
 }
 .document-ruler__tick {
   position: absolute;
+  z-index: 2;
   color: rgba(22,16,58,0.52);
   font-size: 9px;
   font-weight: 700;
@@ -457,7 +458,8 @@ body {
 }
 .document-ruler__margin-zone {
   position: absolute;
-  background: rgba(91,35,255,0.08);
+  background: rgba(91,35,255,0.13);
+  z-index: 1;
 }
 .document-ruler__margin-zone--left {
   inset: 0 auto 0 0;
