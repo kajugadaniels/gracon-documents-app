@@ -81,6 +81,10 @@ function normalizeImportedTabStops(value: unknown) {
         .slice(0, IMPORT_MAX_PARAGRAPH_TAB_STOPS);
 }
 
+function normalizeImportedTabStopTwips(value: unknown) {
+    return normalizeImportedTabStops(Array.isArray(value) ? value : [value]);
+}
+
 export function createImportedParagraphLayout(element: unknown): ImportedParagraphLayout {
     if (!isRecord(element)) {
         return EMPTY_LAYOUT;
@@ -124,6 +128,66 @@ export function collectImportedParagraphLayouts(document: unknown) {
     visit(document);
 
     return layouts;
+}
+
+function getAttributeValue(xml: string, localName: string) {
+    const pattern = new RegExp(`(?:[\\w.-]+:)?${localName}="([^"]+)"`);
+    return xml.match(pattern)?.[1] ?? null;
+}
+
+/**
+ * Extracts paragraph-level tab stops from `word/document.xml`.
+ *
+ * Mammoth currently keeps inline `w:tab` characters but does not expose
+ * paragraph `w:tabs` metadata. This lightweight parser only reads the
+ * paragraph properties we need and keeps document order aligned with Mammoth's
+ * paragraph traversal.
+ */
+export function extractParagraphTabStopsFromDocumentXml(documentXml: string) {
+    if (!documentXml.trim()) {
+        return [];
+    }
+
+    const paragraphMatches = documentXml.match(/<w:p\b[\s\S]*?<\/w:p>/g) ?? [];
+
+    return paragraphMatches.map((paragraphXml) => {
+        const paragraphProperties = paragraphXml.match(/<w:pPr\b[\s\S]*?<\/w:pPr>/)?.[0] ?? '';
+        const tabsXml = paragraphProperties.match(/<w:tabs\b[\s\S]*?<\/w:tabs>/)?.[0] ?? '';
+
+        if (!tabsXml) {
+            return [];
+        }
+
+        const tabMatches = tabsXml.match(/<w:tab\b[^>]*\/?>/g) ?? [];
+        const positions = tabMatches
+            .filter((tabXml) => {
+                const value = getAttributeValue(tabXml, 'val');
+                return value === null || value === 'left' || value === 'start';
+            })
+            .map((tabXml) => getAttributeValue(tabXml, 'pos'))
+            .filter((position): position is string => position !== null)
+            .flatMap(normalizeImportedTabStopTwips);
+
+        return Array.from(new Set(positions)).sort((a, b) => a - b);
+    });
+}
+
+export function mergeParagraphTabStopsIntoLayouts(
+    paragraphLayouts: ImportedParagraphLayout[],
+    paragraphTabStops: number[][],
+) {
+    return paragraphLayouts.map((layout, index) => {
+        const tabStops = paragraphTabStops[index] ?? [];
+
+        if (tabStops.length === 0) {
+            return layout;
+        }
+
+        return {
+            ...layout,
+            tabStops,
+        };
+    });
 }
 
 function hasLayout(layout: ImportedParagraphLayout) {
