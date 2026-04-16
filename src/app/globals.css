@@ -433,7 +433,18 @@ body {
   box-shadow: 0 8px 24px rgba(22,16,58,0.08);
 }
 .document-ruler--top {
+  /* Default: floating above the paper in full/legacy mode */
   top: -34px;
+  left: 0;
+  right: 0;
+  height: 24px;
+  border-radius: 10px 10px 0 0;
+}
+/* When rendered inside the sticky row, anchor it to the bottom of the row */
+.ded-sticky-ruler__inner .document-ruler--top {
+  position: absolute;
+  top: auto;
+  bottom: 0;
   left: 0;
   right: 0;
   height: 24px;
@@ -2156,6 +2167,27 @@ body {
   display: flex;
   flex-direction: column;
   background: #e8eaed;
+}
+
+/* Sticky horizontal ruler row — sits between the header and canvas, never scrolls away */
+.ded-sticky-ruler {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 28px;
+  background: #e8eaed;
+  border-bottom: 1px solid rgba(22,16,58,0.10);
+  padding: 0 clamp(16px, 4vw, 48px);
+  pointer-events: none;
+}
+.ded-sticky-ruler__inner {
+  position: relative;
+  height: 100%;
+  pointer-events: auto;
+  flex-shrink: 0;
 }
 
 .ded-canvas {
