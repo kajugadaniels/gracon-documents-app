@@ -710,7 +710,7 @@ export default function EditDocumentPage() {
                             {viewState.showRuler && (
                                 <DocumentRulerOverlay
                                     width={A4_PAPER_WIDTH_PX}
-                                    height={Math.max(pagination.contentHeight, pagination.pageHeight)}
+                                    height={pagination.pageHeight}
                                     margins={documentLayout.margins}
                                     paragraphIndent={activeParagraphLayout}
                                     disabled={baseIsReadOnly}
