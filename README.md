@@ -43,7 +43,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Selection-aware ruler markers for active paragraph left-indent and first-line-indent readout
 - Draggable paragraph ruler markers that write left-indent and first-line-indent back into editor content
 - Explicit multi-block ruler feedback for mixed paragraph indentation selections
-- Paragraph tab stops stored in editor content, shown on the ruler, editable by double-clicking the ruler, and preserved in DOCX export
+- Typed paragraph tab stops stored in editor content, shown on the ruler, editable from the ruler, and preserved in DOCX import/export
 - DOCX import maps Word paragraph indents, inline tab characters, and paragraph tab-stop positions back into the same schema-backed layout model used by the ruler
 - Export parity tests for page margins, paragraph indents, hanging indents, and tab-stop conversion
 - Invitation gate with OTP and identity-proof return flow
