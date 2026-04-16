@@ -2214,6 +2214,49 @@ body {
   flex-shrink: 0;
 }
 
+/* Page body row — holds the vertical ruler sidebar and the scrollable canvas */
+.ded-page-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+}
+
+/* Vertical ruler sidebar — clipping frame; scroll is driven by JS from canvas */
+.ded-ruler-sidebar {
+  flex-shrink: 0;
+  width: 38px;
+  background: #e8eaed;
+  overflow: hidden;
+  border-right: 1px solid rgba(22,16,58,0.08);
+}
+
+/* Inner strip — scrollable via JS sync, hidden scrollbar, no pointer interaction */
+.ded-ruler-sidebar__inner {
+  width: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  pointer-events: none;
+  padding-top: 32px;
+  padding-bottom: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ded-ruler-sidebar__inner::-webkit-scrollbar {
+  display: none;
+}
+
+/* Override absolute positioning so per-page rulers stack normally in the sidebar */
+.ded-ruler-sidebar .document-ruler--left {
+  position: relative;
+  top: auto;
+  left: auto;
+  flex-shrink: 0;
+}
+
 .ded-canvas {
   flex: 1;
   padding: 32px clamp(16px, 4vw, 48px) 64px;
