@@ -382,6 +382,13 @@ export default function EditDocumentPage() {
             firstLineIndent: indentation.firstLineIndent,
         });
     }, [activeParagraphLayout, baseIsReadOnly, editor]);
+    const applyParagraphTabStops = useCallback((tabStops: number[]) => {
+        if (!editor || baseIsReadOnly || !activeParagraphLayout) {
+            return;
+        }
+
+        editor.commands.setParagraphTabStops(tabStops);
+    }, [activeParagraphLayout, baseIsReadOnly, editor]);
     const applyHorizontalMarginsPreview = useCallback(
         (nextMargins: { left: number; right: number }) => {
             setDoc((current) => {
@@ -715,6 +722,7 @@ export default function EditDocumentPage() {
                                     onHorizontalMarginsCommit={commitHorizontalMargins}
                                     onParagraphIndentPreview={applyParagraphIndentation}
                                     onParagraphIndentCommit={applyParagraphIndentation}
+                                    onParagraphTabStopsChange={applyParagraphTabStops}
                                 />
                             )}
                             <RichTextEditor
