@@ -689,6 +689,28 @@ export default function EditDocumentPage() {
                 />
             )}
 
+            {/* ── Sticky horizontal ruler (Google Docs-style — stays below the header) ── */}
+            {viewState.showRuler && (
+                <DocumentRulerOverlay
+                    rulerMode="top-only"
+                    width={A4_PAPER_WIDTH_PX}
+                    height={pagination.pageHeight}
+                    margins={documentLayout.margins}
+                    paragraphIndent={activeParagraphLayout}
+                    disabled={baseIsReadOnly}
+                    onHorizontalMarginsPreview={(nextMargins) => {
+                        if (!rulerCommitLayoutRef.current) {
+                            rulerCommitLayoutRef.current = documentLayout;
+                        }
+                        applyHorizontalMarginsPreview(nextMargins);
+                    }}
+                    onHorizontalMarginsCommit={commitHorizontalMargins}
+                    onParagraphIndentPreview={applyParagraphIndentation}
+                    onParagraphIndentCommit={applyParagraphIndentation}
+                    onParagraphTabStopsChange={applyParagraphTabStops}
+                />
+            )}
+
             {/* ── Paper canvas ── */}
             <div className="ded-canvas">
                 <div className="document-workspace-stage">
@@ -707,23 +729,14 @@ export default function EditDocumentPage() {
                                 transformOrigin: 'top center',
                             }}
                         >
+                            {/* Vertical ruler alongside the first page — left-only, no horizontal duplication */}
                             {viewState.showRuler && (
                                 <DocumentRulerOverlay
+                                    rulerMode="left-only"
                                     width={A4_PAPER_WIDTH_PX}
                                     height={pagination.pageHeight}
                                     margins={documentLayout.margins}
-                                    paragraphIndent={activeParagraphLayout}
                                     disabled={baseIsReadOnly}
-                                    onHorizontalMarginsPreview={(nextMargins) => {
-                                        if (!rulerCommitLayoutRef.current) {
-                                            rulerCommitLayoutRef.current = documentLayout;
-                                        }
-                                        applyHorizontalMarginsPreview(nextMargins);
-                                    }}
-                                    onHorizontalMarginsCommit={commitHorizontalMargins}
-                                    onParagraphIndentPreview={applyParagraphIndentation}
-                                    onParagraphIndentCommit={applyParagraphIndentation}
-                                    onParagraphTabStopsChange={applyParagraphTabStops}
                                 />
                             )}
                             <RichTextEditor
