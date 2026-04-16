@@ -9,18 +9,37 @@
  */
 import { useEffect, useState } from 'react';
 import type { Editor } from '@tiptap/react';
+import { A4_PAPER_WIDTH_PX } from '@/constants';
+import {
+    DEFAULT_DOCUMENT_LAYOUT,
+    normalizeParagraphTabStops,
+} from '@/lib/document-layout';
 
 export interface ActiveParagraphLayout {
     nodeType: 'paragraph' | 'heading';
     leftIndent: number;
     firstLineIndent: number;
+    tabStops: number[];
     blockCount: number;
     hasMixedLeftIndent: boolean;
     hasMixedFirstLineIndent: boolean;
+    hasMixedTabStops: boolean;
 }
 
 function normalizeIndent(value: unknown) {
     return typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 0;
+}
+
+function normalizeTabStops(value: unknown) {
+    return normalizeParagraphTabStops(
+        A4_PAPER_WIDTH_PX,
+        DEFAULT_DOCUMENT_LAYOUT.margins,
+        value,
+    );
+}
+
+function sameTabStops(left: number[], right: number[]) {
+    return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 /**
@@ -41,9 +60,11 @@ function readActiveParagraphLayout(editor: Editor | null): ActiveParagraphLayout
             nodeType: node.type.name,
             leftIndent: normalizeIndent(node.attrs.leftIndent),
             firstLineIndent: normalizeIndent(node.attrs.firstLineIndent),
+            tabStops: normalizeTabStops(node.attrs.tabStops),
             blockCount: 1,
             hasMixedLeftIndent: false,
             hasMixedFirstLineIndent: false,
+            hasMixedTabStops: false,
         });
     });
 
@@ -56,6 +77,7 @@ function readActiveParagraphLayout(editor: Editor | null): ActiveParagraphLayout
             nodeType: blocks.some((block) => block.nodeType !== first.nodeType) ? 'paragraph' : first.nodeType,
             hasMixedLeftIndent: blocks.some((block) => block.leftIndent !== first.leftIndent),
             hasMixedFirstLineIndent: blocks.some((block) => block.firstLineIndent !== first.firstLineIndent),
+            hasMixedTabStops: blocks.some((block) => !sameTabStops(block.tabStops, first.tabStops)),
         };
     }
 
@@ -70,9 +92,11 @@ function readActiveParagraphLayout(editor: Editor | null): ActiveParagraphLayout
             nodeType: node.type.name,
             leftIndent: normalizeIndent(node.attrs.leftIndent),
             firstLineIndent: normalizeIndent(node.attrs.firstLineIndent),
+            tabStops: normalizeTabStops(node.attrs.tabStops),
             blockCount: 1,
             hasMixedLeftIndent: false,
             hasMixedFirstLineIndent: false,
+            hasMixedTabStops: false,
         };
     }
 
