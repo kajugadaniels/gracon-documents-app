@@ -43,11 +43,14 @@ export const ParagraphLayoutExtension = Extension.create({
                 const nextFirstLineIndent = normalizeIndent(attrs.firstLineIndent);
                 let tr = state.tr;
                 let changed = false;
+                let appliedCount = 0;
 
                 state.doc.nodesBetween(state.selection.from, state.selection.to, (node, pos) => {
                     if (node.type.name !== 'paragraph' && node.type.name !== 'heading') {
                         return;
                     }
+
+                    appliedCount += 1;
 
                     if (
                         normalizeIndent(node.attrs.leftIndent) === nextLeftIndent &&
@@ -63,6 +66,35 @@ export const ParagraphLayoutExtension = Extension.create({
                     });
                     changed = true;
                 });
+
+                // Collapsed selections do not always surface through nodesBetween,
+                // so fall back to the closest paragraph-like ancestor.
+                if (appliedCount === 0) {
+                    const { $from } = state.selection;
+
+                    for (let depth = $from.depth; depth >= 0; depth -= 1) {
+                        const node = $from.node(depth);
+
+                        if (node.type.name !== 'paragraph' && node.type.name !== 'heading') {
+                            continue;
+                        }
+
+                        if (
+                            normalizeIndent(node.attrs.leftIndent) === nextLeftIndent &&
+                            normalizeIndent(node.attrs.firstLineIndent) === nextFirstLineIndent
+                        ) {
+                            break;
+                        }
+
+                        tr = tr.setNodeMarkup($from.before(depth), undefined, {
+                            ...node.attrs,
+                            leftIndent: nextLeftIndent,
+                            firstLineIndent: nextFirstLineIndent,
+                        });
+                        changed = true;
+                        break;
+                    }
+                }
 
                 if (!changed) {
                     return true;
