@@ -14,6 +14,7 @@ import type {
     ParagraphChild,
     Table as DocxTable,
 } from 'docx';
+import { createParagraphExportGeometry } from './document-layout-export-parity';
 
 type DocxModule = typeof import('docx');
 type TableCellChild = Paragraph | DocxTable;
@@ -152,19 +153,20 @@ function collectInlineRuns(nodes: Node[], style: RunStyle, docx: DocxModule): Pa
 
 function getParagraphOptions(element: HTMLElement, docx: DocxModule): Omit<IParagraphOptions, 'children'> {
     const computed = window.getComputedStyle(element);
-    const leftIndent = Number.parseFloat(element.getAttribute('data-left-indent') ?? '');
-    const firstLineIndent = Number.parseFloat(element.getAttribute('data-first-line-indent') ?? '');
-    const tabStops = parseTabStops(element.getAttribute('data-tab-stops'), docx);
-    const indent = {
-        ...(Number.isFinite(leftIndent) && leftIndent > 0 ? { left: cssPxToTwip(`${leftIndent}px`) } : {}),
-        ...(Number.isFinite(firstLineIndent) && firstLineIndent > 0 ? { firstLine: cssPxToTwip(`${firstLineIndent}px`) } : {}),
-        ...(Number.isFinite(firstLineIndent) && firstLineIndent < 0 ? { hanging: cssPxToTwip(`${Math.abs(firstLineIndent)}px`) } : {}),
-    };
+    const paragraphGeometry = createParagraphExportGeometry({
+        leftIndent: Number.parseFloat(element.getAttribute('data-left-indent') ?? ''),
+        firstLineIndent: Number.parseFloat(element.getAttribute('data-first-line-indent') ?? ''),
+        tabStops: parseTabStopsAttribute(element.getAttribute('data-tab-stops')),
+    });
+    const tabStops = paragraphGeometry.docxTabStopTwips.map((position) => ({
+        type: docx.TabStopType.LEFT,
+        position,
+    }));
 
     return {
         alignment: getAlignment(computed, docx),
         heading: getHeading(element.tagName, docx),
-        ...(Object.keys(indent).length > 0 ? { indent } : {}),
+        ...(Object.keys(paragraphGeometry.docxIndentTwips).length > 0 ? { indent: paragraphGeometry.docxIndentTwips } : {}),
         ...(tabStops.length > 0 ? { tabStops } : {}),
         spacing: {
             before: cssPxToTwip(computed.marginTop),
@@ -174,19 +176,16 @@ function getParagraphOptions(element: HTMLElement, docx: DocxModule): Omit<IPara
     };
 }
 
-function parseTabStops(value: string | null, docx: DocxModule) {
+function parseTabStopsAttribute(value: string | null) {
     if (!value) return [];
 
     try {
         const parsed = JSON.parse(value);
         if (!Array.isArray(parsed)) return [];
 
-        return parsed
-            .filter((position): position is number => typeof position === 'number' && Number.isFinite(position))
-            .map((position) => ({
-                type: docx.TabStopType.LEFT,
-                position: cssPxToTwip(`${position}px`),
-            }));
+        return parsed.filter((position): position is number => (
+            typeof position === 'number' && Number.isFinite(position)
+        ));
     } catch {
         return [];
     }
