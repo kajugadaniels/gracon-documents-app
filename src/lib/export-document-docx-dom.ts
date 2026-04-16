@@ -158,9 +158,9 @@ function getParagraphOptions(element: HTMLElement, docx: DocxModule): Omit<IPara
         firstLineIndent: Number.parseFloat(element.getAttribute('data-first-line-indent') ?? ''),
         tabStops: parseTabStopsAttribute(element.getAttribute('data-tab-stops')),
     });
-    const tabStops = paragraphGeometry.docxTabStopTwips.map((position) => ({
-        type: docx.TabStopType.LEFT,
-        position,
+    const tabStops = paragraphGeometry.docxTabStops.map((tabStop) => ({
+        type: getDocxTabStopType(tabStop.align, docx),
+        position: tabStop.position,
     }));
 
     return {
@@ -174,6 +174,13 @@ function getParagraphOptions(element: HTMLElement, docx: DocxModule): Omit<IPara
         },
         widowControl: true,
     };
+}
+
+function getDocxTabStopType(align: 'left' | 'center' | 'right' | 'decimal', docx: DocxModule) {
+    if (align === 'center') return docx.TabStopType.CENTER;
+    if (align === 'right') return docx.TabStopType.RIGHT;
+    if (align === 'decimal') return docx.TabStopType.DECIMAL;
+    return docx.TabStopType.LEFT;
 }
 
 function parseTabStopsAttribute(value: string | null) {
