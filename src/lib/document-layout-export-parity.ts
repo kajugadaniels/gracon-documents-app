@@ -14,6 +14,14 @@ export const EXPORT_MAX_DOCUMENT_MARGIN_PX = 192;
 export const EXPORT_MIN_PARAGRAPH_CONTENT_WIDTH_PX = 72;
 export const EXPORT_MAX_PARAGRAPH_TAB_STOPS = 12;
 export const EXPORT_TAB_STOP_SNAP_PX = 24;
+export const EXPORT_PARAGRAPH_TAB_STOP_ALIGNS = ['left', 'center', 'right', 'decimal'] as const;
+
+export type ExportParagraphTabStopAlign = typeof EXPORT_PARAGRAPH_TAB_STOP_ALIGNS[number];
+
+export interface ExportParagraphTabStop {
+    position: number;
+    align: ExportParagraphTabStopAlign;
+}
 
 export interface DocumentLayoutMargins {
     top: number;
@@ -52,7 +60,7 @@ export interface PaperExportGeometry {
 export interface ParagraphExportGeometry {
     leftIndent: number;
     firstLineIndent: number;
-    tabStops: number[];
+    tabStops: ExportParagraphTabStop[];
     cssStyle: string;
     dataAttributes: {
         leftIndent?: string;
@@ -64,7 +72,10 @@ export interface ParagraphExportGeometry {
         firstLine?: number;
         hanging?: number;
     };
-    docxTabStopTwips: number[];
+    docxTabStops: {
+        position: number;
+        align: ExportParagraphTabStopAlign;
+    }[];
 }
 
 function normalizeNumber(value: unknown) {
@@ -103,19 +114,44 @@ function normalizeExportTabStops(
         pageWidth - margins.left - margins.right,
     );
     const source = Array.isArray(tabStops) ? tabStops : [];
-    const seen = new Set<number>();
+    const seen = new Set<string>();
 
     return source
-        .map((value) => (typeof value === 'number' && Number.isFinite(value) ? value : null))
-        .filter((value): value is number => value !== null)
-        .map((value) => Math.round(value / EXPORT_TAB_STOP_SNAP_PX) * EXPORT_TAB_STOP_SNAP_PX)
-        .map((value) => Math.min(printableWidth, Math.max(EXPORT_TAB_STOP_SNAP_PX, value)))
+        .map((value): ExportParagraphTabStop | null => {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                return { position: value, align: 'left' };
+            }
+
+            if (!value || typeof value !== 'object' || Array.isArray(value)) {
+                return null;
+            }
+
+            const rawValue = value as Record<string, unknown>;
+            const position = typeof rawValue.position === 'number' && Number.isFinite(rawValue.position)
+                ? rawValue.position
+                : null;
+            const align = typeof rawValue.align === 'string' && EXPORT_PARAGRAPH_TAB_STOP_ALIGNS.includes(rawValue.align as ExportParagraphTabStopAlign)
+                ? rawValue.align as ExportParagraphTabStopAlign
+                : 'left';
+
+            return position === null ? null : { position, align };
+        })
+        .filter((value): value is ExportParagraphTabStop => value !== null)
+        .map((value) => ({
+            ...value,
+            position: Math.round(value.position / EXPORT_TAB_STOP_SNAP_PX) * EXPORT_TAB_STOP_SNAP_PX,
+        }))
+        .map((value) => ({
+            ...value,
+            position: Math.min(printableWidth, Math.max(EXPORT_TAB_STOP_SNAP_PX, value.position)),
+        }))
         .filter((value) => {
-            if (seen.has(value)) return false;
-            seen.add(value);
+            const key = String(value.position);
+            if (seen.has(key)) return false;
+            seen.add(key);
             return true;
         })
-        .sort((a, b) => a - b)
+        .sort((a, b) => a.position - b.position || a.align.localeCompare(b.align))
         .slice(0, EXPORT_MAX_PARAGRAPH_TAB_STOPS);
 }
 
@@ -198,7 +234,10 @@ export function createParagraphExportGeometry(
             ...(firstLineIndent > 0 ? { firstLine: pxToTwip(firstLineIndent) } : {}),
             ...(firstLineIndent < 0 ? { hanging: pxToTwip(Math.abs(firstLineIndent)) } : {}),
         },
-        docxTabStopTwips: tabStops.map(pxToTwip),
+        docxTabStops: tabStops.map((tabStop) => ({
+            position: pxToTwip(tabStop.position),
+            align: tabStop.align,
+        })),
     };
 }
 
