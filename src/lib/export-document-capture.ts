@@ -12,6 +12,7 @@ import {
     A4_PAPER_WIDTH_PX,
 } from '@/constants/document-paper';
 import { DEFAULT_DOCUMENT_LAYOUT, readDocumentLayoutFromElement } from '@/lib/document-layout';
+import { createPaperExportGeometry } from '@/lib/document-layout-export-parity';
 
 async function waitForRenderableAssets(sheetEl: HTMLElement) {
     if ('fonts' in document) {
@@ -35,20 +36,16 @@ function applyExportPaperGeometry(
     sheetEl: HTMLElement,
     margins = DEFAULT_DOCUMENT_LAYOUT.margins,
 ) {
-    const printableWidth = A4_PAPER_WIDTH_PX - margins.left - margins.right;
+    const geometry = createPaperExportGeometry({
+        paperSize: 'A4',
+        margins,
+    });
 
-    sheetEl.style.setProperty('--paper-margin-left', `${margins.left}px`);
-    sheetEl.style.setProperty('--paper-margin-right', `${margins.right}px`);
-    sheetEl.style.setProperty('--paper-margin-top', `${margins.top}px`);
-    sheetEl.style.setProperty('--paper-margin-bottom', `${margins.bottom}px`);
-    sheetEl.style.setProperty('--paper-margin', `${margins.left}px`);
-    sheetEl.style.setProperty('--editor-page-padding-left', `${margins.left}px`);
-    sheetEl.style.setProperty('--editor-page-padding-right', `${margins.right}px`);
-    sheetEl.style.setProperty('--editor-page-padding-top', `${margins.top}px`);
-    sheetEl.style.setProperty('--editor-page-padding-bottom', `${margins.bottom}px`);
+    Object.entries(geometry.cssVars).forEach(([property, value]) => {
+        sheetEl.style.setProperty(property, value);
+    });
     sheetEl.style.setProperty('--paper-width', `${A4_PAPER_WIDTH_PX}px`);
     sheetEl.style.setProperty('--paper-height', `${A4_PAPER_HEIGHT_PX}px`);
-    sheetEl.style.setProperty('--paper-printable-width', `${printableWidth}px`);
 
     sheetEl.style.width = `${A4_PAPER_WIDTH_PX}px`;
     sheetEl.style.maxWidth = `${A4_PAPER_WIDTH_PX}px`;
