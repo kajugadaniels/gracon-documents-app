@@ -11,6 +11,7 @@ import type {
     ParagraphTabStop,
     ParagraphTabStopAlign,
 } from '@/lib/document-layout';
+import type { DocumentPaginationPage } from './use-document-pagination';
 import {
     clampHorizontalDocumentMargins,
     clampParagraphIndentation,
@@ -616,5 +617,77 @@ export function DocumentRulerOverlay({
             {horizontalRuler}
             {verticalRuler}
         </div>
+    );
+}
+
+// ─── Per-page vertical rulers ────────────────────────────────────────────────
+
+interface DocumentPageRulersProps {
+    pages: DocumentPaginationPage[];
+    pageHeight: number;
+    margins: DocumentLayoutMargins;
+    disabled?: boolean;
+}
+
+/**
+ * Renders one vertical ruler per page, each starting at 0 and covering the
+ * full A4 page height. Rulers are absolutely positioned at each page's top
+ * offset so they remain aligned with the paper as the document grows.
+ */
+export function DocumentPageRulers({
+    pages,
+    pageHeight,
+    margins,
+    disabled = false,
+}: DocumentPageRulersProps) {
+    const topMarginPercent = (margins.top / pageHeight) * 100;
+    const bottomMarginPercent = (margins.bottom / pageHeight) * 100;
+    const topMarginIn = margins.top / DPI;
+    const bottomMarginIn = margins.bottom / DPI;
+
+    // Pre-compute tick data once — shared across all page rulers.
+    const ticks = VERTICAL_TICKS.map((tick) => {
+        const tickInches = tick / 2;
+        const inMarginZone =
+            tickInches < topMarginIn ||
+            tickInches > A4_HEIGHT_IN - bottomMarginIn;
+        const topPct = (tickInches * DPI / pageHeight) * 100;
+        return { tick, tickInches, inMarginZone, topPct };
+    });
+
+    return (
+        <>
+            {pages.map((page) => (
+                <div
+                    key={page.pageNumber}
+                    className={`document-ruler document-ruler--left document-ruler--page${disabled ? ' document-ruler--disabled' : ''}`}
+                    style={{ top: page.top, height: pageHeight }}
+                    aria-hidden="true"
+                >
+                    {/* Page number badge at the top of each ruler segment */}
+                    <span className="document-ruler__page-badge">{page.pageNumber}</span>
+
+                    <span
+                        className="document-ruler__margin-zone document-ruler__margin-zone--top"
+                        style={{ height: `${topMarginPercent}%` }}
+                    />
+                    <span
+                        className="document-ruler__margin-zone document-ruler__margin-zone--bottom"
+                        style={{ height: `${bottomMarginPercent}%` }}
+                    />
+                    {ticks.map(({ tick, tickInches, inMarginZone, topPct }) => (
+                        <span
+                            key={`p${page.pageNumber}-t${tick}`}
+                            className={`document-ruler__tick${isMajorTick(tick) ? ' document-ruler__tick--major' : ''}`}
+                            style={{ top: `${topPct}%` }}
+                        >
+                            {isMajorTick(tick) && !inMarginZone && (
+                                <span className="document-ruler__label">{tickInches}</span>
+                            )}
+                        </span>
+                    ))}
+                </div>
+            ))}
+        </>
     );
 }
