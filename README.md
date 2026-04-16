@@ -44,6 +44,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Draggable paragraph ruler markers that write left-indent and first-line-indent back into editor content
 - Explicit multi-block ruler feedback for mixed paragraph indentation selections
 - Paragraph tab stops stored in editor content, shown on the ruler, editable by double-clicking the ruler, and preserved in DOCX export
+- DOCX import maps Word paragraph indents and inline tab characters back into the same schema-backed layout model used by the ruler
 - Export parity tests for page margins, paragraph indents, hanging indents, and tab-stop conversion
 - Invitation gate with OTP and identity-proof return flow
 - Cross-tab share activity refresh and document metadata merge patterns
@@ -81,6 +82,10 @@ lib/
   store/
   hooks/
   document-layout.ts       shared paper-layout normalization and css-var helpers
+  import-docx-layout.ts    DOCX paragraph-layout import conversion helpers
+test/
+  export/                  pure layout/export conversion regression tests
+  import/                  pure DOCX import-layout conversion regression tests
 ```
 
 ## Folder Structure
