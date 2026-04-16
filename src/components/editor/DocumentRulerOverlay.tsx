@@ -1,7 +1,7 @@
 'use client';
 
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type {
     DocumentLayoutMargins,
     ParagraphIndentation,
@@ -20,6 +20,9 @@ interface ParagraphIndentReadout {
     nodeType: 'paragraph' | 'heading';
     leftIndent: number;
     firstLineIndent: number;
+    blockCount: number;
+    hasMixedLeftIndent: boolean;
+    hasMixedFirstLineIndent: boolean;
 }
 
 interface DocumentRulerOverlayProps {
@@ -58,6 +61,9 @@ export function DocumentRulerOverlay({
         handle: 'left' | 'right' | 'paragraph-left-indent' | 'paragraph-first-line';
         pointerId: number;
     } | null>(null);
+    const [activeDragHandle, setActiveDragHandle] = useState<
+        'left' | 'right' | 'paragraph-left-indent' | 'paragraph-first-line' | null
+    >(null);
     const leftMarginPercent = (margins.left / width) * 100;
     const rightMarginPercent = (margins.right / width) * 100;
     const topMarginPercent = (margins.top / height) * 100;
@@ -75,7 +81,19 @@ export function DocumentRulerOverlay({
     const paragraphSummary = useMemo(() => {
         if (!paragraphIndent) return null;
 
-        return `${paragraphIndent.nodeType === 'heading' ? 'Heading' : 'Paragraph'} · left ${pxToInches(paragraphIndent.leftIndent)} in · first line ${pxToInches(paragraphIndent.firstLineIndent)} in`;
+        const targetLabel = paragraphIndent.blockCount > 1
+            ? `${paragraphIndent.blockCount} blocks`
+            : paragraphIndent.nodeType === 'heading'
+                ? 'Heading'
+                : 'Paragraph';
+        const leftLabel = paragraphIndent.hasMixedLeftIndent
+            ? `mixed left, base ${pxToInches(paragraphIndent.leftIndent)} in`
+            : `left ${pxToInches(paragraphIndent.leftIndent)} in`;
+        const firstLineLabel = paragraphIndent.hasMixedFirstLineIndent
+            ? `mixed first line, base ${pxToInches(paragraphIndent.firstLineIndent)} in`
+            : `first line ${pxToInches(paragraphIndent.firstLineIndent)} in`;
+
+        return `${targetLabel} · ${leftLabel} · ${firstLineLabel}`;
     }, [paragraphIndent]);
 
     const resolveHorizontalMargins = useCallback((pointerClientX: number, handle: 'left' | 'right') => {
@@ -124,6 +142,7 @@ export function DocumentRulerOverlay({
 
     const stopDragging = useCallback(() => {
         dragStateRef.current = null;
+        setActiveDragHandle(null);
         document.body.classList.remove('document-ruler--dragging');
     }, []);
 
@@ -184,6 +203,7 @@ export function DocumentRulerOverlay({
             handle,
             pointerId: event.pointerId,
         };
+        setActiveDragHandle(handle);
         document.body.classList.add('document-ruler--dragging');
         window.addEventListener('pointermove', handlePointerMove);
         window.addEventListener('pointerup', handlePointerUp);
@@ -218,7 +238,12 @@ export function DocumentRulerOverlay({
                 {paragraphIndent && paragraphLeftPercent !== null && firstLinePercent !== null && (
                     <>
                         <span
-                            className="document-ruler__paragraph-marker document-ruler__paragraph-marker--left-indent"
+                            className={[
+                                'document-ruler__paragraph-marker',
+                                'document-ruler__paragraph-marker--left-indent',
+                                paragraphIndent.hasMixedLeftIndent ? 'document-ruler__paragraph-marker--mixed' : '',
+                                activeDragHandle === 'paragraph-left-indent' ? 'document-ruler__paragraph-marker--active' : '',
+                            ].filter(Boolean).join(' ')}
                             style={{ left: `${paragraphLeftPercent}%` }}
                         >
                             <button
@@ -230,12 +255,19 @@ export function DocumentRulerOverlay({
                                 onPointerDown={(event) => beginDrag(event, 'paragraph-left-indent')}
                             >
                                 <span className="document-ruler__handle-tip">
+                                    {paragraphIndent.blockCount > 1 ? `${paragraphIndent.blockCount} blocks · ` : ''}
+                                    {paragraphIndent.hasMixedLeftIndent ? 'mixed · ' : ''}
                                     {pxToInches(paragraphIndent.leftIndent)}″
                                 </span>
                             </button>
                         </span>
                         <span
-                            className="document-ruler__paragraph-marker document-ruler__paragraph-marker--first-line"
+                            className={[
+                                'document-ruler__paragraph-marker',
+                                'document-ruler__paragraph-marker--first-line',
+                                paragraphIndent.hasMixedFirstLineIndent ? 'document-ruler__paragraph-marker--mixed' : '',
+                                activeDragHandle === 'paragraph-first-line' ? 'document-ruler__paragraph-marker--active' : '',
+                            ].filter(Boolean).join(' ')}
                             style={{ left: `${firstLinePercent}%` }}
                         >
                             <button
@@ -247,6 +279,8 @@ export function DocumentRulerOverlay({
                                 onPointerDown={(event) => beginDrag(event, 'paragraph-first-line')}
                             >
                                 <span className="document-ruler__handle-tip">
+                                    {paragraphIndent.blockCount > 1 ? `${paragraphIndent.blockCount} blocks · ` : ''}
+                                    {paragraphIndent.hasMixedFirstLineIndent ? 'mixed · ' : ''}
                                     {pxToInches(paragraphIndent.firstLineIndent)}″
                                 </span>
                             </button>
