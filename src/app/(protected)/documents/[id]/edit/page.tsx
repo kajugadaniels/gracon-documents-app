@@ -41,6 +41,7 @@ import {
     normalizeDocumentLayout,
     type DocumentLayout,
     type ParagraphIndentation,
+    type ParagraphTabStop,
 } from '@/lib/document-layout';
 import { useSessionUser } from '@/app/(protected)/layout';
 import {
@@ -382,7 +383,7 @@ export default function EditDocumentPage() {
             firstLineIndent: indentation.firstLineIndent,
         });
     }, [activeParagraphLayout, baseIsReadOnly, editor]);
-    const applyParagraphTabStops = useCallback((tabStops: number[]) => {
+    const applyParagraphTabStops = useCallback((tabStops: ParagraphTabStop[]) => {
         if (!editor || baseIsReadOnly || !activeParagraphLayout) {
             return;
         }
