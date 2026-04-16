@@ -12,11 +12,19 @@ export const IMPORT_A4_PAPER_MARGIN_PX = 96;
 export const IMPORT_MAX_PARAGRAPH_WIDTH_PX = IMPORT_A4_PAPER_WIDTH_PX - (IMPORT_A4_PAPER_MARGIN_PX * 2);
 export const IMPORT_MAX_PARAGRAPH_TAB_STOPS = 12;
 export const IMPORT_TAB_STOP_SNAP_PX = 24;
+export const IMPORT_PARAGRAPH_TAB_STOP_ALIGNS = ['left', 'center', 'right', 'decimal'] as const;
+
+export type ImportedParagraphTabStopAlign = typeof IMPORT_PARAGRAPH_TAB_STOP_ALIGNS[number];
+
+export interface ImportedParagraphTabStop {
+    position: number;
+    align: ImportedParagraphTabStopAlign;
+}
 
 export interface ImportedParagraphLayout {
     leftIndent: number;
     firstLineIndent: number;
-    tabStops: number[];
+    tabStops: ImportedParagraphTabStop[];
 }
 
 const EMPTY_LAYOUT: ImportedParagraphLayout = {
@@ -56,33 +64,53 @@ export function twipToPx(value: unknown) {
     return Math.round(numericValue * DOCX_TWIP_TO_CSS_PX);
 }
 
-function normalizeImportedTabStops(value: unknown) {
+function normalizeImportedTabStops(value: unknown): ImportedParagraphTabStop[] {
     const source = Array.isArray(value) ? value : [];
-    const seen = new Set<number>();
+    const seen = new Set<string>();
 
     return source
-        .map((entry) => {
+        .map((entry): ImportedParagraphTabStop | null => {
             if (isRecord(entry)) {
-                return toNumber(entry.position ?? entry.pos ?? entry.value);
+                const position = toNumber(entry.position ?? entry.pos ?? entry.value);
+                const align = typeof entry.align === 'string' && IMPORT_PARAGRAPH_TAB_STOP_ALIGNS.includes(entry.align as ImportedParagraphTabStopAlign)
+                    ? entry.align as ImportedParagraphTabStopAlign
+                    : 'left';
+
+                return position === null ? null : { position, align };
             }
 
-            return toNumber(entry);
+            const position = toNumber(entry);
+            return position === null ? null : { position, align: 'left' };
         })
-        .filter((entry): entry is number => entry !== null)
-        .map(twipToPx)
-        .map((entry) => Math.round(entry / IMPORT_TAB_STOP_SNAP_PX) * IMPORT_TAB_STOP_SNAP_PX)
-        .map((entry) => clamp(entry, IMPORT_TAB_STOP_SNAP_PX, IMPORT_MAX_PARAGRAPH_WIDTH_PX))
+        .filter((entry): entry is ImportedParagraphTabStop => entry !== null)
+        .map((entry) => ({
+            ...entry,
+            position: twipToPx(entry.position),
+        }))
+        .map((entry) => ({
+            ...entry,
+            position: Math.round(entry.position / IMPORT_TAB_STOP_SNAP_PX) * IMPORT_TAB_STOP_SNAP_PX,
+        }))
+        .map((entry) => ({
+            ...entry,
+            position: clamp(entry.position, IMPORT_TAB_STOP_SNAP_PX, IMPORT_MAX_PARAGRAPH_WIDTH_PX),
+        }))
         .filter((entry) => {
-            if (seen.has(entry)) return false;
-            seen.add(entry);
+            const key = String(entry.position);
+            if (seen.has(key)) return false;
+            seen.add(key);
             return true;
         })
-        .sort((a, b) => a - b)
+        .sort((a, b) => a.position - b.position || a.align.localeCompare(b.align))
         .slice(0, IMPORT_MAX_PARAGRAPH_TAB_STOPS);
 }
 
-function normalizeImportedTabStopTwips(value: unknown) {
-    return normalizeImportedTabStops(Array.isArray(value) ? value : [value]);
+function mapDocxTabStopAlign(value: string | null): ImportedParagraphTabStopAlign | null {
+    if (value === null || value === 'left' || value === 'start') return 'left';
+    if (value === 'center') return 'center';
+    if (value === 'right' || value === 'end') return 'right';
+    if (value === 'decimal') return 'decimal';
+    return null;
 }
 
 export function createImportedParagraphLayout(element: unknown): ImportedParagraphLayout {
@@ -160,21 +188,21 @@ export function extractParagraphTabStopsFromDocumentXml(documentXml: string) {
 
         const tabMatches = tabsXml.match(/<w:tab\b[^>]*\/?>/g) ?? [];
         const positions = tabMatches
-            .filter((tabXml) => {
-                const value = getAttributeValue(tabXml, 'val');
-                return value === null || value === 'left' || value === 'start';
-            })
-            .map((tabXml) => getAttributeValue(tabXml, 'pos'))
-            .filter((position): position is string => position !== null)
-            .flatMap(normalizeImportedTabStopTwips);
+            .map((tabXml) => ({
+                position: getAttributeValue(tabXml, 'pos'),
+                align: mapDocxTabStopAlign(getAttributeValue(tabXml, 'val')),
+            }))
+            .filter((tabStop): tabStop is { position: string; align: ImportedParagraphTabStopAlign } => (
+                tabStop.position !== null && tabStop.align !== null
+            ));
 
-        return Array.from(new Set(positions)).sort((a, b) => a - b);
+        return normalizeImportedTabStops(positions);
     });
 }
 
 export function mergeParagraphTabStopsIntoLayouts(
     paragraphLayouts: ImportedParagraphLayout[],
-    paragraphTabStops: number[][],
+    paragraphTabStops: ImportedParagraphTabStop[][],
 ) {
     return paragraphLayouts.map((layout, index) => {
         const tabStops = paragraphTabStops[index] ?? [];
