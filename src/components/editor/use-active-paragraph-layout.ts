@@ -14,6 +14,9 @@ export interface ActiveParagraphLayout {
     nodeType: 'paragraph' | 'heading';
     leftIndent: number;
     firstLineIndent: number;
+    blockCount: number;
+    hasMixedLeftIndent: boolean;
+    hasMixedFirstLineIndent: boolean;
 }
 
 function normalizeIndent(value: unknown) {
@@ -21,12 +24,40 @@ function normalizeIndent(value: unknown) {
 }
 
 /**
- * Reads the closest paragraph-like block from the current selection.
+ * Reads selected paragraph-like blocks and returns ruler-safe aggregate state.
  */
 function readActiveParagraphLayout(editor: Editor | null): ActiveParagraphLayout | null {
     if (!editor) return null;
 
     const { selection } = editor.state;
+    const blocks: ActiveParagraphLayout[] = [];
+
+    editor.state.doc.nodesBetween(selection.from, selection.to, (node) => {
+        if (node.type.name !== 'paragraph' && node.type.name !== 'heading') {
+            return;
+        }
+
+        blocks.push({
+            nodeType: node.type.name,
+            leftIndent: normalizeIndent(node.attrs.leftIndent),
+            firstLineIndent: normalizeIndent(node.attrs.firstLineIndent),
+            blockCount: 1,
+            hasMixedLeftIndent: false,
+            hasMixedFirstLineIndent: false,
+        });
+    });
+
+    if (blocks.length > 0) {
+        const first = blocks[0];
+
+        return {
+            ...first,
+            blockCount: blocks.length,
+            nodeType: blocks.some((block) => block.nodeType !== first.nodeType) ? 'paragraph' : first.nodeType,
+            hasMixedLeftIndent: blocks.some((block) => block.leftIndent !== first.leftIndent),
+            hasMixedFirstLineIndent: blocks.some((block) => block.firstLineIndent !== first.firstLineIndent),
+        };
+    }
 
     for (let depth = selection.$from.depth; depth >= 0; depth -= 1) {
         const node = selection.$from.node(depth);
@@ -39,6 +70,9 @@ function readActiveParagraphLayout(editor: Editor | null): ActiveParagraphLayout
             nodeType: node.type.name,
             leftIndent: normalizeIndent(node.attrs.leftIndent),
             firstLineIndent: normalizeIndent(node.attrs.firstLineIndent),
+            blockCount: 1,
+            hasMixedLeftIndent: false,
+            hasMixedFirstLineIndent: false,
         };
     }
 
