@@ -23,6 +23,8 @@ import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-e
 import {
     annotateImportedDocxHtml,
     collectImportedParagraphLayouts,
+    extractParagraphTabStopsFromDocumentXml,
+    mergeParagraphTabStopsIntoLayouts,
 } from '@/lib/import-docx-layout';
 
 /**
@@ -69,6 +71,14 @@ export interface ImportResult {
     title: string;
 }
 
+async function readDocumentXmlFromDocx(arrayBuffer: ArrayBuffer) {
+    const { default: JSZip } = await import('jszip');
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const documentXml = zip.file('word/document.xml');
+
+    return documentXml ? documentXml.async('text') : null;
+}
+
 /**
  * Converts a .docx File to a TipTap JSON document.
  *
@@ -86,6 +96,10 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
     const mammoth = await import('mammoth');
 
     const arrayBuffer = await file.arrayBuffer();
+    const documentXml = await readDocumentXmlFromDocx(arrayBuffer);
+    const paragraphTabStops = documentXml
+        ? extractParagraphTabStopsFromDocumentXml(documentXml)
+        : [];
 
     let paragraphLayouts = collectImportedParagraphLayouts(null);
 
@@ -94,7 +108,10 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
         {
             styleMap: MAMMOTH_STYLE_MAP,
             transformDocument: (document) => {
-                paragraphLayouts = collectImportedParagraphLayouts(document);
+                paragraphLayouts = mergeParagraphTabStopsIntoLayouts(
+                    collectImportedParagraphLayouts(document),
+                    paragraphTabStops,
+                );
                 return document;
             },
         },
