@@ -12,6 +12,7 @@ import { A4_PAPER_WIDTH_PX } from '@/constants';
 import {
     DEFAULT_DOCUMENT_LAYOUT,
     normalizeParagraphTabStops,
+    type ParagraphTabStop,
 } from '@/lib/document-layout';
 import { createParagraphExportGeometry } from '@/lib/document-layout-export-parity';
 
@@ -28,7 +29,7 @@ declare module '@tiptap/core' {
             /**
              * Applies paragraph tab stops to selected paragraphs/headings.
              */
-            setParagraphTabStops: (tabStops: number[]) => ReturnType;
+            setParagraphTabStops: (tabStops: ParagraphTabStop[]) => ReturnType;
         };
     }
 }
@@ -61,8 +62,11 @@ function parseTabStops(value: string | null) {
     }
 }
 
-function sameTabStops(left: number[], right: number[]) {
-    return left.length === right.length && left.every((value, index) => value === right[index]);
+function sameTabStops(left: ParagraphTabStop[], right: ParagraphTabStop[]) {
+    return left.length === right.length && left.every((value, index) => (
+        value.position === right[index].position &&
+        value.align === right[index].align
+    ));
 }
 
 export const ParagraphLayoutExtension = Extension.create({
