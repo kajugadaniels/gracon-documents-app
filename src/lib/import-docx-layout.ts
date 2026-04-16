@@ -1,0 +1,178 @@
+/**
+ * DOCX import layout helpers.
+ *
+ * Mammoth exposes paragraph indentation in twips and inline tab characters.
+ * These helpers convert the available Word layout data into the same HTML
+ * attributes parsed by ParagraphLayoutExtension, so imported documents keep
+ * ruler-aware paragraph layout instead of flattening everything to plain text.
+ */
+export const DOCX_TWIP_TO_CSS_PX = 1 / 15;
+export const IMPORT_A4_PAPER_WIDTH_PX = 794;
+export const IMPORT_A4_PAPER_MARGIN_PX = 96;
+export const IMPORT_MAX_PARAGRAPH_WIDTH_PX = IMPORT_A4_PAPER_WIDTH_PX - (IMPORT_A4_PAPER_MARGIN_PX * 2);
+export const IMPORT_MAX_PARAGRAPH_TAB_STOPS = 12;
+export const IMPORT_TAB_STOP_SNAP_PX = 24;
+
+export interface ImportedParagraphLayout {
+    leftIndent: number;
+    firstLineIndent: number;
+    tabStops: number[];
+}
+
+const EMPTY_LAYOUT: ImportedParagraphLayout = {
+    leftIndent: 0,
+    firstLineIndent: 0,
+    tabStops: [],
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function toNumber(value: unknown) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+}
+
+function clamp(value: number, min: number, max: number) {
+    return Math.min(max, Math.max(min, value));
+}
+
+export function twipToPx(value: unknown) {
+    const numericValue = toNumber(value);
+
+    if (numericValue === null) {
+        return 0;
+    }
+
+    return Math.round(numericValue * DOCX_TWIP_TO_CSS_PX);
+}
+
+function normalizeImportedTabStops(value: unknown) {
+    const source = Array.isArray(value) ? value : [];
+    const seen = new Set<number>();
+
+    return source
+        .map((entry) => {
+            if (isRecord(entry)) {
+                return toNumber(entry.position ?? entry.pos ?? entry.value);
+            }
+
+            return toNumber(entry);
+        })
+        .filter((entry): entry is number => entry !== null)
+        .map(twipToPx)
+        .map((entry) => Math.round(entry / IMPORT_TAB_STOP_SNAP_PX) * IMPORT_TAB_STOP_SNAP_PX)
+        .map((entry) => clamp(entry, IMPORT_TAB_STOP_SNAP_PX, IMPORT_MAX_PARAGRAPH_WIDTH_PX))
+        .filter((entry) => {
+            if (seen.has(entry)) return false;
+            seen.add(entry);
+            return true;
+        })
+        .sort((a, b) => a - b)
+        .slice(0, IMPORT_MAX_PARAGRAPH_TAB_STOPS);
+}
+
+export function createImportedParagraphLayout(element: unknown): ImportedParagraphLayout {
+    if (!isRecord(element)) {
+        return EMPTY_LAYOUT;
+    }
+
+    const indent = isRecord(element.indent) ? element.indent : {};
+    const leftIndent = clamp(twipToPx(indent.start ?? indent.left), 0, IMPORT_MAX_PARAGRAPH_WIDTH_PX);
+    const firstLineIndent = clamp(
+        twipToPx(indent.firstLine) - twipToPx(indent.hanging),
+        -IMPORT_MAX_PARAGRAPH_WIDTH_PX,
+        IMPORT_MAX_PARAGRAPH_WIDTH_PX,
+    );
+    const tabStops = normalizeImportedTabStops(
+        element.tabStops ?? element.tabs ?? (isRecord(indent) ? indent.tabStops : undefined),
+    );
+
+    return {
+        leftIndent,
+        firstLineIndent,
+        tabStops,
+    };
+}
+
+export function collectImportedParagraphLayouts(document: unknown) {
+    const layouts: ImportedParagraphLayout[] = [];
+
+    function visit(node: unknown) {
+        if (!isRecord(node)) {
+            return;
+        }
+
+        if (node.type === 'paragraph') {
+            layouts.push(createImportedParagraphLayout(node));
+        }
+
+        if (Array.isArray(node.children)) {
+            node.children.forEach(visit);
+        }
+    }
+
+    visit(document);
+
+    return layouts;
+}
+
+function hasLayout(layout: ImportedParagraphLayout) {
+    return layout.leftIndent !== 0 || layout.firstLineIndent !== 0 || layout.tabStops.length > 0;
+}
+
+function mergeStyle(existingStyle: string | null, nextStyle: string) {
+    const trimmedExisting = existingStyle?.trim().replace(/;$/, '');
+    const trimmedNext = nextStyle.trim().replace(/;$/, '');
+
+    return [trimmedExisting, trimmedNext].filter(Boolean).join('; ');
+}
+
+export function annotateImportedDocxHtml(html: string, paragraphLayouts: ImportedParagraphLayout[]) {
+    if (!html.trim() || paragraphLayouts.length === 0 || typeof DOMParser === 'undefined') {
+        return html;
+    }
+
+    const parser = new DOMParser();
+    const document = parser.parseFromString(html, 'text/html');
+    const paragraphNodes = Array.from(document.body.querySelectorAll('p, h1, h2, h3, h4, h5, h6'));
+
+    paragraphNodes.forEach((node, index) => {
+        const layout = paragraphLayouts[index];
+
+        if (!layout || !hasLayout(layout)) {
+            return;
+        }
+
+        const styleParts: string[] = [];
+
+        if (layout.leftIndent) {
+            node.setAttribute('data-left-indent', String(layout.leftIndent));
+            styleParts.push(`margin-left: ${layout.leftIndent}px`);
+        }
+
+        if (layout.firstLineIndent) {
+            node.setAttribute('data-first-line-indent', String(layout.firstLineIndent));
+            styleParts.push(`text-indent: ${layout.firstLineIndent}px`);
+        }
+
+        if (layout.tabStops.length > 0) {
+            node.setAttribute('data-tab-stops', JSON.stringify(layout.tabStops));
+        }
+
+        if (styleParts.length > 0) {
+            node.setAttribute('style', mergeStyle(node.getAttribute('style'), styleParts.join('; ')));
+        }
+    });
+
+    return document.body.innerHTML;
+}
