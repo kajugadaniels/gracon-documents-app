@@ -8,11 +8,14 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import type {
     DocumentLayoutMargins,
     ParagraphIndentation,
+    ParagraphTabStop,
+    ParagraphTabStopAlign,
 } from '@/lib/document-layout';
 import {
     clampHorizontalDocumentMargins,
     clampParagraphIndentation,
     MIN_DOCUMENT_MARGIN_PX,
+    PARAGRAPH_TAB_STOP_ALIGNS,
     normalizeParagraphTabStops,
     TAB_STOP_SNAP_PX,
 } from '@/lib/document-layout';
@@ -25,7 +28,7 @@ interface ParagraphIndentReadout {
     nodeType: 'paragraph' | 'heading';
     leftIndent: number;
     firstLineIndent: number;
-    tabStops: number[];
+    tabStops: ParagraphTabStop[];
     blockCount: number;
     hasMixedLeftIndent: boolean;
     hasMixedFirstLineIndent: boolean;
@@ -42,7 +45,7 @@ interface DocumentRulerOverlayProps {
     onHorizontalMarginsCommit?: (margins: Pick<DocumentLayoutMargins, 'left' | 'right'>) => void;
     onParagraphIndentPreview?: (indentation: ParagraphIndentation) => void;
     onParagraphIndentCommit?: (indentation: ParagraphIndentation) => void;
-    onParagraphTabStopsChange?: (tabStops: number[]) => void;
+    onParagraphTabStopsChange?: (tabStops: ParagraphTabStop[]) => void;
 }
 
 function isMajorTick(index: number) {
@@ -51,6 +54,25 @@ function isMajorTick(index: number) {
 
 function pxToInches(px: number) {
     return (px / DPI).toFixed(2);
+}
+
+function getTabStopLabel(align: ParagraphTabStopAlign) {
+    if (align === 'center') return 'Center tab';
+    if (align === 'right') return 'Right tab';
+    if (align === 'decimal') return 'Decimal tab';
+    return 'Left tab';
+}
+
+function getTabStopGlyph(align: ParagraphTabStopAlign) {
+    if (align === 'center') return 'T';
+    if (align === 'right') return 'R';
+    if (align === 'decimal') return '.';
+    return 'L';
+}
+
+function getNextTabStopAlign(align: ParagraphTabStopAlign): ParagraphTabStopAlign {
+    const index = PARAGRAPH_TAB_STOP_ALIGNS.indexOf(align);
+    return PARAGRAPH_TAB_STOP_ALIGNS[(index + 1) % PARAGRAPH_TAB_STOP_ALIGNS.length];
 }
 
 export function DocumentRulerOverlay({
@@ -111,7 +133,7 @@ export function DocumentRulerOverlay({
         }
 
         return paragraphIndent.tabStops.length > 0
-            ? `${paragraphIndent.tabStops.length} tab stop${paragraphIndent.tabStops.length === 1 ? '' : 's'}`
+            ? `${paragraphIndent.tabStops.length} typed tab stop${paragraphIndent.tabStops.length === 1 ? '' : 's'}`
             : 'No tab stops';
     }, [paragraphIndent]);
 
@@ -167,7 +189,7 @@ export function DocumentRulerOverlay({
         const relativeToPrintableLeft = pointerClientX - bounds.left - margins.left;
         const snapped = Math.round(relativeToPrintableLeft / TAB_STOP_SNAP_PX) * TAB_STOP_SNAP_PX;
 
-        return normalizeParagraphTabStops(width, margins, [snapped])[0] ?? null;
+        return normalizeParagraphTabStops(width, margins, [snapped])[0]?.position ?? null;
     }, [margins, width]);
 
     const addTabStopAtPointer = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
@@ -180,22 +202,41 @@ export function DocumentRulerOverlay({
         onParagraphTabStopsChange(
             normalizeParagraphTabStops(width, margins, [
                 ...paragraphIndent.tabStops,
-                nextTabStop,
+                { position: nextTabStop, align: 'left' },
             ]),
         );
     }, [disabled, margins, onParagraphTabStopsChange, paragraphIndent, resolveTabStopFromPointer, width]);
 
-    const removeTabStop = useCallback((tabStop: number) => {
+    const updateTabStops = useCallback((tabStops: ParagraphTabStop[]) => {
         if (disabled || !paragraphIndent || !onParagraphTabStopsChange) return;
 
         onParagraphTabStopsChange(
             normalizeParagraphTabStops(
                 width,
                 margins,
-                paragraphIndent.tabStops.filter((value) => value !== tabStop),
+                tabStops,
             ),
         );
     }, [disabled, margins, onParagraphTabStopsChange, paragraphIndent, width]);
+
+    const removeTabStop = useCallback((tabStop: ParagraphTabStop) => {
+        updateTabStops(paragraphIndent?.tabStops.filter((value) => (
+            value.position !== tabStop.position || value.align !== tabStop.align
+        )) ?? []);
+    }, [paragraphIndent?.tabStops, updateTabStops]);
+
+    const cycleTabStopAlign = useCallback((tabStop: ParagraphTabStop) => {
+        updateTabStops(paragraphIndent?.tabStops.map((value) => {
+            if (value.position !== tabStop.position || value.align !== tabStop.align) {
+                return value;
+            }
+
+            return {
+                ...value,
+                align: getNextTabStopAlign(value.align),
+            };
+        }) ?? []);
+    }, [paragraphIndent?.tabStops, updateTabStops]);
 
     const stopDragging = useCallback(() => {
         dragStateRef.current = null;
@@ -272,7 +313,7 @@ export function DocumentRulerOverlay({
             <div
                 ref={topRulerRef}
                 className={`document-ruler document-ruler--top${disabled ? ' document-ruler--disabled' : ''}`}
-                title={paragraphIndent ? 'Double-click the ruler to add a tab stop.' : undefined}
+                title={paragraphIndent ? 'Double-click the ruler to add a left tab stop.' : undefined}
                 onDoubleClick={addTabStopAtPointer}
             >
                 <span
@@ -348,23 +389,46 @@ export function DocumentRulerOverlay({
                 )}
                 {paragraphIndent?.tabStops.map((tabStop) => (
                     <button
-                        key={tabStop}
+                        key={`${tabStop.position}-${tabStop.align}`}
                         type="button"
                         className={[
                             'document-ruler__tab-stop',
+                            `document-ruler__tab-stop--${tabStop.align}`,
                             paragraphIndent.hasMixedTabStops ? 'document-ruler__tab-stop--mixed' : '',
                         ].filter(Boolean).join(' ')}
-                        style={{ left: `${((margins.left + tabStop) / width) * 100}%` }}
-                        title={`${tabStopSummary ?? 'Tab stop'} · double-click to remove`}
-                        aria-label={`Tab stop ${pxToInches(tabStop)} inches from the left margin`}
+                        style={{ left: `${((margins.left + tabStop.position) / width) * 100}%` }}
+                        title={`${tabStopSummary ?? getTabStopLabel(tabStop.align)} · ${getTabStopLabel(tabStop.align)} at ${pxToInches(tabStop.position)} inches · right-click to change type · double-click to remove`}
+                        aria-label={`${getTabStopLabel(tabStop.align)} ${pxToInches(tabStop.position)} inches from the left margin`}
                         disabled={disabled}
+                        onContextMenu={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            cycleTabStopAlign(tabStop);
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                cycleTabStopAlign(tabStop);
+                                return;
+                            }
+
+                            if (event.key === 'Backspace' || event.key === 'Delete') {
+                                event.preventDefault();
+                                removeTabStop(tabStop);
+                            }
+                        }}
                         onDoubleClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             removeTabStop(tabStop);
                         }}
                     >
-                        <span className="document-ruler__handle-tip">{pxToInches(tabStop)}″ tab</span>
+                        <span aria-hidden="true" className="document-ruler__tab-stop-glyph">
+                            {getTabStopGlyph(tabStop.align)}
+                        </span>
+                        <span className="document-ruler__handle-tip">
+                            {pxToInches(tabStop.position)}″ {tabStop.align}
+                        </span>
                     </button>
                 ))}
                 <button
