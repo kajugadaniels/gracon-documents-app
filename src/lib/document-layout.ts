@@ -11,6 +11,8 @@ export const MIN_DOCUMENT_MARGIN_PX = 48;
 export const MAX_DOCUMENT_MARGIN_PX = 192;
 export const MIN_DOCUMENT_PRINTABLE_WIDTH_PX = 320;
 export const MIN_PARAGRAPH_CONTENT_WIDTH_PX = 72;
+export const MAX_PARAGRAPH_TAB_STOPS = 12;
+export const TAB_STOP_SNAP_PX = 24;
 
 export interface DocumentLayoutMargins {
     top: number;
@@ -27,6 +29,10 @@ export interface DocumentLayout {
 export interface ParagraphIndentation {
     leftIndent: number;
     firstLineIndent: number;
+}
+
+export interface ParagraphLayoutState extends ParagraphIndentation {
+    tabStops: number[];
 }
 
 export const DEFAULT_DOCUMENT_LAYOUT: DocumentLayout = {
@@ -161,6 +167,35 @@ export function clampParagraphIndentation(
         leftIndent,
         firstLineIndent,
     };
+}
+
+/**
+ * Normalizes paragraph tab-stop positions against the writable content width.
+ */
+export function normalizeParagraphTabStops(
+    pageWidth: number,
+    margins: Pick<DocumentLayoutMargins, 'left' | 'right'>,
+    tabStops: unknown,
+) {
+    const printableWidth = Math.max(
+        MIN_PARAGRAPH_CONTENT_WIDTH_PX,
+        pageWidth - margins.left - margins.right,
+    );
+    const source = Array.isArray(tabStops) ? tabStops : [];
+    const seen = new Set<number>();
+
+    return source
+        .map((value) => (typeof value === 'number' && Number.isFinite(value) ? value : null))
+        .filter((value): value is number => value !== null)
+        .map((value) => Math.round(value / TAB_STOP_SNAP_PX) * TAB_STOP_SNAP_PX)
+        .map((value) => Math.min(printableWidth, Math.max(TAB_STOP_SNAP_PX, value)))
+        .filter((value) => {
+            if (seen.has(value)) return false;
+            seen.add(value);
+            return true;
+        })
+        .sort((a, b) => a - b)
+        .slice(0, MAX_PARAGRAPH_TAB_STOPS);
 }
 
 function parsePx(value: string, fallback: number) {
