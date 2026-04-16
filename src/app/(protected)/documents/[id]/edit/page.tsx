@@ -15,7 +15,7 @@ import { DocumentFinaliseDialog } from '@/components/editor/DocumentFinaliseDial
 import { DocumentPageSetupDialog } from '@/components/editor/DocumentPageSetupDialog';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocumentAccessTransitionBanner } from '@/components/editor/DocumentAccessTransitionBanner';
-import { DocumentRulerOverlay } from '@/components/editor/DocumentRulerOverlay';
+import { DocumentRulerOverlay, DocumentPageRulers } from '@/components/editor/DocumentRulerOverlay';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
@@ -729,12 +729,11 @@ export default function EditDocumentPage() {
                                 transformOrigin: 'top center',
                             }}
                         >
-                            {/* Vertical ruler alongside the first page — left-only, no horizontal duplication */}
+                            {/* One vertical ruler per page — each shows 0→11" independently */}
                             {viewState.showRuler && (
-                                <DocumentRulerOverlay
-                                    rulerMode="left-only"
-                                    width={A4_PAPER_WIDTH_PX}
-                                    height={pagination.pageHeight}
+                                <DocumentPageRulers
+                                    pages={pagination.pages}
+                                    pageHeight={pagination.pageHeight}
                                     margins={documentLayout.margins}
                                     disabled={baseIsReadOnly}
                                 />
