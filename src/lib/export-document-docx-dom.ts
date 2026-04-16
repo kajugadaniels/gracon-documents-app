@@ -117,7 +117,15 @@ function createTextRuns(text: string, style: RunStyle, docx: DocxModule) {
     return lines.flatMap((line, index) => {
         const runs: ParagraphChild[] = [];
         if (index > 0) runs.push(new docx.TextRun({ break: 1 }));
-        if (line) runs.push(new docx.TextRun({ ...style, text: line }));
+        line.split('\t').forEach((part, partIndex) => {
+            if (partIndex > 0) {
+                runs.push(new docx.TextRun({ children: [new docx.Tab()] }));
+            }
+
+            if (part) {
+                runs.push(new docx.TextRun({ ...style, text: part }));
+            }
+        });
         return runs;
     });
 }
@@ -144,16 +152,44 @@ function collectInlineRuns(nodes: Node[], style: RunStyle, docx: DocxModule): Pa
 
 function getParagraphOptions(element: HTMLElement, docx: DocxModule): Omit<IParagraphOptions, 'children'> {
     const computed = window.getComputedStyle(element);
+    const leftIndent = Number.parseFloat(element.getAttribute('data-left-indent') ?? '');
+    const firstLineIndent = Number.parseFloat(element.getAttribute('data-first-line-indent') ?? '');
+    const tabStops = parseTabStops(element.getAttribute('data-tab-stops'), docx);
+    const indent = {
+        ...(Number.isFinite(leftIndent) && leftIndent > 0 ? { left: cssPxToTwip(`${leftIndent}px`) } : {}),
+        ...(Number.isFinite(firstLineIndent) && firstLineIndent > 0 ? { firstLine: cssPxToTwip(`${firstLineIndent}px`) } : {}),
+        ...(Number.isFinite(firstLineIndent) && firstLineIndent < 0 ? { hanging: cssPxToTwip(`${Math.abs(firstLineIndent)}px`) } : {}),
+    };
 
     return {
         alignment: getAlignment(computed, docx),
         heading: getHeading(element.tagName, docx),
+        ...(Object.keys(indent).length > 0 ? { indent } : {}),
+        ...(tabStops.length > 0 ? { tabStops } : {}),
         spacing: {
             before: cssPxToTwip(computed.marginTop),
             after: cssPxToTwip(computed.marginBottom || '8px'),
         },
         widowControl: true,
     };
+}
+
+function parseTabStops(value: string | null, docx: DocxModule) {
+    if (!value) return [];
+
+    try {
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed)) return [];
+
+        return parsed
+            .filter((position): position is number => typeof position === 'number' && Number.isFinite(position))
+            .map((position) => ({
+                type: docx.TabStopType.LEFT,
+                position: cssPxToTwip(`${position}px`),
+            }));
+    } catch {
+        return [];
+    }
 }
 
 function createParagraph(
