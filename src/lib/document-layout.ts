@@ -13,6 +13,14 @@ export const MIN_DOCUMENT_PRINTABLE_WIDTH_PX = 320;
 export const MIN_PARAGRAPH_CONTENT_WIDTH_PX = 72;
 export const MAX_PARAGRAPH_TAB_STOPS = 12;
 export const TAB_STOP_SNAP_PX = 24;
+export const PARAGRAPH_TAB_STOP_ALIGNS = ['left', 'center', 'right', 'decimal'] as const;
+
+export type ParagraphTabStopAlign = typeof PARAGRAPH_TAB_STOP_ALIGNS[number];
+
+export interface ParagraphTabStop {
+    position: number;
+    align: ParagraphTabStopAlign;
+}
 
 export interface DocumentLayoutMargins {
     top: number;
@@ -32,7 +40,7 @@ export interface ParagraphIndentation {
 }
 
 export interface ParagraphLayoutState extends ParagraphIndentation {
-    tabStops: number[];
+    tabStops: ParagraphTabStop[];
 }
 
 export const DEFAULT_DOCUMENT_LAYOUT: DocumentLayout = {
@@ -176,25 +184,52 @@ export function normalizeParagraphTabStops(
     pageWidth: number,
     margins: Pick<DocumentLayoutMargins, 'left' | 'right'>,
     tabStops: unknown,
-) {
+): ParagraphTabStop[] {
     const printableWidth = Math.max(
         MIN_PARAGRAPH_CONTENT_WIDTH_PX,
         pageWidth - margins.left - margins.right,
     );
     const source = Array.isArray(tabStops) ? tabStops : [];
-    const seen = new Set<number>();
+    const seen = new Set<string>();
 
     return source
-        .map((value) => (typeof value === 'number' && Number.isFinite(value) ? value : null))
-        .filter((value): value is number => value !== null)
-        .map((value) => Math.round(value / TAB_STOP_SNAP_PX) * TAB_STOP_SNAP_PX)
-        .map((value) => Math.min(printableWidth, Math.max(TAB_STOP_SNAP_PX, value)))
+        .map((value): ParagraphTabStop | null => {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                return { position: value, align: 'left' };
+            }
+
+            if (!value || typeof value !== 'object' || Array.isArray(value)) {
+                return null;
+            }
+
+            const sourceValue = value as Record<string, unknown>;
+            const rawPosition = sourceValue.position;
+            const rawAlign = sourceValue.align;
+            const position = typeof rawPosition === 'number' && Number.isFinite(rawPosition)
+                ? rawPosition
+                : null;
+            const align = typeof rawAlign === 'string' && PARAGRAPH_TAB_STOP_ALIGNS.includes(rawAlign as ParagraphTabStopAlign)
+                ? rawAlign as ParagraphTabStopAlign
+                : 'left';
+
+            return position === null ? null : { position, align };
+        })
+        .filter((value): value is ParagraphTabStop => value !== null)
+        .map((value) => ({
+            ...value,
+            position: Math.round(value.position / TAB_STOP_SNAP_PX) * TAB_STOP_SNAP_PX,
+        }))
+        .map((value) => ({
+            ...value,
+            position: Math.min(printableWidth, Math.max(TAB_STOP_SNAP_PX, value.position)),
+        }))
         .filter((value) => {
-            if (seen.has(value)) return false;
-            seen.add(value);
+            const key = String(value.position);
+            if (seen.has(key)) return false;
+            seen.add(key);
             return true;
         })
-        .sort((a, b) => a - b)
+        .sort((a, b) => a.position - b.position || a.align.localeCompare(b.align))
         .slice(0, MAX_PARAGRAPH_TAB_STOPS);
 }
 
