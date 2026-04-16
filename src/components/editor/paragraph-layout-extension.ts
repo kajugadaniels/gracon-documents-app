@@ -13,6 +13,7 @@ import {
     DEFAULT_DOCUMENT_LAYOUT,
     normalizeParagraphTabStops,
 } from '@/lib/document-layout';
+import { createParagraphExportGeometry } from '@/lib/document-layout-export-parity';
 
 declare module '@tiptap/core' {
     interface Commands<ReturnType> {
@@ -220,25 +221,19 @@ export const ParagraphLayoutExtension = Extension.create({
                             return parseIndentFromStyle(element.style.marginLeft);
                         },
                         renderHTML: (attributes) => {
-                            const leftIndent = normalizeIndent(attributes.leftIndent);
-                            const firstLineIndent = normalizeIndent(attributes.firstLineIndent);
-                            const styleParts: string[] = [];
+                            const geometry = createParagraphExportGeometry({
+                                leftIndent: attributes.leftIndent,
+                                firstLineIndent: attributes.firstLineIndent,
+                                tabStops: attributes.tabStops,
+                            });
 
-                            if (leftIndent) {
-                                styleParts.push(`margin-left: ${leftIndent}px`);
-                            }
-
-                            if (firstLineIndent) {
-                                styleParts.push(`text-indent: ${firstLineIndent}px`);
-                            }
-
-                            if (!leftIndent && !firstLineIndent) {
+                            if (!geometry.leftIndent && !geometry.firstLineIndent) {
                                 return {};
                             }
 
                             return {
-                                'data-left-indent': String(leftIndent),
-                                style: styleParts.join('; '),
+                                'data-left-indent': geometry.dataAttributes.leftIndent,
+                                style: geometry.cssStyle,
                             };
                         },
                     },
@@ -253,14 +248,18 @@ export const ParagraphLayoutExtension = Extension.create({
                             return parseIndentFromStyle(element.style.textIndent);
                         },
                         renderHTML: (attributes) => {
-                            const firstLineIndent = normalizeIndent(attributes.firstLineIndent);
+                            const geometry = createParagraphExportGeometry({
+                                leftIndent: attributes.leftIndent,
+                                firstLineIndent: attributes.firstLineIndent,
+                                tabStops: attributes.tabStops,
+                            });
 
-                            if (!firstLineIndent) {
+                            if (!geometry.firstLineIndent) {
                                 return {};
                             }
 
                             return {
-                                'data-first-line-indent': String(firstLineIndent),
+                                'data-first-line-indent': geometry.dataAttributes.firstLineIndent,
                             };
                         },
                     },
@@ -274,9 +273,7 @@ export const ParagraphLayoutExtension = Extension.create({
                                 return {};
                             }
 
-                            return {
-                                'data-tab-stops': JSON.stringify(tabStops),
-                            };
+                            return { 'data-tab-stops': JSON.stringify(tabStops) };
                         },
                     },
                 },
