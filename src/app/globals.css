@@ -619,10 +619,19 @@ body {
 .document-ruler__paragraph-marker--first-line .document-ruler__paragraph-handle {
   inset: -10px -8px -2px -8px;
 }
-.document-ruler__tab-stop {
+.document-ruler__tab-stop-wrap {
   position: absolute;
   top: 2px;
   z-index: 2;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.document-ruler__tab-stop-wrap--open {
+  z-index: 8;
+}
+.document-ruler__tab-stop {
+  position: relative;
+  display: block;
   width: 12px;
   height: 18px;
   padding: 0;
@@ -630,7 +639,6 @@ body {
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
-  transform: translateX(-50%);
 }
 .document-ruler__tab-stop-glyph {
   position: absolute;
@@ -677,22 +685,26 @@ body {
   opacity: 0.54;
 }
 .document-ruler__tab-stop:hover::before,
-.document-ruler__tab-stop:focus-visible::before {
+.document-ruler__tab-stop:focus-visible::before,
+.document-ruler__tab-stop--open::before {
   border-bottom-color: rgba(5, 150, 105, 0.98);
   filter: drop-shadow(0 8px 16px rgba(16, 185, 129, 0.28));
 }
 .document-ruler__tab-stop--center:hover::before,
-.document-ruler__tab-stop--center:focus-visible::before {
+.document-ruler__tab-stop--center:focus-visible::before,
+.document-ruler__tab-stop--center.document-ruler__tab-stop--open::before {
   border-bottom-color: rgba(2, 132, 199, 0.98);
   filter: drop-shadow(0 8px 16px rgba(14, 165, 233, 0.28));
 }
 .document-ruler__tab-stop--right:hover::before,
-.document-ruler__tab-stop--right:focus-visible::before {
+.document-ruler__tab-stop--right:focus-visible::before,
+.document-ruler__tab-stop--right.document-ruler__tab-stop--open::before {
   border-bottom-color: rgba(217, 119, 6, 0.98);
   filter: drop-shadow(0 8px 16px rgba(245, 158, 11, 0.28));
 }
 .document-ruler__tab-stop--decimal:hover::before,
-.document-ruler__tab-stop--decimal:focus-visible::before {
+.document-ruler__tab-stop--decimal:focus-visible::before,
+.document-ruler__tab-stop--decimal.document-ruler__tab-stop--open::before {
   border-bottom-color: rgba(147, 51, 234, 0.98);
   filter: drop-shadow(0 8px 16px rgba(168, 85, 247, 0.28));
 }
@@ -703,6 +715,144 @@ body {
 .document-ruler__tab-stop:focus-visible .document-ruler__handle-tip {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+.document-ruler__tab-stop-popover {
+  position: absolute;
+  left: 50%;
+  top: 27px;
+  z-index: 9;
+  width: 248px;
+  padding: 10px;
+  border: 1px solid rgba(22,16,58,0.12);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.98), rgba(250,249,255,0.96)),
+    #ffffff;
+  box-shadow:
+    0 22px 50px rgba(22,16,58,0.16),
+    0 2px 10px rgba(22,16,58,0.08);
+  color: #25233a;
+  pointer-events: auto;
+  transform: translateX(-50%);
+  animation: documentTabStopPopoverIn 140ms ease-out;
+}
+.document-ruler__tab-stop-popover::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid rgba(22,16,58,0.12);
+  border-top: 1px solid rgba(22,16,58,0.12);
+  background: rgba(255,255,255,0.98);
+  transform: translateX(-50%) rotate(45deg);
+}
+.document-ruler__tab-stop-popover-kicker,
+.document-ruler__tab-stop-popover-title,
+.document-ruler__tab-stop-popover-grid {
+  position: relative;
+  z-index: 1;
+}
+.document-ruler__tab-stop-popover-kicker {
+  display: block;
+  color: rgba(91,35,255,0.72);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.document-ruler__tab-stop-popover-title {
+  display: block;
+  margin-top: 4px;
+  color: #16103a;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.15;
+}
+.document-ruler__tab-stop-popover-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.document-ruler__tab-stop-option {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #25233a;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+.document-ruler__tab-stop-option:hover,
+.document-ruler__tab-stop-option:focus-visible,
+.document-ruler__tab-stop-option--active {
+  border-color: rgba(91,35,255,0.12);
+  background: rgba(91,35,255,0.06);
+  transform: translateY(-1px);
+}
+.document-ruler__tab-stop-option:focus-visible {
+  outline: 2px solid rgba(91,35,255,0.24);
+  outline-offset: 2px;
+}
+.document-ruler__tab-stop-option-glyph {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(16,185,129,0.12);
+  color: #047857;
+  font-size: 10px;
+  font-weight: 900;
+}
+.document-ruler__tab-stop-option--center .document-ruler__tab-stop-option-glyph {
+  background: rgba(14,165,233,0.13);
+  color: #0369a1;
+}
+.document-ruler__tab-stop-option--right .document-ruler__tab-stop-option-glyph {
+  background: rgba(245,158,11,0.15);
+  color: #92400e;
+}
+.document-ruler__tab-stop-option--decimal .document-ruler__tab-stop-option-glyph {
+  background: rgba(168,85,247,0.14);
+  color: #6d28d9;
+}
+.document-ruler__tab-stop-option strong {
+  display: block;
+  color: #16103a;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.1;
+}
+.document-ruler__tab-stop-option small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(22,16,58,0.54);
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.15;
+}
+@keyframes documentTabStopPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
 }
 .document-ruler--top .document-ruler__tick {
   top: 100%;
