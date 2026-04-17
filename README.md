@@ -52,6 +52,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Invitation gate with OTP and identity-proof return flow
 - Cross-tab share activity refresh and document metadata merge patterns
 - Typed insert-menu action registry so menu labels, enabled states, and editor command dispatch stay aligned while features are implemented incrementally
+- Quick insert actions for date/time and common special characters using undo-safe TipTap insert commands
 
 ## Main Areas
 
