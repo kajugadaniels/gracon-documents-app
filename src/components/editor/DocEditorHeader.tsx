@@ -27,6 +27,7 @@ import { MENU_BAR } from '@/constants';
 import { DocEditorToolbar } from './DocEditorToolbar';
 import { DocEditorSignatureAction } from './DocEditorSignatureAction';
 import { ShareDocumentDialog } from './ShareDocumentDialog';
+import { InsertLinkDialog } from './InsertLinkDialog';
 import { MenuDropdown } from './MenuDropdown';
 import { EditorUserAvatarMenu } from './EditorUserAvatarMenu';
 import { EditorFindBar } from './EditorFindBar';
@@ -76,7 +77,16 @@ export function DocEditorHeader({
     const [findOpen,  setFindOpen]  = useState(false);
     const titleInputRef = useRef<HTMLInputElement>(null);
 
-    const { importing, fileInputRef, handleFileImport, handleAction } = useEditorActions({
+    const {
+        importing,
+        fileInputRef,
+        linkDialog,
+        handleFileImport,
+        handleAction,
+        closeLinkDialog,
+        submitLinkDialog,
+        removeLink,
+    } = useEditorActions({
         editor, doc, editingTitle, title, isReadOnly,
         onTitleEditStart, onTitleSave,
         onFindToggle: () => setFindOpen((v) => !v),
@@ -89,6 +99,26 @@ export function DocEditorHeader({
         titleInputRef.current.focus();
         titleInputRef.current.select();
     }, [editingTitle]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            const isFormField = Boolean(target?.closest('input, textarea, select'));
+
+            if (
+                !isReadOnly
+                && !isFormField
+                && (event.metaKey || event.ctrlKey)
+                && event.key.toLowerCase() === 'k'
+            ) {
+                event.preventDefault();
+                handleAction('insert:link');
+            }
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [handleAction, isReadOnly]);
 
     const saveLabel = saveStatus === 'saving' ? 'Saving…'
         : saveStatus === 'saved'  ? 'All changes saved'
@@ -237,6 +267,20 @@ export function DocEditorHeader({
                     activityRefreshKey={shareActivityRefreshKey}
                     onActivityRecorded={onShareActivityRecorded}
                     onClose={() => setShareOpen(false)}
+                />
+            )}
+
+            {linkDialog.open && (
+                <InsertLinkDialog
+                    open={linkDialog.open}
+                    mode={linkDialog.mode}
+                    text={linkDialog.text}
+                    url={linkDialog.url}
+                    error={linkDialog.error}
+                    canRemove={linkDialog.canRemove}
+                    onClose={closeLinkDialog}
+                    onSubmit={submitLinkDialog}
+                    onRemove={removeLink}
                 />
             )}
         </div>

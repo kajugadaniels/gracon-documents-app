@@ -15,8 +15,10 @@ import {
 } from '@/api/documents.api';
 import { toast } from '@/components/ui';
 import { INSERT_ACTION_IDS } from '@/constants/insert-menu';
+import type { InsertLinkDialogValues } from '@/components/editor/InsertLinkDialog';
 import { importDocxToTiptap } from '@/lib/import-docx';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
+import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 
 const INSERT_SPECIAL_CHARACTER_MAP: Partial<Record<string, string>> = {
     [INSERT_ACTION_IDS.emDash]: '—',
@@ -65,10 +67,21 @@ interface UseEditorActionsReturn {
     copying: boolean;
     savingAs: 'pdf' | 'docx' | null;
     fileInputRef: React.RefObject<HTMLInputElement | null>;
+    linkDialog: {
+        open: boolean;
+        mode: 'create' | 'edit';
+        text: string;
+        url: string;
+        error: string | null;
+        canRemove: boolean;
+    };
     /** Pass to the hidden <input type="file"> onChange handler. */
     handleFileImport: (file: File) => Promise<void>;
     /** Dispatches a menu action ID to the appropriate handler or editor command. */
     handleAction: (actionId: string) => void;
+    closeLinkDialog: () => void;
+    submitLinkDialog: (values: InsertLinkDialogValues) => void;
+    removeLink: () => void;
 }
 
 /**
@@ -86,6 +99,15 @@ export function useEditorActions({
     const [copying,   setCopying]   = useState(false);
     const [savingAs,  setSavingAs]  = useState<'pdf' | 'docx' | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const linkSelectionRef = useRef<{ from: number; to: number } | null>(null);
+    const [linkDialog, setLinkDialog] = useState({
+        open: false,
+        mode: 'create' as 'create' | 'edit',
+        text: '',
+        url: '',
+        error: null as string | null,
+        canRemove: false,
+    });
 
     /** Converts an uploaded .docx file to TipTap JSON, saves it as a new document. */
     const handleFileImport = useCallback(async (file: File) => {
@@ -107,6 +129,107 @@ export function useEditorActions({
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     }, [router]);
+
+    const closeLinkDialog = useCallback(() => {
+        setLinkDialog((current) => ({ ...current, open: false, error: null }));
+        linkSelectionRef.current = null;
+    }, []);
+
+    const openLinkDialog = useCallback(() => {
+        if (!editor) return;
+        if (isReadOnly) {
+            toast.warning('This document is read-only.');
+            return;
+        }
+
+        const { from, to, empty } = editor.state.selection;
+        const href = editor.getAttributes('link').href;
+        const url = typeof href === 'string' ? href : '';
+        const selectedText = empty ? '' : editor.state.doc.textBetween(from, to, ' ');
+
+        linkSelectionRef.current = { from, to };
+        setLinkDialog({
+            open: true,
+            mode: url ? 'edit' : 'create',
+            text: selectedText,
+            url,
+            error: null,
+            canRemove: Boolean(url),
+        });
+    }, [editor, isReadOnly]);
+
+    const submitLinkDialog = useCallback((values: InsertLinkDialogValues) => {
+        if (!editor || isReadOnly) return;
+
+        const normalized = normalizeEditorLinkUrl(values.url);
+        if (!normalized.ok) {
+            setLinkDialog((current) => ({ ...current, error: normalized.error }));
+            return;
+        }
+
+        const selection = linkSelectionRef.current ?? {
+            from: editor.state.selection.from,
+            to: editor.state.selection.to,
+        };
+        const displayText = values.text.trim() || normalized.url;
+        const selectedText = selection.from === selection.to
+            ? ''
+            : editor.state.doc.textBetween(selection.from, selection.to, ' ');
+
+        if (selection.from === selection.to && linkDialog.mode === 'edit') {
+            editor
+                .chain()
+                .focus()
+                .setTextSelection(selection)
+                .extendMarkRange('link')
+                .setLink({ href: normalized.url })
+                .run();
+        } else if (selection.from !== selection.to && (!values.text.trim() || displayText === selectedText)) {
+            editor
+                .chain()
+                .focus()
+                .setTextSelection(selection)
+                .setLink({ href: normalized.url })
+                .run();
+        } else {
+            editor
+                .chain()
+                .focus()
+                .setTextSelection(selection)
+                .insertContent({
+                    type: 'text',
+                    text: displayText,
+                    marks: [{
+                        type: 'link',
+                        attrs: {
+                            href: normalized.url,
+                            target: '_blank',
+                            rel: 'noopener noreferrer nofollow',
+                        },
+                    }],
+                })
+                .run();
+        }
+
+        closeLinkDialog();
+    }, [closeLinkDialog, editor, isReadOnly, linkDialog.mode]);
+
+    const removeLink = useCallback(() => {
+        if (!editor || isReadOnly) return;
+        const selection = linkSelectionRef.current ?? {
+            from: editor.state.selection.from,
+            to: editor.state.selection.to,
+        };
+
+        editor
+            .chain()
+            .focus()
+            .setTextSelection(selection)
+            .extendMarkRange('link')
+            .unsetLink()
+            .run();
+        closeLinkDialog();
+    }, [closeLinkDialog, editor, isReadOnly]);
 
     const handleAction = useCallback((actionId: string) => {
         if (actionId.startsWith('view:')) {
@@ -208,6 +331,11 @@ export function useEditorActions({
 
         if (!editor) return;
 
+        if (actionId === INSERT_ACTION_IDS.link) {
+            openLinkDialog();
+            return;
+        }
+
         const dateTimeInsert = createDateTimeInsert(actionId);
         if (dateTimeInsert) {
             editor.chain().focus().insertContent(dateTimeInsert).run();
@@ -250,9 +378,21 @@ export function useEditorActions({
     }, [
         copying, doc.id, doc.status, doc.title, doc.wordCount,
         editingTitle, editor, importing, isReadOnly,
+        openLinkDialog,
         onFindToggle, onTitleEditStart, onTitleSave, onViewAction,
         router, savingAs, title,
     ]);
 
-    return { importing, copying, savingAs, fileInputRef, handleFileImport, handleAction };
+    return {
+        importing,
+        copying,
+        savingAs,
+        fileInputRef,
+        linkDialog,
+        handleFileImport,
+        handleAction,
+        closeLinkDialog,
+        submitLinkDialog,
+        removeLink,
+    };
 }
