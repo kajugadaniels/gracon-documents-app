@@ -22,7 +22,7 @@ import {
 } from '@/lib/document-layout';
 
 const HORIZONTAL_TICKS = Array.from({ length: 17 }, (_, index) => index);
-const VERTICAL_TICKS = Array.from({ length: 24 }, (_, index) => index);
+const VERTICAL_TICKS = Array.from({ length: 23 }, (_, index) => index);
 const DPI = 96;
 const A4_HEIGHT_IN = 11.69;
 const DRAG_CLICK_THRESHOLD_PX = 4;
@@ -65,6 +65,10 @@ interface DocumentRulerOverlayProps {
 
 function isMajorTick(index: number) {
     return index % 2 === 0;
+}
+
+function formatRulerInches(value: number) {
+    return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 function pxToInches(px: number) {
@@ -453,20 +457,26 @@ export function DocumentRulerOverlay({
                 const tickInches = tick / 2;
                 const topMarginIn = margins.top / DPI;
                 const bottomMarginIn = margins.bottom / DPI;
+                const isPageEdgeLabel = tickInches === 0 || tickInches === 11;
                 const inMarginZone =
-                    tickInches < topMarginIn ||
-                    tickInches > A4_HEIGHT_IN - bottomMarginIn;
+                    !isPageEdgeLabel &&
+                    (tickInches < topMarginIn || tickInches > A4_HEIGHT_IN - bottomMarginIn);
                 // Position each tick at its physical inch position, not even distribution.
                 // This ensures 1 inch on the ruler == 96px, matching the paper geometry.
                 const topPct = (tickInches * DPI / height) * 100;
                 return (
                     <span
                         key={`left-${tick}`}
-                        className={`document-ruler__tick${isMajorTick(tick) ? ' document-ruler__tick--major' : ''}`}
+                        className={[
+                            'document-ruler__tick',
+                            isMajorTick(tick) ? 'document-ruler__tick--major' : '',
+                            tickInches === 0 || tickInches === 11 ? 'document-ruler__tick--page-edge' : '',
+                            tickInches === 0 ? 'document-ruler__tick--page-start' : '',
+                        ].filter(Boolean).join(' ')}
                         style={{ top: `${topPct}%` }}
                     >
                         {isMajorTick(tick) && !inMarginZone && (
-                            <span className="document-ruler__label">{tickInches}</span>
+                            <span className="document-ruler__label">{formatRulerInches(tickInches)}</span>
                         )}
                     </span>
                 );
@@ -756,11 +766,12 @@ export function DocumentPageRulerSidebar({
     // Pre-compute tick data once — shared across all page rulers.
     const ticks = VERTICAL_TICKS.map((tick) => {
         const tickInches = tick / 2;
+        const isPageEdgeLabel = tickInches === 0 || tickInches === 11;
         const inMarginZone =
-            tickInches < topMarginIn ||
-            tickInches > A4_HEIGHT_IN - bottomMarginIn;
+            !isPageEdgeLabel &&
+            (tickInches < topMarginIn || tickInches > A4_HEIGHT_IN - bottomMarginIn);
         const topPct = (tickInches * DPI / pageHeight) * 100;
-        return { tick, tickInches, inMarginZone, topPct };
+        return { tick, tickInches, inMarginZone, topPct, isPageEdgeLabel };
     });
 
     return (
@@ -775,7 +786,6 @@ export function DocumentPageRulerSidebar({
                     className={`document-ruler document-ruler--left document-ruler--page${disabled ? ' document-ruler--disabled' : ''}`}
                     style={{ height: pageHeight }}
                 >
-                    <span className="document-ruler__page-badge">{page.pageNumber}</span>
                     <span
                         className="document-ruler__margin-zone document-ruler__margin-zone--top"
                         style={{ height: `${topMarginPercent}%` }}
@@ -784,14 +794,19 @@ export function DocumentPageRulerSidebar({
                         className="document-ruler__margin-zone document-ruler__margin-zone--bottom"
                         style={{ height: `${bottomMarginPercent}%` }}
                     />
-                    {ticks.map(({ tick, tickInches, inMarginZone, topPct }) => (
+                    {ticks.map(({ tick, tickInches, inMarginZone, topPct, isPageEdgeLabel }) => (
                         <span
                             key={`p${page.pageNumber}-t${tick}`}
-                            className={`document-ruler__tick${isMajorTick(tick) ? ' document-ruler__tick--major' : ''}`}
+                            className={[
+                                'document-ruler__tick',
+                                isMajorTick(tick) ? 'document-ruler__tick--major' : '',
+                                isPageEdgeLabel ? 'document-ruler__tick--page-edge' : '',
+                                tickInches === 0 ? 'document-ruler__tick--page-start' : '',
+                            ].filter(Boolean).join(' ')}
                             style={{ top: `${topPct}%` }}
                         >
                             {isMajorTick(tick) && !inMarginZone && (
-                                <span className="document-ruler__label">{tickInches}</span>
+                                <span className="document-ruler__label">{formatRulerInches(tickInches)}</span>
                             )}
                         </span>
                     ))}
