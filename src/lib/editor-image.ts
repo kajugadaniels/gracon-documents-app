@@ -4,7 +4,8 @@
 
 const BLOCKED_IMAGE_PROTOCOLS = new Set(['javascript:', 'data:', 'vbscript:', 'file:', 'blob:']);
 const ALLOWED_IMAGE_PROTOCOLS = new Set(['https:', 'http:']);
-const IMAGE_EXTENSION_PATTERN = /\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i;
+const IMAGE_EXTENSION_PATTERN = /\.(?:avif|gif|jpe?g|png|webp)(?:[?#].*)?$/i;
+const SVG_EXTENSION_PATTERN = /\.svg(?:[?#].*)?$/i;
 const CLOUDINARY_HOST_PATTERN = /(?:^|\.)cloudinary\.com$/i;
 
 export type NormalizedEditorImage =
@@ -51,6 +52,9 @@ export function normalizeEditorImageUrl(value: string): NormalizedEditorImage {
         const isLocalDevHost = ['localhost', '127.0.0.1'].includes(parsed.hostname);
         if (!isLocalDevHost && !parsed.hostname.includes('.')) {
             return { ok: false, error: 'Enter a complete image URL.' };
+        }
+        if (SVG_EXTENSION_PATTERN.test(parsed.pathname)) {
+            return { ok: false, error: 'SVG images are not allowed in documents.' };
         }
 
         const likelyImage = IMAGE_EXTENSION_PATTERN.test(parsed.pathname)
