@@ -674,8 +674,12 @@ body {
   padding: 0;
   border: none;
   background: transparent;
-  cursor: pointer;
+  cursor: grab;
   pointer-events: auto;
+}
+.document-ruler__tab-stop:active,
+.document-ruler__tab-stop--dragging {
+  cursor: grabbing;
 }
 .document-ruler__tab-stop-glyph {
   position: absolute;
@@ -723,25 +727,29 @@ body {
 }
 .document-ruler__tab-stop:hover::before,
 .document-ruler__tab-stop:focus-visible::before,
-.document-ruler__tab-stop--open::before {
+.document-ruler__tab-stop--open::before,
+.document-ruler__tab-stop--dragging::before {
   border-bottom-color: rgba(5, 150, 105, 0.98);
   filter: drop-shadow(0 8px 16px rgba(16, 185, 129, 0.28));
 }
 .document-ruler__tab-stop--center:hover::before,
 .document-ruler__tab-stop--center:focus-visible::before,
-.document-ruler__tab-stop--center.document-ruler__tab-stop--open::before {
+.document-ruler__tab-stop--center.document-ruler__tab-stop--open::before,
+.document-ruler__tab-stop--center.document-ruler__tab-stop--dragging::before {
   border-bottom-color: rgba(2, 132, 199, 0.98);
   filter: drop-shadow(0 8px 16px rgba(14, 165, 233, 0.28));
 }
 .document-ruler__tab-stop--right:hover::before,
 .document-ruler__tab-stop--right:focus-visible::before,
-.document-ruler__tab-stop--right.document-ruler__tab-stop--open::before {
+.document-ruler__tab-stop--right.document-ruler__tab-stop--open::before,
+.document-ruler__tab-stop--right.document-ruler__tab-stop--dragging::before {
   border-bottom-color: rgba(217, 119, 6, 0.98);
   filter: drop-shadow(0 8px 16px rgba(245, 158, 11, 0.28));
 }
 .document-ruler__tab-stop--decimal:hover::before,
 .document-ruler__tab-stop--decimal:focus-visible::before,
-.document-ruler__tab-stop--decimal.document-ruler__tab-stop--open::before {
+.document-ruler__tab-stop--decimal.document-ruler__tab-stop--open::before,
+.document-ruler__tab-stop--decimal.document-ruler__tab-stop--dragging::before {
   border-bottom-color: rgba(147, 51, 234, 0.98);
   filter: drop-shadow(0 8px 16px rgba(168, 85, 247, 0.28));
 }
