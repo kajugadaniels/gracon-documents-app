@@ -19,7 +19,9 @@ import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
+import Link from '@tiptap/extension-link';
 import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
+import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
     annotateImportedDocxHtml,
     collectImportedParagraphLayouts,
@@ -45,6 +47,16 @@ const IMPORT_EXTENSIONS = [
     TableHeader,
     TableCell,
     Highlight.configure({ multicolor: false }),
+    Link.configure({
+        openOnClick: false,
+        autolink: false,
+        linkOnPaste: false,
+        isAllowedUri: (url) => normalizeEditorLinkUrl(url ?? '').ok,
+        HTMLAttributes: {
+            target: '_blank',
+            rel: 'noopener noreferrer nofollow',
+        },
+    }),
     ParagraphLayoutExtension,
 ];
 
