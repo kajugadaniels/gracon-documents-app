@@ -29,3 +29,7 @@ test('normalizeEditorImageUrl rejects unsafe protocols', () => {
 test('normalizeEditorImageUrl rejects insecure remote http URLs', () => {
     assert.equal(normalizeEditorImageUrl('http://cdn.example.com/file.png').ok, false);
 });
+
+test('normalizeEditorImageUrl rejects SVG image URLs', () => {
+    assert.equal(normalizeEditorImageUrl('https://cdn.example.com/file.svg').ok, false);
+});
