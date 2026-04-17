@@ -21,6 +21,7 @@ import {
     type CommentAnchorInput,
 } from './comment-anchor-extension';
 import { ParagraphLayoutExtension } from './paragraph-layout-extension';
+import { SoftPageBreakExtension } from './soft-page-break-extension';
 
 interface RichTextEditorProps {
     initialContent?: Record<string, unknown> | null;
@@ -94,6 +95,7 @@ export function RichTextEditor({
             CharacterCount,
             CommentAnchorExtension,
             ParagraphLayoutExtension,
+            SoftPageBreakExtension,
         ],
         content: initialContent ?? { type: 'doc', content: [{ type: 'paragraph' }] },
         editable: !readOnly,
