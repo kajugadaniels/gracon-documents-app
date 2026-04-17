@@ -5,16 +5,26 @@
  * imports the typed action IDs from here so menu labels and command handling
  * cannot drift silently.
  */
-import type { MenuItem } from './types';
+import type { MenuItem, MenuItemAction } from './types';
 
 export const INSERT_ACTION_IDS = {
     image: 'insert:image',
     table: 'insert:table',
     horizontalRule: 'insert:hr',
+    currentDate: 'insert:date',
+    currentTime: 'insert:time',
+    dateTime: 'insert:date-time',
     link: 'insert:link',
     comment: 'insert:comment',
     emoji: 'insert:emoji',
     specialCharacters: 'insert:special',
+    emDash: 'insert:special:em-dash',
+    enDash: 'insert:special:en-dash',
+    nonBreakingSpace: 'insert:special:nbsp',
+    copyright: 'insert:special:copyright',
+    trademark: 'insert:special:trademark',
+    registered: 'insert:special:registered',
+    checkmark: 'insert:special:checkmark',
     footnote: 'insert:footnote',
     headerFooter: 'insert:header-footer',
 } as const;
@@ -50,6 +60,21 @@ export const INSERT_ACTIONS = {
         label: 'Horizontal line',
         status: 'ready',
     },
+    currentDate: {
+        actionId: INSERT_ACTION_IDS.currentDate,
+        label: 'Date',
+        status: 'ready',
+    },
+    currentTime: {
+        actionId: INSERT_ACTION_IDS.currentTime,
+        label: 'Time',
+        status: 'ready',
+    },
+    dateTime: {
+        actionId: INSERT_ACTION_IDS.dateTime,
+        label: 'Date and time',
+        status: 'ready',
+    },
     link: {
         actionId: INSERT_ACTION_IDS.link,
         label: 'Link',
@@ -72,8 +97,42 @@ export const INSERT_ACTIONS = {
     specialCharacters: {
         actionId: INSERT_ACTION_IDS.specialCharacters,
         label: 'Special characters',
-        disabled: true,
-        status: 'planned',
+        status: 'ready',
+    },
+    emDash: {
+        actionId: INSERT_ACTION_IDS.emDash,
+        label: 'Em dash —',
+        status: 'ready',
+    },
+    enDash: {
+        actionId: INSERT_ACTION_IDS.enDash,
+        label: 'En dash –',
+        status: 'ready',
+    },
+    nonBreakingSpace: {
+        actionId: INSERT_ACTION_IDS.nonBreakingSpace,
+        label: 'Non-breaking space',
+        status: 'ready',
+    },
+    copyright: {
+        actionId: INSERT_ACTION_IDS.copyright,
+        label: 'Copyright ©',
+        status: 'ready',
+    },
+    trademark: {
+        actionId: INSERT_ACTION_IDS.trademark,
+        label: 'Trademark ™',
+        status: 'ready',
+    },
+    registered: {
+        actionId: INSERT_ACTION_IDS.registered,
+        label: 'Registered ®',
+        status: 'ready',
+    },
+    checkmark: {
+        actionId: INSERT_ACTION_IDS.checkmark,
+        label: 'Check mark ✓',
+        status: 'ready',
     },
     footnote: {
         actionId: INSERT_ACTION_IDS.footnote,
@@ -89,7 +148,7 @@ export const INSERT_ACTIONS = {
     },
 } satisfies Record<string, InsertActionDefinition>;
 
-function createInsertAction(action: InsertActionDefinition): MenuItem {
+function createInsertAction(action: InsertActionDefinition): MenuItemAction {
     return {
         type: 'action',
         label: action.label,
@@ -103,12 +162,33 @@ export const INSERT_MENU_ITEMS: MenuItem[] = [
     createInsertAction(INSERT_ACTIONS.image),
     createInsertAction(INSERT_ACTIONS.table),
     createInsertAction(INSERT_ACTIONS.horizontalRule),
+    {
+        type: 'submenu',
+        label: 'Date and time',
+        items: [
+            createInsertAction(INSERT_ACTIONS.currentDate),
+            createInsertAction(INSERT_ACTIONS.currentTime),
+            createInsertAction(INSERT_ACTIONS.dateTime),
+        ],
+    },
     { type: 'divider' },
     createInsertAction(INSERT_ACTIONS.link),
     createInsertAction(INSERT_ACTIONS.comment),
     { type: 'divider' },
     createInsertAction(INSERT_ACTIONS.emoji),
-    createInsertAction(INSERT_ACTIONS.specialCharacters),
+    {
+        type: 'submenu',
+        label: INSERT_ACTIONS.specialCharacters.label,
+        items: [
+            createInsertAction(INSERT_ACTIONS.emDash),
+            createInsertAction(INSERT_ACTIONS.enDash),
+            createInsertAction(INSERT_ACTIONS.nonBreakingSpace),
+            createInsertAction(INSERT_ACTIONS.copyright),
+            createInsertAction(INSERT_ACTIONS.trademark),
+            createInsertAction(INSERT_ACTIONS.registered),
+            createInsertAction(INSERT_ACTIONS.checkmark),
+        ],
+    },
     { type: 'divider' },
     createInsertAction(INSERT_ACTIONS.footnote),
     createInsertAction(INSERT_ACTIONS.headerFooter),
