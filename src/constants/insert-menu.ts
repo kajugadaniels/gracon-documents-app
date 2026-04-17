@@ -79,8 +79,7 @@ export const INSERT_ACTIONS = {
         actionId: INSERT_ACTION_IDS.link,
         label: 'Link',
         shortcut: '⌘K',
-        disabled: true,
-        status: 'planned',
+        status: 'ready',
     },
     comment: {
         actionId: INSERT_ACTION_IDS.comment,
