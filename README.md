@@ -51,6 +51,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Export parity tests for page margins, paragraph indents, hanging indents, and tab-stop conversion
 - Invitation gate with OTP and identity-proof return flow
 - Cross-tab share activity refresh and document metadata merge patterns
+- Typed insert-menu action registry so menu labels, enabled states, and editor command dispatch stay aligned while features are implemented incrementally
 
 ## Main Areas
 
