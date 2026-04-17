@@ -54,6 +54,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Typed insert-menu action registry so menu labels, enabled states, and editor command dispatch stay aligned while features are implemented incrementally
 - Quick insert actions for date/time and common special characters using undo-safe TipTap insert commands
 - Selection-aware link insertion and editing with safe URL normalization before links enter the TipTap document model
+- Secure hosted-image insertion from URL, with preview, accessibility metadata, and base64 image storage blocked
 
 ## Main Areas
 
@@ -88,6 +89,7 @@ lib/
   store/
   hooks/
   document-layout.ts       shared paper-layout normalization and css-var helpers
+  editor-image.ts          safe editor-image URL normalization helper
   editor-link.ts           safe editor-link URL normalization helper
   import-docx-layout.ts    DOCX paragraph-layout import conversion helpers
 test/
