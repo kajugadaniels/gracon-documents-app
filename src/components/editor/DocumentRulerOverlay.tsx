@@ -25,6 +25,7 @@ const HORIZONTAL_TICKS = Array.from({ length: 17 }, (_, index) => index);
 const VERTICAL_TICKS = Array.from({ length: 24 }, (_, index) => index);
 const DPI = 96;
 const A4_HEIGHT_IN = 11.69;
+const DRAG_CLICK_THRESHOLD_PX = 4;
 const TAB_STOP_ALIGN_OPTIONS: {
     align: ParagraphTabStopAlign;
     label: string;
@@ -88,6 +89,21 @@ function getTabStopKey(tabStop: ParagraphTabStop) {
     return `${tabStop.position}:${tabStop.align}`;
 }
 
+type RulerDragState =
+    | {
+        handle: 'left' | 'right' | 'paragraph-left-indent' | 'paragraph-first-line';
+        pointerId: number;
+    }
+    | {
+        handle: 'paragraph-tab-stop';
+        pointerId: number;
+        startClientX: number;
+        moved: boolean;
+        tabStop: ParagraphTabStop;
+    };
+
+type RulerDragHandle = RulerDragState['handle'];
+
 export function DocumentRulerOverlay({
     width,
     height,
@@ -102,13 +118,8 @@ export function DocumentRulerOverlay({
     onParagraphTabStopsChange,
 }: DocumentRulerOverlayProps) {
     const topRulerRef = useRef<HTMLDivElement | null>(null);
-    const dragStateRef = useRef<{
-        handle: 'left' | 'right' | 'paragraph-left-indent' | 'paragraph-first-line';
-        pointerId: number;
-    } | null>(null);
-    const [activeDragHandle, setActiveDragHandle] = useState<
-        'left' | 'right' | 'paragraph-left-indent' | 'paragraph-first-line' | null
-    >(null);
+    const dragStateRef = useRef<RulerDragState | null>(null);
+    const [activeDragHandle, setActiveDragHandle] = useState<RulerDragHandle | null>(null);
     const [activeTabStopKey, setActiveTabStopKey] = useState<string | null>(null);
     const leftMarginPercent = (margins.left / width) * 100;
     const rightMarginPercent = (margins.right / width) * 100;
@@ -207,6 +218,28 @@ export function DocumentRulerOverlay({
         return normalizeParagraphTabStops(width, margins, [snapped])[0]?.position ?? null;
     }, [margins, width]);
 
+    const resolveMovedTabStops = useCallback((pointerClientX: number, tabStop: ParagraphTabStop) => {
+        if (!paragraphIndent) return null;
+
+        const nextPosition = resolveTabStopFromPointer(pointerClientX);
+        if (nextPosition === null) return null;
+
+        return normalizeParagraphTabStops(
+            width,
+            margins,
+            paragraphIndent.tabStops.map((value) => {
+                if (value.position !== tabStop.position || value.align !== tabStop.align) {
+                    return value;
+                }
+
+                return {
+                    ...value,
+                    position: nextPosition,
+                };
+            }),
+        );
+    }, [margins, paragraphIndent, resolveTabStopFromPointer, width]);
+
     const addTabStopAtPointer = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
         if (disabled || !paragraphIndent || !onParagraphTabStopsChange) return;
         if (event.target instanceof Element && event.target.closest('button')) return;
@@ -239,6 +272,13 @@ export function DocumentRulerOverlay({
             value.position !== tabStop.position || value.align !== tabStop.align
         )) ?? []);
     }, [paragraphIndent?.tabStops, updateTabStops]);
+
+    const moveTabStop = useCallback((pointerClientX: number, tabStop: ParagraphTabStop) => {
+        const nextTabStops = resolveMovedTabStops(pointerClientX, tabStop);
+        if (!nextTabStops) return;
+
+        updateTabStops(nextTabStops);
+    }, [resolveMovedTabStops, updateTabStops]);
 
     const setTabStopAlign = useCallback((tabStop: ParagraphTabStop, align: ParagraphTabStopAlign) => {
         updateTabStops(paragraphIndent?.tabStops.map((value) => {
@@ -309,10 +349,19 @@ export function DocumentRulerOverlay({
             return;
         }
 
+        if (dragState.handle === 'paragraph-tab-stop') {
+            if (Math.abs(event.clientX - dragState.startClientX) > DRAG_CLICK_THRESHOLD_PX) {
+                dragState.moved = true;
+            }
+
+            moveTabStop(event.clientX, dragState.tabStop);
+            return;
+        }
+
         const nextIndentation = resolveParagraphIndentation(event.clientX, dragState.handle);
         if (!nextIndentation) return;
         onParagraphIndentPreview?.(nextIndentation);
-    }, [onHorizontalMarginsPreview, onParagraphIndentPreview, resolveHorizontalMargins, resolveParagraphIndentation]);
+    }, [moveTabStop, onHorizontalMarginsPreview, onParagraphIndentPreview, resolveHorizontalMargins, resolveParagraphIndentation]);
 
     const detachDragListeners = useCallback((listener: (event: PointerEvent) => void) => {
         window.removeEventListener('pointermove', handlePointerMove);
@@ -329,6 +378,12 @@ export function DocumentRulerOverlay({
             if (nextMargins) {
                 onHorizontalMarginsPreview?.(nextMargins);
                 onHorizontalMarginsCommit?.(nextMargins);
+            }
+        } else if (dragState.handle === 'paragraph-tab-stop') {
+            if (dragState.moved) {
+                moveTabStop(event.clientX, dragState.tabStop);
+            } else {
+                toggleTabStopPopover(dragState.tabStop);
             }
         } else {
             const nextIndentation = resolveParagraphIndentation(event.clientX, dragState.handle);
@@ -356,6 +411,28 @@ export function DocumentRulerOverlay({
             pointerId: event.pointerId,
         };
         setActiveDragHandle(handle);
+        document.body.classList.add('document-ruler--dragging');
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+    }
+
+    function beginTabStopDrag(event: ReactPointerEvent<HTMLButtonElement>, tabStop: ParagraphTabStop) {
+        if (disabled) return;
+        if (event.button !== 0) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        setActiveTabStopKey(null);
+        dragStateRef.current = {
+            handle: 'paragraph-tab-stop',
+            pointerId: event.pointerId,
+            startClientX: event.clientX,
+            moved: false,
+            tabStop,
+        };
+        setActiveDragHandle('paragraph-tab-stop');
         document.body.classList.add('document-ruler--dragging');
         window.addEventListener('pointermove', handlePointerMove);
         window.addEventListener('pointerup', handlePointerUp);
@@ -494,17 +571,14 @@ export function DocumentRulerOverlay({
                                 'document-ruler__tab-stop',
                                 `document-ruler__tab-stop--${tabStop.align}`,
                                 activeTabStopKey === getTabStopKey(tabStop) ? 'document-ruler__tab-stop--open' : '',
+                                activeDragHandle === 'paragraph-tab-stop' ? 'document-ruler__tab-stop--dragging' : '',
                                 paragraphIndent.hasMixedTabStops ? 'document-ruler__tab-stop--mixed' : '',
                             ].filter(Boolean).join(' ')}
-                            title={`${tabStopSummary ?? getTabStopLabel(tabStop.align)} · ${getTabStopLabel(tabStop.align)} at ${pxToInches(tabStop.position)} inches · click to choose type · double-click to remove`}
+                            title={`${tabStopSummary ?? getTabStopLabel(tabStop.align)} · ${getTabStopLabel(tabStop.align)} at ${pxToInches(tabStop.position)} inches · drag to move · click to choose type · double-click to remove`}
                             aria-label={`${getTabStopLabel(tabStop.align)} ${pxToInches(tabStop.position)} inches from the left margin`}
                             aria-expanded={activeTabStopKey === getTabStopKey(tabStop)}
                             disabled={disabled}
-                            onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                toggleTabStopPopover(tabStop);
-                            }}
+                            onPointerDown={(event) => beginTabStopDrag(event, tabStop)}
                             onContextMenu={(event) => {
                                 event.preventDefault();
                                 event.stopPropagation();
