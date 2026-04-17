@@ -7,7 +7,12 @@ export type { GoogleFont } from './google-fonts';
 export { FILE_MENU_ITEMS } from './file-menu';
 export { EDIT_MENU_ITEMS } from './edit-menu';
 export { VIEW_MENU_ITEMS } from './view-menu';
-export { INSERT_MENU_ITEMS } from './insert-menu';
+export {
+    INSERT_ACTION_IDS,
+    INSERT_ACTIONS,
+    INSERT_MENU_ITEMS,
+} from './insert-menu';
+export type { InsertActionId } from './insert-menu';
 export { FORMAT_MENU_ITEMS } from './format-menu';
 export { TOOLS_MENU_ITEMS } from './tools-menu';
 export { EXTENSIONS_MENU_ITEMS } from './extensions-menu';
