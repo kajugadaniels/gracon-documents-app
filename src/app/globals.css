@@ -1059,6 +1059,26 @@ body {
 .document-layout-frame--show-marks .tiptap-editor .ProseMirror .document-tab-render--decimal::after {
   border-bottom-color: rgba(168, 85, 247, 0.32);
 }
+.tiptap-editor .ProseMirror .document-soft-page-break {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.tiptap-editor .ProseMirror .document-soft-page-break__line {
+  position: absolute;
+  left: calc(-1 * var(--editor-page-padding-left));
+  right: calc(-1 * var(--editor-page-padding-right));
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(22,16,58,0.12), transparent);
+  opacity: 0;
+}
+.document-layout-frame--show-marks .tiptap-editor .ProseMirror .document-soft-page-break__line {
+  opacity: 1;
+}
 .tiptap-editor .ProseMirror > * {
   max-width: 100%;
   min-width: 0;
