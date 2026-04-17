@@ -28,9 +28,40 @@ const MIN_SPACER_HEIGHT_PX = 12;
 const DEFAULT_PAGE_HEIGHT_PX = 1123;
 const DEFAULT_PAGE_MARGIN_PX = 96;
 
+interface ExistingSpacer {
+    pos: number;
+    height: number;
+}
+
 function parseCssPx(value: string, fallback: number) {
     const parsed = Number.parseFloat(value);
     return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseSpacerSignature(signature: string | undefined): ExistingSpacer[] {
+    if (!signature || signature === 'web-layout' || signature.startsWith('empty:')) {
+        return [];
+    }
+
+    return signature
+        .split('|')
+        .map((entry) => {
+            const [rawPos, rawHeight] = entry.split(':');
+            const pos = Number.parseInt(rawPos, 10);
+            const height = Number.parseInt(rawHeight, 10);
+
+            return Number.isFinite(pos) && Number.isFinite(height)
+                ? { pos, height }
+                : null;
+        })
+        .filter((entry): entry is ExistingSpacer => entry !== null)
+        .sort((a, b) => a.pos - b.pos);
+}
+
+function getExistingSpacerHeightBefore(pos: number, spacers: ExistingSpacer[]) {
+    return spacers.reduce((total, spacer) => (
+        spacer.pos <= pos ? total + spacer.height : total
+    ), 0);
 }
 
 function readEditorLayout(view: EditorView) {
@@ -73,6 +104,9 @@ function buildSoftPageBreakDecorations(view: EditorView): SoftPageBreakMeta {
     const printableBottom = Math.max(topMargin + MIN_SPACER_HEIGHT_PX, pageHeight - bottomMargin);
     const printableHeight = Math.max(MIN_SPACER_HEIGHT_PX, printableBottom - topMargin);
     const editorTop = view.dom.getBoundingClientRect().top;
+    const existingSpacers = parseSpacerSignature(
+        softPageBreakPluginKey.getState(view.state)?.signature,
+    );
     const decorations: Decoration[] = [];
     const signatureParts: string[] = [];
 
@@ -94,8 +128,9 @@ function buildSoftPageBreakDecorations(view: EditorView): SoftPageBreakMeta {
         }
 
         const rect = dom.getBoundingClientRect();
-        const blockTop = rect.top - editorTop;
-        const blockBottom = rect.bottom - editorTop;
+        const existingSpacerOffset = getExistingSpacerHeightBefore(pos, existingSpacers);
+        const blockTop = rect.top - editorTop - existingSpacerOffset;
+        const blockBottom = rect.bottom - editorTop - existingSpacerOffset;
         const blockHeight = rect.height;
         const pageIndex = Math.max(0, Math.floor(blockTop / pageHeight));
         const topWithinPage = blockTop - (pageIndex * pageHeight);
