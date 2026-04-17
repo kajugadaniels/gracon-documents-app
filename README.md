@@ -54,7 +54,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Typed insert-menu action registry so menu labels, enabled states, and editor command dispatch stay aligned while features are implemented incrementally
 - Quick insert actions for date/time and common special characters using undo-safe TipTap insert commands
 - Selection-aware link insertion and editing with safe URL normalization before links enter the TipTap document model
-- Secure hosted-image insertion from URL, with preview, accessibility metadata, and base64 image storage blocked
+- Secure hosted-image insertion from URL or local upload, with Cloudinary storage, preview, accessibility metadata, and base64 image storage blocked
 
 ## Main Areas
 
@@ -133,7 +133,13 @@ NEXT_PUBLIC_DOCS_URL=http://localhost:4002
 NEXT_PUBLIC_APP_URL=http://localhost:4000
 NEXT_PUBLIC_DOCUMENTS_API_URL=http://localhost:3005/api/v1
 NEXT_PUBLIC_SIGNATURE_API_URL=http://localhost:3002/api/v1
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+CLOUDINARY_EDITOR_IMAGES_FOLDER=gracon/documents/editor-images
 ```
+
+Cloudinary variables are server-only. Do not expose them with `NEXT_PUBLIC_`.
 
 ## Integration Boundaries
 
