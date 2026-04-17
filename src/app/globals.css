@@ -465,21 +465,6 @@ body {
   border-radius: 10px 0 0 0;
   border-top: 1px solid rgba(22,16,58,0.12);
 }
-/* Page number badge — tiny label at the top-left of each ruler segment */
-.document-ruler__page-badge {
-  position: absolute;
-  top: 3px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: 7px;
-  font-weight: 800;
-  line-height: 1;
-  color: rgba(91,35,255,0.45);
-  letter-spacing: 0.02em;
-  pointer-events: none;
-  z-index: 3;
-}
 .document-ruler--disabled {
   opacity: 0.76;
 }
@@ -925,11 +910,25 @@ body {
   width: 12px;
   background: rgba(22,16,58,0.3);
 }
+.document-ruler--left .document-ruler__tick--page-edge {
+  width: 15px;
+  background: rgba(91,35,255,0.34);
+}
 .document-ruler--left .document-ruler__label {
   position: absolute;
-  left: -14px;
+  left: -17px;
   top: 50%;
   transform: translateY(-50%);
+  min-width: 14px;
+  text-align: right;
+  color: rgba(22,16,58,0.68);
+  font-size: 8.5px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.document-ruler--left .document-ruler__tick--page-start .document-ruler__label {
+  top: 2px;
+  transform: none;
 }
 .document-page-guide {
   position: absolute;
