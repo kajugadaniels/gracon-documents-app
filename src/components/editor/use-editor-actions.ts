@@ -262,10 +262,13 @@ export function useEditorActions({
         editor
             .chain()
             .focus()
-            .setImage({
-                src: normalized.url,
-                alt: values.alt,
-                title: values.title,
+            .insertContent({
+                type: 'image',
+                attrs: {
+                    src: normalized.url,
+                    alt: values.alt,
+                    title: values.title,
+                },
             })
             .run();
         closeImageDialog();
