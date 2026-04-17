@@ -47,8 +47,7 @@ export const INSERT_ACTIONS = {
     image: {
         actionId: INSERT_ACTION_IDS.image,
         label: 'Image',
-        disabled: true,
-        status: 'planned',
+        status: 'ready',
     },
     table: {
         actionId: INSERT_ACTION_IDS.table,

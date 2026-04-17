@@ -19,6 +19,7 @@ import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
+import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
@@ -47,6 +48,14 @@ const IMPORT_EXTENSIONS = [
     TableHeader,
     TableCell,
     Highlight.configure({ multicolor: false }),
+    Image.configure({
+        allowBase64: false,
+        inline: false,
+        HTMLAttributes: {
+            loading: 'lazy',
+            decoding: 'async',
+        },
+    }),
     Link.configure({
         openOnClick: false,
         autolink: false,

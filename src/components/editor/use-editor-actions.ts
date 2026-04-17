@@ -15,9 +15,11 @@ import {
 } from '@/api/documents.api';
 import { toast } from '@/components/ui';
 import { INSERT_ACTION_IDS } from '@/constants/insert-menu';
+import type { InsertImageDialogValues } from '@/components/editor/InsertImageDialog';
 import type { InsertLinkDialogValues } from '@/components/editor/InsertLinkDialog';
 import { importDocxToTiptap } from '@/lib/import-docx';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
+import { normalizeEditorImageUrl } from '@/lib/editor-image';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 
 const INSERT_SPECIAL_CHARACTER_MAP: Partial<Record<string, string>> = {
@@ -75,6 +77,7 @@ interface UseEditorActionsReturn {
         error: string | null;
         canRemove: boolean;
     };
+    imageDialog: { open: boolean };
     /** Pass to the hidden <input type="file"> onChange handler. */
     handleFileImport: (file: File) => Promise<void>;
     /** Dispatches a menu action ID to the appropriate handler or editor command. */
@@ -82,6 +85,8 @@ interface UseEditorActionsReturn {
     closeLinkDialog: () => void;
     submitLinkDialog: (values: InsertLinkDialogValues) => void;
     removeLink: () => void;
+    closeImageDialog: () => void;
+    submitImageDialog: (values: InsertImageDialogValues) => void;
 }
 
 /**
@@ -108,6 +113,7 @@ export function useEditorActions({
         error: null as string | null,
         canRemove: false,
     });
+    const [imageDialog, setImageDialog] = useState({ open: false });
 
     /** Converts an uploaded .docx file to TipTap JSON, saves it as a new document. */
     const handleFileImport = useCallback(async (file: File) => {
@@ -231,6 +237,40 @@ export function useEditorActions({
         closeLinkDialog();
     }, [closeLinkDialog, editor, isReadOnly]);
 
+    const closeImageDialog = useCallback(() => {
+        setImageDialog({ open: false });
+    }, []);
+
+    const openImageDialog = useCallback(() => {
+        if (!editor) return;
+        if (isReadOnly) {
+            toast.warning('This document is read-only.');
+            return;
+        }
+        setImageDialog({ open: true });
+    }, [editor, isReadOnly]);
+
+    const submitImageDialog = useCallback((values: InsertImageDialogValues) => {
+        if (!editor || isReadOnly) return;
+
+        const normalized = normalizeEditorImageUrl(values.src);
+        if (!normalized.ok) {
+            toast.error(normalized.error);
+            return;
+        }
+
+        editor
+            .chain()
+            .focus()
+            .setImage({
+                src: normalized.url,
+                alt: values.alt,
+                title: values.title,
+            })
+            .run();
+        closeImageDialog();
+    }, [closeImageDialog, editor, isReadOnly]);
+
     const handleAction = useCallback((actionId: string) => {
         if (actionId.startsWith('view:')) {
             if (editingTitle) {
@@ -331,6 +371,11 @@ export function useEditorActions({
 
         if (!editor) return;
 
+        if (actionId === INSERT_ACTION_IDS.image) {
+            openImageDialog();
+            return;
+        }
+
         if (actionId === INSERT_ACTION_IDS.link) {
             openLinkDialog();
             return;
@@ -378,7 +423,7 @@ export function useEditorActions({
     }, [
         copying, doc.id, doc.status, doc.title, doc.wordCount,
         editingTitle, editor, importing, isReadOnly,
-        openLinkDialog,
+        openImageDialog, openLinkDialog,
         onFindToggle, onTitleEditStart, onTitleSave, onViewAction,
         router, savingAs, title,
     ]);
@@ -389,10 +434,13 @@ export function useEditorActions({
         savingAs,
         fileInputRef,
         linkDialog,
+        imageDialog,
         handleFileImport,
         handleAction,
         closeLinkDialog,
         submitLinkDialog,
         removeLink,
+        closeImageDialog,
+        submitImageDialog,
     };
 }

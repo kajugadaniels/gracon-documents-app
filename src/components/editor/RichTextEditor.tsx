@@ -13,6 +13,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import Highlight from '@tiptap/extension-highlight';
+import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
@@ -92,6 +93,14 @@ export function RichTextEditor({
             TableHeader,
             TableCell,
             Highlight.configure({ multicolor: false }),
+            Image.configure({
+                allowBase64: false,
+                inline: false,
+                HTMLAttributes: {
+                    loading: 'lazy',
+                    decoding: 'async',
+                },
+            }),
             Link.configure({
                 openOnClick: false,
                 autolink: false,

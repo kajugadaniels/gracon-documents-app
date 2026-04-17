@@ -27,6 +27,7 @@ import { MENU_BAR } from '@/constants';
 import { DocEditorToolbar } from './DocEditorToolbar';
 import { DocEditorSignatureAction } from './DocEditorSignatureAction';
 import { ShareDocumentDialog } from './ShareDocumentDialog';
+import { InsertImageDialog } from './InsertImageDialog';
 import { InsertLinkDialog } from './InsertLinkDialog';
 import { MenuDropdown } from './MenuDropdown';
 import { EditorUserAvatarMenu } from './EditorUserAvatarMenu';
@@ -81,11 +82,14 @@ export function DocEditorHeader({
         importing,
         fileInputRef,
         linkDialog,
+        imageDialog,
         handleFileImport,
         handleAction,
         closeLinkDialog,
         submitLinkDialog,
         removeLink,
+        closeImageDialog,
+        submitImageDialog,
     } = useEditorActions({
         editor, doc, editingTitle, title, isReadOnly,
         onTitleEditStart, onTitleSave,
@@ -281,6 +285,13 @@ export function DocEditorHeader({
                     onClose={closeLinkDialog}
                     onSubmit={submitLinkDialog}
                     onRemove={removeLink}
+                />
+            )}
+
+            {imageDialog.open && (
+                <InsertImageDialog
+                    onClose={closeImageDialog}
+                    onSubmit={submitImageDialog}
                 />
             )}
         </div>
