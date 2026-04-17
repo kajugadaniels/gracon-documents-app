@@ -14,6 +14,7 @@ import {
     type DocumentDetail,
 } from '@/api/documents.api';
 import { toast } from '@/components/ui';
+import { INSERT_ACTION_IDS } from '@/constants/insert-menu';
 import { importDocxToTiptap } from '@/lib/import-docx';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 
@@ -199,8 +200,12 @@ export function useEditorActions({
             case 'format:strike':    chain.toggleStrike().run(); break;
             case 'format:highlight': chain.toggleHighlight().run(); break;
             case 'format:clear':     chain.clearNodes().unsetAllMarks().run(); break;
-            case 'insert:table':     chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); break;
-            case 'insert:hr':        chain.setHorizontalRule().run(); break;
+            case INSERT_ACTION_IDS.table:
+                chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+                break;
+            case INSERT_ACTION_IDS.horizontalRule:
+                chain.setHorizontalRule().run();
+                break;
         }
     }, [
         copying, doc.id, doc.status, doc.title, doc.wordCount,
