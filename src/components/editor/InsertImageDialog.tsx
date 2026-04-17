@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { uploadEditorImage } from '@/api/editor-images.api';
 import { normalizeEditorImageUrl } from '@/lib/editor-image';
 
 export interface InsertImageDialogValues {
@@ -17,7 +18,17 @@ interface InsertImageDialogProps {
     onSubmit: (values: InsertImageDialogValues) => void;
 }
 
+type ImageTab = 'upload' | 'url';
 type PreviewStatus = 'idle' | 'loading' | 'loaded' | 'error';
+
+const MAX_LOCAL_IMAGE_BYTES = 8 * 1024 * 1024;
+const LOCAL_IMAGE_TYPES = new Set([
+    'image/avif',
+    'image/gif',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+]);
 
 function ImageIcon() {
     return (
@@ -30,8 +41,38 @@ function ImageIcon() {
     );
 }
 
+function UploadIcon() {
+    return (
+        <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path
+                d="M10 13V3m0 0L6.25 6.75M10 3l3.75 3.75M4 13.75v.75A2.5 2.5 0 0 0 6.5 17h7a2.5 2.5 0 0 0 2.5-2.5v-.75"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function formatBytes(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function validateLocalImage(file: File) {
+    if (!LOCAL_IMAGE_TYPES.has(file.type)) {
+        return 'Only AVIF, GIF, JPEG, PNG, and WebP images are allowed.';
+    }
+    if (file.size <= 0 || file.size > MAX_LOCAL_IMAGE_BYTES) {
+        return 'Image must be smaller than 8 MB.';
+    }
+    return null;
+}
+
 /**
- * Dialog for inserting externally hosted images into the TipTap editor.
+ * Dialog for inserting hosted or locally uploaded images into the editor.
  */
 export function InsertImageDialog({
     initialAlt = '',
@@ -40,16 +81,22 @@ export function InsertImageDialog({
     onClose,
     onSubmit,
 }: InsertImageDialogProps) {
+    const [activeTab, setActiveTab] = useState<ImageTab>('upload');
     const [src, setSrc] = useState(initialSrc);
     const [alt, setAlt] = useState(initialAlt);
     const [title, setTitle] = useState(initialTitle);
     const [touched, setTouched] = useState(false);
     const [previewStatus, setPreviewStatus] = useState<PreviewStatus>('idle');
-    const inputRef = useRef<HTMLInputElement>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [localPreviewUrl, setLocalPreviewUrl] = useState('');
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const normalized = useMemo(() => normalizeEditorImageUrl(src), [src]);
-    const showError = touched && src.trim().length > 0 && !normalized.ok;
-    const canSubmit = normalized.ok && previewStatus !== 'error';
-    const previewUrl = normalized.ok ? normalized.url : '';
+    const showUrlError = touched && src.trim().length > 0 && !normalized.ok;
+    const previewUrl = activeTab === 'upload' ? localPreviewUrl : normalized.ok ? normalized.url : '';
+    const canSubmitUrl = normalized.ok && previewStatus !== 'error';
+    const canUpload = Boolean(selectedFile) && !uploading && !uploadError && previewStatus !== 'error';
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -59,6 +106,58 @@ export function InsertImageDialog({
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [onClose]);
 
+    useEffect(() => {
+        return () => {
+            if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+        };
+    }, [localPreviewUrl]);
+
+    const chooseLocalFile = (file: File | null) => {
+        setUploadError(null);
+        setSelectedFile(null);
+        setPreviewStatus('idle');
+
+        if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+        setLocalPreviewUrl('');
+
+        if (!file) return;
+
+        const validationError = validateLocalImage(file);
+        if (validationError) {
+            setUploadError(validationError);
+            return;
+        }
+
+        setSelectedFile(file);
+        setPreviewStatus('loading');
+        setLocalPreviewUrl(URL.createObjectURL(file));
+        if (!alt.trim()) {
+            setAlt(file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '));
+        }
+    };
+
+    const uploadAndInsert = async () => {
+        if (!selectedFile) {
+            setUploadError('Choose an image from your computer first.');
+            return;
+        }
+
+        setUploading(true);
+        setUploadError(null);
+        try {
+            const uploaded = await uploadEditorImage(selectedFile);
+            onSubmit({
+                src: uploaded.url,
+                alt: alt.trim(),
+                title: title.trim(),
+            });
+        } catch (error) {
+            setUploadError(error instanceof Error ? error.message : 'Failed to upload image.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <div
             className="insert-image-dialog__backdrop"
@@ -66,13 +165,17 @@ export function InsertImageDialog({
             aria-modal="true"
             aria-labelledby="insert-image-dialog-title"
             onMouseDown={(event) => {
-                if (event.target === event.currentTarget) onClose();
+                if (event.target === event.currentTarget && !uploading) onClose();
             }}
         >
             <form
                 className="insert-image-dialog"
                 onSubmit={(event) => {
                     event.preventDefault();
+                    if (activeTab === 'upload') {
+                        void uploadAndInsert();
+                        return;
+                    }
                     if (!normalized.ok) {
                         setTouched(true);
                         return;
@@ -94,6 +197,7 @@ export function InsertImageDialog({
                         type="button"
                         className="insert-image-dialog__close"
                         onClick={onClose}
+                        disabled={uploading}
                         aria-label="Close image dialog"
                     >
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -103,36 +207,83 @@ export function InsertImageDialog({
                 </div>
 
                 <p className="insert-image-dialog__copy">
-                    Use a secure hosted image URL, such as a Cloudinary delivery URL. File upload should go through a signed upload API before it is stored in documents.
+                    Upload a local image to Cloudinary or insert an existing secure hosted URL. The document stores only the final hosted URL.
                 </p>
 
-                <label className={`insert-image-dialog__field${showError ? ' insert-image-dialog__field--error' : ''}`}>
-                    <span>Image URL</span>
-                    <input
-                        ref={inputRef}
-                        value={src}
-                        onChange={(event) => {
-                            setSrc(event.target.value);
-                            setTouched(true);
-                            setPreviewStatus('loading');
-                        }}
-                        onBlur={() => setTouched(true)}
-                        placeholder="https://res.cloudinary.com/.../image/upload/file.jpg"
-                        inputMode="url"
-                        autoComplete="url"
-                        autoFocus
-                    />
-                    <small className={showError ? 'insert-image-dialog__hint--error' : ''}>
-                        {showError
-                            ? normalized.error
-                            : 'Allowed: https image URLs. Localhost http is accepted for development only.'}
-                    </small>
-                </label>
+                <div className="insert-image-dialog__tabs" role="tablist" aria-label="Image source">
+                    <button
+                        type="button"
+                        className={`insert-image-dialog__tab${activeTab === 'upload' ? ' insert-image-dialog__tab--active' : ''}`}
+                        onClick={() => setActiveTab('upload')}
+                    >
+                        Upload
+                    </button>
+                    <button
+                        type="button"
+                        className={`insert-image-dialog__tab${activeTab === 'url' ? ' insert-image-dialog__tab--active' : ''}`}
+                        onClick={() => setActiveTab('url')}
+                    >
+                        Image URL
+                    </button>
+                </div>
+
+                {activeTab === 'upload' ? (
+                    <div className="insert-image-dialog__upload-panel">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
+                            className="insert-image-dialog__file-input"
+                            onChange={(event) => chooseLocalFile(event.target.files?.[0] ?? null)}
+                        />
+                        <button
+                            type="button"
+                            className="insert-image-dialog__dropzone"
+                            onClick={() => fileInputRef.current?.click()}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={(event) => {
+                                event.preventDefault();
+                                chooseLocalFile(event.dataTransfer.files?.[0] ?? null);
+                            }}
+                        >
+                            <span className="insert-image-dialog__dropzone-icon">
+                                <UploadIcon />
+                            </span>
+                            <strong>{selectedFile ? selectedFile.name : 'Choose or drop an image'}</strong>
+                            <small>
+                                {selectedFile
+                                    ? `${selectedFile.type.replace('image/', '').toUpperCase()} · ${formatBytes(selectedFile.size)}`
+                                    : 'AVIF, GIF, JPEG, PNG, or WebP up to 8 MB'}
+                            </small>
+                        </button>
+                    </div>
+                ) : (
+                    <label className={`insert-image-dialog__field${showUrlError ? ' insert-image-dialog__field--error' : ''}`}>
+                        <span>Image URL</span>
+                        <input
+                            value={src}
+                            onChange={(event) => {
+                                setSrc(event.target.value);
+                                setTouched(true);
+                                setPreviewStatus('loading');
+                            }}
+                            onBlur={() => setTouched(true)}
+                            placeholder="https://res.cloudinary.com/.../image/upload/file.jpg"
+                            inputMode="url"
+                            autoComplete="url"
+                        />
+                        <small className={showUrlError ? 'insert-image-dialog__hint--error' : ''}>
+                            {showUrlError
+                                ? normalized.error
+                                : 'Allowed: secure hosted image URLs. SVG and base64 images are not accepted.'}
+                        </small>
+                    </label>
+                )}
 
                 <div className="insert-image-dialog__preview">
                     {previewUrl ? (
                         <>
-                            {/* eslint-disable-next-line @next/next/no-img-element -- External URL preview cannot use Next/Image without domain allowlisting. */}
+                            {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic editor image preview cannot use Next/Image without domain allowlisting. */}
                             <img
                                 src={previewUrl}
                                 alt=""
@@ -175,14 +326,28 @@ export function InsertImageDialog({
                     </label>
                 </div>
 
+                {uploadError && (
+                    <p className="insert-image-dialog__error" role="alert">
+                        {uploadError}
+                    </p>
+                )}
+
                 <div className="insert-image-dialog__footer">
-                    <p>Images are stored as references, not copied into the document JSON.</p>
+                    <p>
+                        {activeTab === 'upload'
+                            ? 'Upload uses server-side Cloudinary credentials and returns a secure URL.'
+                            : 'External images remain hosted by their original provider.'}
+                    </p>
                     <div className="insert-image-dialog__footer-actions">
-                        <button type="button" className="ded-action-btn" onClick={onClose}>
+                        <button type="button" className="ded-action-btn" onClick={onClose} disabled={uploading}>
                             Cancel
                         </button>
-                        <button type="submit" className="ded-share-btn" disabled={!canSubmit}>
-                            Insert image
+                        <button
+                            type="submit"
+                            className="ded-share-btn"
+                            disabled={activeTab === 'upload' ? !canUpload : !canSubmitUrl}
+                        >
+                            {uploading ? 'Uploading…' : 'Insert image'}
                         </button>
                     </div>
                 </div>
