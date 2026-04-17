@@ -18,6 +18,34 @@ import { INSERT_ACTION_IDS } from '@/constants/insert-menu';
 import { importDocxToTiptap } from '@/lib/import-docx';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 
+const INSERT_SPECIAL_CHARACTER_MAP: Partial<Record<string, string>> = {
+    [INSERT_ACTION_IDS.emDash]: '—',
+    [INSERT_ACTION_IDS.enDash]: '–',
+    [INSERT_ACTION_IDS.nonBreakingSpace]: '\u00A0',
+    [INSERT_ACTION_IDS.copyright]: '©',
+    [INSERT_ACTION_IDS.trademark]: '™',
+    [INSERT_ACTION_IDS.registered]: '®',
+    [INSERT_ACTION_IDS.checkmark]: '✓',
+};
+
+function createDateTimeInsert(actionId: string) {
+    const now = new Date();
+    const date = new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    }).format(now);
+    const time = new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+    }).format(now);
+
+    if (actionId === INSERT_ACTION_IDS.currentDate) return date;
+    if (actionId === INSERT_ACTION_IDS.currentTime) return time;
+    if (actionId === INSERT_ACTION_IDS.dateTime) return `${date} at ${time}`;
+    return null;
+}
+
 interface UseEditorActionsOptions {
     editor: Editor | null;
     doc: DocumentDetail;
@@ -179,6 +207,18 @@ export function useEditorActions({
         }
 
         if (!editor) return;
+
+        const dateTimeInsert = createDateTimeInsert(actionId);
+        if (dateTimeInsert) {
+            editor.chain().focus().insertContent(dateTimeInsert).run();
+            return;
+        }
+
+        const specialCharacter = INSERT_SPECIAL_CHARACTER_MAP[actionId];
+        if (specialCharacter) {
+            editor.chain().focus().insertContent(specialCharacter).run();
+            return;
+        }
 
         // ── All editor commands ────────────────────────────────────────────────
         const chain = editor.chain().focus();
