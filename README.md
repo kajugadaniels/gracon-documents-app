@@ -45,6 +45,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Explicit multi-block ruler feedback for mixed paragraph indentation selections
 - Typed paragraph tab stops stored in editor content, shown on the ruler, editable from the ruler, and preserved in DOCX import/export
 - Ruler tab-stop popover for choosing left, center, right, or decimal tab alignment without memorizing shortcuts
+- Draggable ruler tab-stop markers for repositioning existing tab stops without deleting and recreating them
 - Live editor tab rendering uses ProseMirror decorations so tab characters remain copy/paste-safe while reflecting typed stop widths on canvas
 - DOCX import maps Word paragraph indents, inline tab characters, and paragraph tab-stop positions back into the same schema-backed layout model used by the ruler
 - Export parity tests for page margins, paragraph indents, hanging indents, and tab-stop conversion
