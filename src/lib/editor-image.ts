@@ -6,7 +6,6 @@ const BLOCKED_IMAGE_PROTOCOLS = new Set(['javascript:', 'data:', 'vbscript:', 'f
 const ALLOWED_IMAGE_PROTOCOLS = new Set(['https:', 'http:']);
 const IMAGE_EXTENSION_PATTERN = /\.(?:avif|gif|jpe?g|png|webp)(?:[?#].*)?$/i;
 const SVG_EXTENSION_PATTERN = /\.svg(?:[?#].*)?$/i;
-const CLOUDINARY_HOST_PATTERN = /(?:^|\.)cloudinary\.com$/i;
 
 export type NormalizedEditorImage =
     | { ok: true; url: string; host: string; likelyImage: boolean }
@@ -57,8 +56,7 @@ export function normalizeEditorImageUrl(value: string): NormalizedEditorImage {
             return { ok: false, error: 'SVG images are not allowed in documents.' };
         }
 
-        const likelyImage = IMAGE_EXTENSION_PATTERN.test(parsed.pathname)
-            || CLOUDINARY_HOST_PATTERN.test(parsed.hostname);
+        const likelyImage = IMAGE_EXTENSION_PATTERN.test(parsed.pathname);
 
         return {
             ok: true,
