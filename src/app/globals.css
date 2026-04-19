@@ -1092,6 +1092,66 @@ body {
   border-radius: 14px;
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.10);
 }
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] {
+  justify-content: center;
+  margin: 14px 0;
+}
+
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] [data-resize-wrapper] {
+  border-radius: 16px;
+  outline: 2px solid transparent;
+  outline-offset: 4px;
+  transition: outline-color 140ms ease, box-shadow 140ms ease;
+}
+
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"]:hover [data-resize-wrapper],
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"][data-resize-state="true"] [data-resize-wrapper],
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] .ProseMirror-selectednode {
+  outline-color: rgba(37, 99, 235, 0.36);
+  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08);
+}
+
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] img {
+  margin: 0;
+  max-width: 100%;
+  user-select: none;
+}
+
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] [data-resize-handle] {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow:
+    0 6px 16px rgba(37, 99, 235, 0.28),
+    0 0 0 1px rgba(37, 99, 235, 0.16);
+  opacity: 0;
+  touch-action: none;
+  transform: scale(0.82);
+  transition: opacity 120ms ease, transform 120ms ease, background 120ms ease;
+  z-index: 2;
+}
+
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"]:hover [data-resize-handle],
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"][data-resize-state="true"] [data-resize-handle] {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] [data-resize-handle="top-left"],
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] [data-resize-handle="bottom-right"] {
+  cursor: nwse-resize;
+}
+
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] [data-resize-handle="top-right"],
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] [data-resize-handle="bottom-left"] {
+  cursor: nesw-resize;
+}
+
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"] [data-resize-handle]:hover {
+  background: #1d4ed8;
+}
 .tiptap-editor .ProseMirror pre {
   max-width: 100%;
   margin: 1em 0;
