@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { normalizeEditorImageUrl } from '../../src/lib/editor-image.ts';
 
 test('normalizeEditorImageUrl accepts secure image URLs', () => {
-    assert.deepEqual(normalizeEditorImageUrl('https://res.cloudinary.com/demo/image/upload/sample.jpg'), {
+    assert.deepEqual(normalizeEditorImageUrl('https://cdn.example.com/documents/sample.jpg'), {
         ok: true,
-        url: 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
-        host: 'res.cloudinary.com',
+        url: 'https://cdn.example.com/documents/sample.jpg',
+        host: 'cdn.example.com',
         likelyImage: true,
     });
 });
