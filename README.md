@@ -55,6 +55,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Quick insert actions for date/time and common special characters using undo-safe TipTap insert commands
 - Selection-aware link insertion and editing with safe URL normalization before links enter the TipTap document model
 - Secure hosted-image insertion from URL or local upload through `api/documents`, with private S3 storage, preview, accessibility metadata, and base64 image storage blocked
+- Resizable editor images with persisted TipTap width/height attributes, aspect-ratio-safe corner handles, and polished canvas feedback
 
 ## Main Areas
 
