@@ -1106,6 +1106,7 @@ body {
 
 .tiptap-editor .ProseMirror [data-resize-container][data-node="image"]:hover [data-resize-wrapper],
 .tiptap-editor .ProseMirror [data-resize-container][data-node="image"][data-resize-state="true"] [data-resize-wrapper],
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"].ProseMirror-selectednode [data-resize-wrapper],
 .tiptap-editor .ProseMirror [data-resize-container][data-node="image"] .ProseMirror-selectednode {
   outline-color: rgba(37, 99, 235, 0.36);
   box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08);
@@ -1134,7 +1135,8 @@ body {
 }
 
 .tiptap-editor .ProseMirror [data-resize-container][data-node="image"]:hover [data-resize-handle],
-.tiptap-editor .ProseMirror [data-resize-container][data-node="image"][data-resize-state="true"] [data-resize-handle] {
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"][data-resize-state="true"] [data-resize-handle],
+.tiptap-editor .ProseMirror [data-resize-container][data-node="image"].ProseMirror-selectednode [data-resize-handle] {
   opacity: 1;
   transform: scale(1);
 }

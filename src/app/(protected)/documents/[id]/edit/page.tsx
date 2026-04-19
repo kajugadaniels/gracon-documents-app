@@ -34,7 +34,7 @@ import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import { buildViewMenuItems } from '@/constants/view-menu';
 import { A4_PAPER_WIDTH_PX } from '@/constants';
-import { getDigitalCertificateUrl } from '@/lib/session';
+import { getDigitalCertificateUrl, redirectToLogin } from '@/lib/session';
 import {
     buildDocumentLayoutStyle,
     clampHorizontalDocumentMargins,
@@ -226,7 +226,23 @@ export default function EditDocumentPage() {
             await autosaveDocument(id, contentRef.current, wordCntRef.current);
             setSaveStatus('saved');
             setTimeout(() => setSaveStatus('idle'), 2000);
-        } catch {
+        } catch (err: unknown) {
+            const httpStatus = (err as { response?: { status?: number } })?.response?.status;
+
+            if (httpStatus === 401) {
+                // The token refresh interceptor already attempted a silent refresh.
+                // Reaching here means the session is definitively expired — either
+                // the refresh was rejected as unauthenticated, or the refresh service
+                // was unreachable. Do not mark as dirty so autosave stops retrying,
+                // then redirect the user so they can log in again without losing context.
+                dirtyRef.current = false;
+                toast.error('Your session has expired. Redirecting to login…');
+                redirectToLogin(
+                    `${window.location.pathname}${window.location.search}${window.location.hash}`,
+                );
+                return;
+            }
+
             setSaveStatus('error');
             dirtyRef.current = true;
         }
