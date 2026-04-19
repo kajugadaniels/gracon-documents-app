@@ -12,7 +12,7 @@ export interface UploadedEditorImage {
  * Uploads a local editor image through api/documents.
  *
  * @param file - Browser-selected image file.
- * @returns Cloudinary-hosted image metadata.
+ * @returns Documents API hosted image metadata.
  */
 export async function uploadEditorImage(file: File): Promise<UploadedEditorImage> {
     const formData = new FormData();
