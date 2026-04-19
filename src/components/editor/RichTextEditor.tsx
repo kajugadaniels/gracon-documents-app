@@ -96,6 +96,13 @@ export function RichTextEditor({
             Image.configure({
                 allowBase64: false,
                 inline: false,
+                resize: {
+                    enabled: true,
+                    directions: ['bottom-left', 'bottom-right', 'top-left', 'top-right'],
+                    minWidth: 96,
+                    minHeight: 72,
+                    alwaysPreserveAspectRatio: true,
+                },
                 HTMLAttributes: {
                     loading: 'lazy',
                     decoding: 'async',
