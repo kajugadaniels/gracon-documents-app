@@ -9,7 +9,7 @@ export interface UploadedEditorImage {
 }
 
 /**
- * Uploads a local editor image through the documents app proxy route.
+ * Uploads a local editor image through api/documents.
  *
  * @param file - Browser-selected image file.
  * @returns Cloudinary-hosted image metadata.
@@ -18,24 +18,30 @@ export async function uploadEditorImage(file: File): Promise<UploadedEditorImage
     const formData = new FormData();
     formData.set('file', file);
 
-    const response = await fetch('/api/editor-images/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-    });
-    const payload = await response.json().catch(() => ({}));
+    try {
+        const response = await apiClient.post<UploadedEditorImage>(
+            '/editor-images/upload',
+            formData,
+            { timeout: 60_000 },
+        );
 
-    if (!response.ok) {
+        if (!response.data?.url) {
+            throw new Error('Image upload did not return a usable URL.');
+        }
+
+        return response.data;
+    } catch (error: unknown) {
+        const message = (error as { response?: { data?: { message?: string; error?: string } } })
+            ?.response?.data?.message
+            ?? (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+
         throw new Error(
-            typeof payload?.error === 'string' && payload.error.trim()
-                ? payload.error
-                : 'Failed to upload image.',
+            typeof message === 'string' && message.trim()
+                ? message
+                : error instanceof Error
+                    ? error.message
+                    : 'Failed to upload image.',
         );
     }
-
-    if (typeof payload?.url !== 'string' || !payload.url) {
-        throw new Error('Image upload did not return a usable URL.');
-    }
-
-    return payload as UploadedEditorImage;
 }
+import { apiClient } from './client';
