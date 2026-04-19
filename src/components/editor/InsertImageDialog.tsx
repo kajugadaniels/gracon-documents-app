@@ -207,7 +207,7 @@ export function InsertImageDialog({
                 </div>
 
                 <p className="insert-image-dialog__copy">
-                    Upload a local image to Cloudinary or insert an existing secure hosted URL. The document stores only the final hosted URL.
+                    Upload a local image to private document storage or insert an existing secure hosted URL. The document stores only a stable image URL.
                 </p>
 
                 <div className="insert-image-dialog__tabs" role="tablist" aria-label="Image source">
@@ -268,7 +268,7 @@ export function InsertImageDialog({
                                 setPreviewStatus('loading');
                             }}
                             onBlur={() => setTouched(true)}
-                            placeholder="https://res.cloudinary.com/.../image/upload/file.jpg"
+                            placeholder="https://cdn.example.com/path/image.jpg"
                             inputMode="url"
                             autoComplete="url"
                         />
@@ -335,7 +335,7 @@ export function InsertImageDialog({
                 <div className="insert-image-dialog__footer">
                     <p>
                         {activeTab === 'upload'
-                            ? 'Upload uses server-side Cloudinary credentials and returns a secure URL.'
+                            ? 'Upload stores the image privately in the documents API and returns a stable render URL.'
                             : 'External images remain hosted by their original provider.'}
                     </p>
                     <div className="insert-image-dialog__footer-actions">
