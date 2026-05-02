@@ -89,14 +89,14 @@ async function exportPdf(pages: HTMLCanvasElement[], title: string) {
 export async function saveRenderedDocumentAs(
     format: ExportFormat,
     title: string,
-    sheetEl: HTMLElement,
+    exportRootEl: HTMLElement,
 ) {
     if (format === 'pdf') {
-        const pages = await captureRenderedDocumentPages(sheetEl);
+        const pages = await captureRenderedDocumentPages(exportRootEl);
         await exportPdf(pages, title);
         return;
     }
 
-    const blob = await createEditableDocxBlob(sheetEl);
+    const blob = await createEditableDocxBlob(exportRootEl);
     downloadBlob(blob, sanitizeFileName(title, 'docx'));
 }
