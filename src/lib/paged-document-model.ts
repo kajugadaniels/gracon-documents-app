@@ -13,6 +13,7 @@ export interface PagedDocumentModel {
     pageHeight: number;
     contentHeight: number;
     totalHeight: number;
+    visualHeight: number;
 }
 
 export interface PagedDocumentModelInput {
@@ -44,5 +45,6 @@ export function buildPagedDocumentModel(input: PagedDocumentModelInput): PagedDo
         pageHeight,
         contentHeight,
         totalHeight,
+        visualHeight: pageHeight * pageCount,
     };
 }
