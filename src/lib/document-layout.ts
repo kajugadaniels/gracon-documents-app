@@ -32,6 +32,15 @@ export interface DocumentLayoutMargins {
 export interface DocumentLayout {
     paperSize: 'A4';
     margins: DocumentLayoutMargins;
+    headerFooter: DocumentHeaderFooter;
+}
+
+export interface DocumentHeaderFooter {
+    headerEnabled: boolean;
+    footerEnabled: boolean;
+    pageNumbersEnabled: boolean;
+    headerText: string;
+    footerText: string;
 }
 
 export interface ParagraphIndentation {
@@ -51,6 +60,13 @@ export const DEFAULT_DOCUMENT_LAYOUT: DocumentLayout = {
         bottom: A4_PAPER_MARGIN_PX,
         left: A4_PAPER_MARGIN_PX,
     },
+    headerFooter: {
+        headerEnabled: true,
+        footerEnabled: true,
+        pageNumbersEnabled: true,
+        headerText: '',
+        footerText: '',
+    },
 };
 
 function clampMargin(value: unknown, fallback: number) {
@@ -61,11 +77,39 @@ function clampMargin(value: unknown, fallback: number) {
     return Math.min(MAX_DOCUMENT_MARGIN_PX, Math.max(MIN_DOCUMENT_MARGIN_PX, Math.round(value)));
 }
 
+function normalizeBoolean(value: unknown, fallback: boolean) {
+    return typeof value === 'boolean' ? value : fallback;
+}
+
+function normalizeHeaderFooterText(value: unknown) {
+    if (typeof value !== 'string') return '';
+    return value.trim().slice(0, 120);
+}
+
+function normalizeHeaderFooter(raw: unknown): DocumentHeaderFooter {
+    const defaults = DEFAULT_DOCUMENT_LAYOUT.headerFooter;
+
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        return { ...defaults };
+    }
+
+    const source = raw as Record<string, unknown>;
+
+    return {
+        headerEnabled: normalizeBoolean(source.headerEnabled, defaults.headerEnabled),
+        footerEnabled: normalizeBoolean(source.footerEnabled, defaults.footerEnabled),
+        pageNumbersEnabled: normalizeBoolean(source.pageNumbersEnabled, defaults.pageNumbersEnabled),
+        headerText: normalizeHeaderFooterText(source.headerText),
+        footerText: normalizeHeaderFooterText(source.footerText),
+    };
+}
+
 export function normalizeDocumentLayout(raw: unknown): DocumentLayout {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
         return {
             paperSize: DEFAULT_DOCUMENT_LAYOUT.paperSize,
             margins: { ...DEFAULT_DOCUMENT_LAYOUT.margins },
+            headerFooter: { ...DEFAULT_DOCUMENT_LAYOUT.headerFooter },
         };
     }
 
@@ -86,6 +130,7 @@ export function normalizeDocumentLayout(raw: unknown): DocumentLayout {
             bottom: clampMargin(rawMargins.bottom, DEFAULT_DOCUMENT_LAYOUT.margins.bottom),
             left: clampMargin(rawMargins.left, DEFAULT_DOCUMENT_LAYOUT.margins.left),
         },
+        headerFooter: normalizeHeaderFooter(source.headerFooter),
     };
 }
 
