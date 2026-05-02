@@ -1132,6 +1132,9 @@ body {
 .document-page-aware-block--push-next {
   margin-top: var(--document-page-aware-offset, 0px) !important;
 }
+.document-flow-page-gap--push {
+  margin-top: var(--document-flow-page-gap-offset, 0px) !important;
+}
 .document-page-aware-block--oversized {
   position: relative;
   outline: 1px dashed rgba(245, 158, 11, 0.52);
