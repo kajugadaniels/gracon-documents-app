@@ -431,6 +431,9 @@ export function useEditorActions({
             case INSERT_ACTION_IDS.pageBreak:
                 chain.insertPageBreak().run();
                 break;
+            case INSERT_ACTION_IDS.sectionBreak:
+                chain.insertSectionBreak().run();
+                break;
             case INSERT_ACTION_IDS.horizontalRule:
                 chain.setHorizontalRule().run();
                 break;
