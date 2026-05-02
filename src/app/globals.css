@@ -294,9 +294,75 @@ body {
   margin: 0 auto;
   transition: transform 160ms ease;
 }
+.document-layout-frame--paged {
+  isolation: isolate;
+}
 .document-layout-frame .tiptap-editor-paper,
 .document-layout-frame .document-paper-sheet {
   width: 100%;
+}
+.document-page-surfaces {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.document-page-surface {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: #ffffff;
+  box-shadow: var(--paper-shadow);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+.document-page-surface__header,
+.document-page-surface__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px var(--editor-page-padding-right) 8px var(--editor-page-padding-left);
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+  color: #999;
+  font-size: 11px;
+  font-weight: 400;
+  min-width: 0;
+}
+.document-page-surface__footer {
+  padding: 8px var(--editor-page-padding-right) 10px var(--editor-page-padding-left);
+  border-top: 1px solid rgba(0,0,0,0.07);
+  border-bottom: none;
+}
+.document-page-surface__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #666;
+}
+.document-page-surface__tag {
+  flex: 0 0 auto;
+}
+.document-layout-frame--paged .tiptap-editor-paper {
+  position: relative;
+  z-index: 1;
+}
+.document-layout-frame--paged .document-paper-sheet {
+  min-height: inherit;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+.document-layout-frame--paged .document-paper-sheet__header,
+.document-layout-frame--paged .document-paper-sheet__footer {
+  visibility: hidden;
+}
+.document-layout-frame--paged .document-paper-sheet__body {
+  min-height: inherit;
+}
+.document-layout-frame--paged .tiptap-editor.tiptap-editor-paper .ProseMirror {
+  min-height: inherit;
 }
 .document-layout-frame--web-layout .document-paper-sheet {
   min-height: auto;
