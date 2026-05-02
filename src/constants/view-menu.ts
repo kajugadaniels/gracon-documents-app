@@ -24,6 +24,11 @@ export function buildViewMenuItems(state: DocumentViewMenuState): MenuItem[] {
         },
         {
             type: 'action',
+            label: 'Print preview',
+            actionId: 'view:print-preview',
+        },
+        {
+            type: 'action',
             label: state.canToggleMode
                 ? withCheckmark(state.viewMode === 'editing', 'Mode: Editing')
                 : 'Mode: View only',
