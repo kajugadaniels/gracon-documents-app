@@ -8,12 +8,13 @@ import type { DocumentPaginationPage } from './use-document-pagination';
 
 interface DocumentPageGuidesProps {
     pages: DocumentPaginationPage[];
+    pageGap?: number;
 }
 
 /**
  * Renders subtle page labels at measured A4 boundaries.
  */
-export function DocumentPageGuides({ pages }: DocumentPageGuidesProps) {
+export function DocumentPageGuides({ pages, pageGap = 0 }: DocumentPageGuidesProps) {
     const nextPages = pages.slice(1);
     if (nextPages.length === 0) return null;
 
@@ -23,7 +24,9 @@ export function DocumentPageGuides({ pages }: DocumentPageGuidesProps) {
                 <div
                     key={page.pageNumber}
                     className="document-page-guide"
-                    style={{ top: page.top }}
+                    style={{
+                        top: page.top + ((page.pageNumber - 1) * pageGap) - (pageGap / 2),
+                    }}
                 >
                     <span className="document-page-guide__notch document-page-guide__notch--left" />
                     <span className="document-page-guide__notch document-page-guide__notch--right" />
