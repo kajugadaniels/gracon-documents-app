@@ -366,6 +366,11 @@ export function useEditorActions({
             return;
         }
 
+        if (actionId === 'file:print') {
+            onViewAction?.('view:print-preview');
+            return;
+        }
+
         // ── Edit: Find ─────────────────────────────────────────────────────────
         if (actionId === 'edit:find') {
             onFindToggle();
@@ -404,7 +409,6 @@ export function useEditorActions({
         // ── All editor commands ────────────────────────────────────────────────
         const chain = editor.chain().focus();
         switch (actionId) {
-            case 'file:print':       window.print(); break;
             case 'edit:undo':        chain.undo().run(); break;
             case 'edit:redo':        chain.redo().run(); break;
             case 'edit:cut':         editor.view.focus(); document.execCommand('cut'); break;
