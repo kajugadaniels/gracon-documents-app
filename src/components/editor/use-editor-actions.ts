@@ -419,6 +419,9 @@ export function useEditorActions({
             case INSERT_ACTION_IDS.table:
                 chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
                 break;
+            case INSERT_ACTION_IDS.pageBreak:
+                chain.insertPageBreak().run();
+                break;
             case INSERT_ACTION_IDS.horizontalRule:
                 chain.setHorizontalRule().run();
                 break;
