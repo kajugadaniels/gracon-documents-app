@@ -9,6 +9,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { DocumentPageGuides } from './DocumentPageGuides';
 import { buildPagedDocumentModel } from '@/lib/paged-document-model';
 import type { PagedDocumentPage } from '@/lib/paged-document-model';
+import type { DocumentHeaderFooter } from '@/lib/document-layout';
 
 interface PagedDocumentCanvasProps {
     canvasRef: RefObject<HTMLDivElement | null>;
@@ -24,6 +25,7 @@ interface PagedDocumentCanvasProps {
     printLayout: boolean;
     showFormattingMarks: boolean;
     paperStyle: CSSProperties;
+    headerFooter: DocumentHeaderFooter;
     overlayContent?: ReactNode;
     commentAnchors: CommentAnchorInput[];
     onContentChange?: (content: Record<string, unknown>, wordCount: number) => void;
@@ -43,11 +45,16 @@ function PagedPaperSurfaces({
     pages,
     title,
     status,
+    headerFooter,
 }: {
     pages: PagedDocumentPage[];
     title: string;
     status: string;
+    headerFooter: DocumentHeaderFooter;
 }) {
+    const headerText = headerFooter.headerText || title;
+    const footerText = headerFooter.footerText || `${status.toLowerCase()} document`;
+
     return (
         <div className="document-page-surfaces" aria-hidden="true">
             {pages.map((page) => (
@@ -56,13 +63,27 @@ function PagedPaperSurfaces({
                     className="document-page-surface"
                     style={{ top: page.top, height: page.height }}
                 >
-                    <header className="document-page-surface__header">
-                        <span className="document-page-surface__title">{title}</span>
-                        <span className="document-page-surface__tag">Page {page.pageNumber}</span>
+                    <header
+                        className={[
+                            'document-page-surface__header',
+                            !headerFooter.headerEnabled ? 'document-page-surface__chrome--hidden' : '',
+                        ].filter(Boolean).join(' ')}
+                    >
+                            <span className="document-page-surface__title">{headerText}</span>
+                            {headerFooter.pageNumbersEnabled && (
+                                <span className="document-page-surface__tag">Page {page.pageNumber}</span>
+                            )}
                     </header>
-                    <footer className="document-page-surface__footer">
-                        <span>{status.toLowerCase()} document</span>
-                        <span>Page {page.pageNumber} of {pages.length}</span>
+                    <footer
+                        className={[
+                            'document-page-surface__footer',
+                            !headerFooter.footerEnabled ? 'document-page-surface__chrome--hidden' : '',
+                        ].filter(Boolean).join(' ')}
+                    >
+                            <span>{footerText}</span>
+                            {headerFooter.pageNumbersEnabled && (
+                                <span>Page {page.pageNumber} of {pages.length}</span>
+                            )}
                     </footer>
                 </section>
             ))}
@@ -140,6 +161,7 @@ export function PagedDocumentCanvas({
     printLayout,
     showFormattingMarks,
     paperStyle,
+    headerFooter,
     overlayContent,
     commentAnchors,
     onContentChange,
@@ -170,6 +192,7 @@ export function PagedDocumentCanvas({
                                 pages={pageModel.pages}
                                 title={title}
                                 status={status}
+                                headerFooter={headerFooter}
                             />
                         )}
                         <RichTextEditor
