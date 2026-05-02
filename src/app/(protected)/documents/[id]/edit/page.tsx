@@ -13,13 +13,12 @@ import type { Editor } from '@tiptap/react';
 import { toast } from '@/components/ui';
 import { DocumentFinaliseDialog } from '@/components/editor/DocumentFinaliseDialog';
 import { DocumentPageSetupDialog } from '@/components/editor/DocumentPageSetupDialog';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { DocumentAccessTransitionBanner } from '@/components/editor/DocumentAccessTransitionBanner';
 import { DocumentRulerOverlay, DocumentPageRulerSidebar } from '@/components/editor/DocumentRulerOverlay';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
-import { DocumentPageGuides } from '@/components/editor/DocumentPageGuides';
+import { PagedDocumentCanvas } from '@/components/editor/PagedDocumentCanvas';
 import { mergeDocumentShareState } from '@/components/editor/document-share-state';
 import {
     publishDocumentShareSync,
@@ -572,9 +571,6 @@ export default function EditDocumentPage() {
             ? 'locked'
             : 'finalised';
     const zoomScale = viewState.zoom / 100;
-    const scaledFrameWidth = Math.round(A4_PAPER_WIDTH_PX * zoomScale);
-    const scaledFrameHeight = Math.max(pagination.contentHeight, pagination.pageHeight) * zoomScale;
-
     async function handleSavePageSetup(nextLayout: DocumentLayout) {
         if (!doc || baseIsReadOnly) {
             return;
@@ -744,44 +740,25 @@ export default function EditDocumentPage() {
                 )}
 
             {/* ── Paper canvas ── */}
-            <div ref={canvasRef} className="ded-canvas">
-                <div className="document-workspace-stage">
-                    <div
-                        className="document-layout-shell"
-                        style={{ width: scaledFrameWidth, minHeight: scaledFrameHeight }}
-                    >
-                        <div
-                            className={[
-                                'document-layout-frame',
-                                !viewState.printLayout ? 'document-layout-frame--web-layout' : '',
-                                viewState.showFormattingMarks ? 'document-layout-frame--show-marks' : '',
-                            ].filter(Boolean).join(' ')}
-                            style={{
-                                transform: `scale(${zoomScale})`,
-                                transformOrigin: 'top center',
-                            }}
-                        >
-                            <RichTextEditor
-                                key={doc.id}
-                                initialContent={doc.content}
-                                onContentChange={isReadOnly ? undefined : handleContentChange}
-                                onEditorReady={setEditor}
-                                hideToolbar
-                                readOnly={isReadOnly}
-                                paperMode
-                                paperTitle={doc.title}
-                                paperStatus={doc.status}
-                                pageNumber={1}
-                                pageCount={pagination.pageCount}
-                                paperStyle={documentLayoutStyle}
-                                overlayContent={signatureStrip}
-                                commentAnchors={commentAnchors}
-                            />
-                            {viewState.printLayout && <DocumentPageGuides pages={pagination.pages} />}
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <PagedDocumentCanvas
+                canvasRef={canvasRef}
+                documentId={doc.id}
+                title={doc.title}
+                status={doc.status}
+                content={doc.content}
+                isReadOnly={isReadOnly}
+                zoomScale={zoomScale}
+                pageCount={pagination.pageCount}
+                pageHeight={pagination.pageHeight}
+                contentHeight={pagination.contentHeight}
+                printLayout={viewState.printLayout}
+                showFormattingMarks={viewState.showFormattingMarks}
+                paperStyle={documentLayoutStyle}
+                overlayContent={signatureStrip}
+                commentAnchors={commentAnchors}
+                onContentChange={handleContentChange}
+                onEditorReady={setEditor}
+            />
             </div>{/* /.ded-page-body */}
 
             <DocumentCommentsPanel
