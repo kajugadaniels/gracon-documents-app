@@ -192,10 +192,57 @@ function clearPageAwareBlocks(rootEl: HTMLElement) {
     });
 }
 
+function getFlowGapBlocks(rootEl: HTMLElement) {
+    return Array.from(rootEl.children).filter((child): child is HTMLElement => {
+        if (!(child instanceof HTMLElement)) return false;
+        return !child.classList.contains('document-page-break') &&
+            !child.classList.contains('document-section-break');
+    });
+}
+
+function resetFlowGapBlock(block: HTMLElement) {
+    block.classList.remove('document-flow-page-gap--push');
+    block.style.removeProperty('--document-flow-page-gap-offset');
+}
+
+function applyFlowPageGaps(rootEl: HTMLElement, pageHeight: number, pageGap: number) {
+    const blocks = getFlowGapBlocks(rootEl);
+    blocks.forEach(resetFlowGapBlock);
+    if (pageGap <= 0 || pageHeight <= 0) return;
+
+    blocks.forEach((block) => {
+        const offsetTop = block.offsetTop;
+        let pageIndex = Math.max(1, Math.floor(offsetTop / (pageHeight + pageGap)) + 1);
+        let pageEnd = (pageIndex * pageHeight) + ((pageIndex - 1) * pageGap);
+
+        while (offsetTop >= pageEnd + pageGap) {
+            pageIndex += 1;
+            pageEnd = (pageIndex * pageHeight) + ((pageIndex - 1) * pageGap);
+        }
+
+        const blockBottom = offsetTop + block.offsetHeight;
+        const startsInGap = offsetTop > pageEnd && offsetTop < pageEnd + pageGap;
+        const crossesIntoGap = offsetTop < pageEnd && blockBottom > pageEnd;
+
+        if (!startsInGap && !crossesIntoGap) return;
+
+        const offset = Math.max(Math.ceil(pageEnd + pageGap - offsetTop), 0);
+        if (offset === 0) return;
+
+        block.classList.add('document-flow-page-gap--push');
+        block.style.setProperty('--document-flow-page-gap-offset', `${offset}px`);
+    });
+}
+
+function clearFlowPageGaps(rootEl: HTMLElement) {
+    getFlowGapBlocks(rootEl).forEach(resetFlowGapBlock);
+}
+
 function usePagedFlowMeasurement(
     canvasRef: RefObject<HTMLDivElement | null>,
     pageHeight: number,
     printLayout: boolean,
+    pageGap: number,
 ) {
     useEffect(() => {
         const canvasEl = canvasRef.current;
@@ -213,6 +260,7 @@ function usePagedFlowMeasurement(
                 frameId = null;
                 applyMeasuredPageBreaks(measuredEditorEl, pageHeight);
                 applyPageAwareBlocks(measuredEditorEl, pageHeight);
+                applyFlowPageGaps(measuredEditorEl, pageHeight, pageGap);
             });
         }
 
@@ -235,8 +283,9 @@ function usePagedFlowMeasurement(
             resizeObserver.disconnect();
             mutationObserver.disconnect();
             clearPageAwareBlocks(measuredEditorEl);
+            clearFlowPageGaps(measuredEditorEl);
         };
-    }, [canvasRef, pageHeight, printLayout]);
+    }, [canvasRef, pageGap, pageHeight, printLayout]);
 }
 
 export function PagedDocumentCanvas({
@@ -268,7 +317,7 @@ export function PagedDocumentCanvas({
     const scaledFrameHeight = visualFrameHeight * zoomScale;
     const headerText = headerFooter.headerText || title;
     const footerText = headerFooter.footerText || `${status.toLowerCase()} document`;
-    usePagedFlowMeasurement(canvasRef, pageModel.pageHeight, printLayout);
+    usePagedFlowMeasurement(canvasRef, pageModel.pageHeight, printLayout, visualPageGap);
 
     return (
         <div ref={canvasRef} className="ded-canvas">
