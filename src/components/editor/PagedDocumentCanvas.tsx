@@ -7,6 +7,7 @@ import type { CommentAnchorInput } from './comment-anchor-extension';
 import { RichTextEditor } from './RichTextEditor';
 import { DocumentPageGuides } from './DocumentPageGuides';
 import { buildPagedDocumentModel } from '@/lib/paged-document-model';
+import type { PagedDocumentPage } from '@/lib/paged-document-model';
 
 interface PagedDocumentCanvasProps {
     canvasRef: RefObject<HTMLDivElement | null>;
@@ -31,9 +32,41 @@ interface PagedDocumentCanvasProps {
 function getFrameClassName(printLayout: boolean, showFormattingMarks: boolean) {
     return [
         'document-layout-frame',
+        printLayout ? 'document-layout-frame--paged' : '',
         !printLayout ? 'document-layout-frame--web-layout' : '',
         showFormattingMarks ? 'document-layout-frame--show-marks' : '',
     ].filter(Boolean).join(' ');
+}
+
+function PagedPaperSurfaces({
+    pages,
+    title,
+    status,
+}: {
+    pages: PagedDocumentPage[];
+    title: string;
+    status: string;
+}) {
+    return (
+        <div className="document-page-surfaces" aria-hidden="true">
+            {pages.map((page) => (
+                <section
+                    key={page.pageNumber}
+                    className="document-page-surface"
+                    style={{ top: page.top, height: page.height }}
+                >
+                    <header className="document-page-surface__header">
+                        <span className="document-page-surface__title">{title}</span>
+                        <span className="document-page-surface__tag">Page {page.pageNumber}</span>
+                    </header>
+                    <footer className="document-page-surface__footer">
+                        <span>{status.toLowerCase()} document</span>
+                        <span>Page {page.pageNumber} of {pages.length}</span>
+                    </footer>
+                </section>
+            ))}
+        </div>
+    );
 }
 
 export function PagedDocumentCanvas({
@@ -57,7 +90,7 @@ export function PagedDocumentCanvas({
 }: PagedDocumentCanvasProps) {
     const pageModel = buildPagedDocumentModel({ pageCount, pageHeight, contentHeight });
     const scaledFrameWidth = Math.round(pageModel.pageWidth * zoomScale);
-    const scaledFrameHeight = pageModel.totalHeight * zoomScale;
+    const scaledFrameHeight = pageModel.visualHeight * zoomScale;
 
     return (
         <div ref={canvasRef} className="ded-canvas">
@@ -69,10 +102,18 @@ export function PagedDocumentCanvas({
                     <div
                         className={getFrameClassName(printLayout, showFormattingMarks)}
                         style={{
+                            minHeight: pageModel.visualHeight,
                             transform: `scale(${zoomScale})`,
                             transformOrigin: 'top center',
                         }}
                     >
+                        {printLayout && (
+                            <PagedPaperSurfaces
+                                pages={pageModel.pages}
+                                title={title}
+                                status={status}
+                            />
+                        )}
                         <RichTextEditor
                             key={documentId}
                             initialContent={content}
