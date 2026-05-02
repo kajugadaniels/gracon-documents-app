@@ -227,10 +227,12 @@ export function DocumentSignatureBlock({
     return (
         <div
             ref={overlayRef}
+            className="document-signature-overlay"
             style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}
         >
             <div
                 ref={cardRef}
+                className="document-signature-block"
                 style={{
                     position: 'absolute',
                     left: `${position.x * 100}%`,
