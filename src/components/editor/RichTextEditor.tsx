@@ -23,6 +23,7 @@ import {
     CommentAnchorExtension,
     type CommentAnchorInput,
 } from './comment-anchor-extension';
+import { PageBreakExtension } from './page-break-extension';
 import { ParagraphLayoutExtension } from './paragraph-layout-extension';
 
 interface RichTextEditorProps {
@@ -82,6 +83,7 @@ export function RichTextEditor({
             StarterKit.configure({
                 heading: { levels: [1, 2, 3, 4, 5, 6] },
                 codeBlock: { languageClassPrefix: 'language-' },
+                link: false,
             }),
             TextStyle,
             Color,
@@ -121,6 +123,7 @@ export function RichTextEditor({
             Placeholder.configure({ placeholder }),
             CharacterCount,
             CommentAnchorExtension,
+            PageBreakExtension,
             ParagraphLayoutExtension,
         ],
         content: initialContent ?? { type: 'doc', content: [{ type: 'paragraph' }] },
