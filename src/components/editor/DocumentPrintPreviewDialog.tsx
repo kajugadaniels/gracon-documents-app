@@ -120,6 +120,7 @@ export function DocumentPrintPreviewDialog({
                     paperStyle={buildDocumentLayoutStyle(layout)}
                     headerFooter={layout.headerFooter}
                     showRepeatedPageChrome
+                    pageGap={28}
                     overlayContent={null}
                     commentAnchors={emptyAnchors}
                     onEditorReady={() => undefined}
