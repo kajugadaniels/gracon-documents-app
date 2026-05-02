@@ -12,6 +12,8 @@ import type { PagedDocumentPage } from '@/lib/paged-document-model';
 import type { DocumentHeaderFooter } from '@/lib/document-layout';
 import { getPageAwareBlockDecision } from '@/lib/page-aware-layout';
 
+const EDITOR_PAGE_GAP_PX = 36;
+
 interface PagedDocumentCanvasProps {
     canvasRef: RefObject<HTMLDivElement | null>;
     documentId: string;
@@ -28,6 +30,7 @@ interface PagedDocumentCanvasProps {
     paperStyle: CSSProperties;
     headerFooter: DocumentHeaderFooter;
     showRepeatedPageChrome?: boolean;
+    pageGap?: number;
     overlayContent?: ReactNode;
     commentAnchors: CommentAnchorInput[];
     onContentChange?: (content: Record<string, unknown>, wordCount: number) => void;
@@ -49,12 +52,14 @@ function PagedPaperSurfaces({
     status,
     headerFooter,
     showPageChrome,
+    pageGap,
 }: {
     pages: PagedDocumentPage[];
     title: string;
     status: string;
     headerFooter: DocumentHeaderFooter;
     showPageChrome: boolean;
+    pageGap: number;
 }) {
     const headerText = headerFooter.headerText || title;
     const footerText = headerFooter.footerText || `${status.toLowerCase()} document`;
@@ -65,7 +70,10 @@ function PagedPaperSurfaces({
                 <section
                     key={page.pageNumber}
                     className="document-page-surface"
-                    style={{ top: page.top, height: page.height }}
+                    style={{
+                        top: page.top + ((page.pageNumber - 1) * pageGap),
+                        height: page.height,
+                    }}
                 >
                     <header
                         className={[
@@ -247,6 +255,7 @@ export function PagedDocumentCanvas({
     paperStyle,
     headerFooter,
     showRepeatedPageChrome = false,
+    pageGap = EDITOR_PAGE_GAP_PX,
     overlayContent,
     commentAnchors,
     onContentChange,
@@ -254,7 +263,9 @@ export function PagedDocumentCanvas({
 }: PagedDocumentCanvasProps) {
     const pageModel = buildPagedDocumentModel({ pageCount, pageHeight, contentHeight });
     const scaledFrameWidth = Math.round(pageModel.pageWidth * zoomScale);
-    const scaledFrameHeight = pageModel.visualHeight * zoomScale;
+    const visualPageGap = printLayout ? pageGap : 0;
+    const visualFrameHeight = pageModel.visualHeight + ((pageModel.pages.length - 1) * visualPageGap);
+    const scaledFrameHeight = visualFrameHeight * zoomScale;
     const headerText = headerFooter.headerText || title;
     const footerText = headerFooter.footerText || `${status.toLowerCase()} document`;
     usePagedFlowMeasurement(canvasRef, pageModel.pageHeight, printLayout);
@@ -278,8 +289,10 @@ export function PagedDocumentCanvas({
                         data-document-page-numbers-enabled={String(headerFooter.pageNumbersEnabled)}
                         data-document-header-text={headerText}
                         data-document-footer-text={footerText}
+                        data-document-page-gap={visualPageGap}
                         style={{
                             minHeight: pageModel.visualHeight,
+                            ['--document-page-gap' as string]: `${visualPageGap}px`,
                             transform: `scale(${zoomScale})`,
                             transformOrigin: 'top center',
                         }}
@@ -291,6 +304,7 @@ export function PagedDocumentCanvas({
                                 status={status}
                                 headerFooter={headerFooter}
                                 showPageChrome={showRepeatedPageChrome}
+                                pageGap={visualPageGap}
                             />
                         )}
                         <RichTextEditor
@@ -309,7 +323,12 @@ export function PagedDocumentCanvas({
                             overlayContent={overlayContent}
                             commentAnchors={commentAnchors}
                         />
-                        {printLayout && <DocumentPageGuides pages={pageModel.pages} />}
+                        {printLayout && (
+                            <DocumentPageGuides
+                                pages={pageModel.pages}
+                                pageGap={visualPageGap}
+                            />
+                        )}
                     </div>
                 </div>
             </div>
