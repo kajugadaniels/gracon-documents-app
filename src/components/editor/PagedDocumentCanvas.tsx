@@ -94,7 +94,7 @@ function PagedPaperSurfaces({
 
 function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number) {
     const breaks = Array.from(
-        rootEl.querySelectorAll<HTMLElement>('.document-page-break'),
+        rootEl.querySelectorAll<HTMLElement>('.document-page-break, .document-section-break'),
     );
 
     breaks.forEach((breakEl) => {
@@ -207,7 +207,7 @@ function usePagedFlowMeasurement(
 
         const resizeObserver = new ResizeObserver(scheduleMeasure);
         resizeObserver.observe(measuredEditorEl);
-        measuredEditorEl.querySelectorAll('.document-page-break').forEach((node) => {
+        measuredEditorEl.querySelectorAll('.document-page-break, .document-section-break').forEach((node) => {
             if (node instanceof HTMLElement) resizeObserver.observe(node);
         });
         getPageAwareBlocks(measuredEditorEl).forEach((node) => {
