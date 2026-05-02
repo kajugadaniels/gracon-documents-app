@@ -1030,6 +1030,48 @@ body {
   line-height: 1;
   white-space: nowrap;
 }
+.document-page-break {
+  position: relative;
+  height: var(--document-page-break-spacer, 0px);
+  min-height: 34px;
+  margin: 18px 0;
+  break-after: page;
+  page-break-after: always;
+  user-select: none;
+}
+.document-page-break::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed rgba(22,16,58,0.26);
+}
+.document-page-break__label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 5px 10px;
+  border: 1px solid rgba(22,16,58,0.14);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.96);
+  box-shadow: 0 10px 24px rgba(22,16,58,0.08);
+  color: rgba(22,16,58,0.58);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ProseMirror-selectednode.document-page-break::before {
+  border-top-color: var(--color-primary);
+}
+.ProseMirror-selectednode.document-page-break .document-page-break__label {
+  border-color: rgba(91,35,255,0.34);
+  color: var(--color-primary);
+}
 .tiptap-editor-paper {
   background: transparent;
   border: none;
