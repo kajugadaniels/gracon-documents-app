@@ -13,6 +13,7 @@ import type { Editor } from '@tiptap/react';
 import { toast } from '@/components/ui';
 import { DocumentFinaliseDialog } from '@/components/editor/DocumentFinaliseDialog';
 import { DocumentPageSetupDialog } from '@/components/editor/DocumentPageSetupDialog';
+import { DocumentPrintPreviewDialog } from '@/components/editor/DocumentPrintPreviewDialog';
 import { DocumentAccessTransitionBanner } from '@/components/editor/DocumentAccessTransitionBanner';
 import { DocumentRulerOverlay, DocumentPageRulerSidebar } from '@/components/editor/DocumentRulerOverlay';
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
@@ -78,6 +79,7 @@ export default function EditDocumentPage() {
     const [title, setTitle] = useState('');
     const [showFinaliseDialog, setShowFinaliseDialog] = useState(false);
     const [showPageSetupDialog, setShowPageSetupDialog] = useState(false);
+    const [showPrintPreview, setShowPrintPreview] = useState(false);
     const [savingPageSetup, setSavingPageSetup] = useState(false);
     const [showSigning, setShowSigning] = useState(false);
     const [commentsOpen, setCommentsOpen] = useState(false);
@@ -375,6 +377,11 @@ export default function EditDocumentPage() {
             }
 
             setShowPageSetupDialog(true);
+            return;
+        }
+
+        if (actionId === 'view:print-preview') {
+            setShowPrintPreview(true);
             return;
         }
 
@@ -699,6 +706,20 @@ export default function EditDocumentPage() {
                     saving={savingPageSetup}
                     onClose={() => setShowPageSetupDialog(false)}
                     onSave={handleSavePageSetup}
+                />
+            )}
+
+            {showPrintPreview && (
+                <DocumentPrintPreviewDialog
+                    documentId={doc.id}
+                    title={title.trim() || doc.title}
+                    status={doc.status}
+                    content={contentRef.current ?? doc.content}
+                    layout={documentLayout}
+                    pageCount={pagination.pageCount}
+                    pageHeight={pagination.pageHeight}
+                    contentHeight={pagination.contentHeight}
+                    onClose={() => setShowPrintPreview(false)}
                 />
             )}
 
