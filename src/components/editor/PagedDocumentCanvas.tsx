@@ -2,6 +2,7 @@
 
 import type { RefObject, ReactNode } from 'react';
 import type { CSSProperties } from 'react';
+import { useEffect } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { CommentAnchorInput } from './comment-anchor-extension';
 import { RichTextEditor } from './RichTextEditor';
@@ -69,6 +70,62 @@ function PagedPaperSurfaces({
     );
 }
 
+function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number) {
+    const breaks = Array.from(
+        rootEl.querySelectorAll<HTMLElement>('.document-page-break'),
+    );
+
+    breaks.forEach((breakEl) => {
+        breakEl.style.setProperty('--document-page-break-spacer', '0px');
+    });
+
+    breaks.forEach((breakEl) => {
+        const offsetTop = breakEl.offsetTop;
+        const remainder = offsetTop % pageHeight;
+        const spacerHeight = remainder <= 1 ? 0 : pageHeight - remainder;
+
+        breakEl.style.setProperty('--document-page-break-spacer', `${spacerHeight}px`);
+    });
+}
+
+function useMeasuredPageBreaks(
+    canvasRef: RefObject<HTMLDivElement | null>,
+    pageHeight: number,
+    printLayout: boolean,
+) {
+    useEffect(() => {
+        const canvasEl = canvasRef.current;
+        if (!canvasEl || !printLayout) return;
+
+        const editorEl = canvasEl.querySelector<HTMLElement>('.ProseMirror');
+        if (!editorEl) return;
+        const measuredEditorEl = editorEl;
+
+        let frameId: number | null = null;
+
+        function scheduleMeasure() {
+            if (frameId !== null) window.cancelAnimationFrame(frameId);
+            frameId = window.requestAnimationFrame(() => {
+                frameId = null;
+                applyMeasuredPageBreaks(measuredEditorEl, pageHeight);
+            });
+        }
+
+        const resizeObserver = new ResizeObserver(scheduleMeasure);
+        resizeObserver.observe(measuredEditorEl);
+        measuredEditorEl.querySelectorAll('.document-page-break').forEach((node) => {
+            if (node instanceof HTMLElement) resizeObserver.observe(node);
+        });
+
+        scheduleMeasure();
+
+        return () => {
+            if (frameId !== null) window.cancelAnimationFrame(frameId);
+            resizeObserver.disconnect();
+        };
+    }, [canvasRef, pageHeight, printLayout]);
+}
+
 export function PagedDocumentCanvas({
     canvasRef,
     documentId,
@@ -91,6 +148,7 @@ export function PagedDocumentCanvas({
     const pageModel = buildPagedDocumentModel({ pageCount, pageHeight, contentHeight });
     const scaledFrameWidth = Math.round(pageModel.pageWidth * zoomScale);
     const scaledFrameHeight = pageModel.visualHeight * zoomScale;
+    useMeasuredPageBreaks(canvasRef, pageModel.pageHeight, printLayout);
 
     return (
         <div ref={canvasRef} className="ded-canvas">
