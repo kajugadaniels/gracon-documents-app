@@ -148,8 +148,7 @@ export const INSERT_ACTIONS = {
     headerFooter: {
         actionId: INSERT_ACTION_IDS.headerFooter,
         label: 'Header & footer',
-        disabled: true,
-        status: 'planned',
+        status: 'ready',
     },
 } satisfies Record<string, InsertActionDefinition>;
 
