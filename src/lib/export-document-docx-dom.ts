@@ -299,7 +299,10 @@ function convertTable(tableEl: HTMLElement, docx: DocxModule) {
 }
 
 function convertBlock(element: HTMLElement, docx: DocxModule): FileChild[] {
-    if (element.classList.contains('document-page-break')) {
+    if (
+        element.classList.contains('document-page-break') ||
+        element.classList.contains('document-section-break')
+    ) {
         return [new docx.Paragraph({ pageBreakBefore: true })];
     }
     if (element.classList.contains('tableWrapper')) {
