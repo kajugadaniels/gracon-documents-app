@@ -754,6 +754,7 @@ export default function EditDocumentPage() {
                 printLayout={viewState.printLayout}
                 showFormattingMarks={viewState.showFormattingMarks}
                 paperStyle={documentLayoutStyle}
+                headerFooter={documentLayout.headerFooter}
                 overlayContent={signatureStrip}
                 commentAnchors={commentAnchors}
                 onContentChange={handleContentChange}
