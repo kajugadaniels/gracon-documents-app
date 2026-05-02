@@ -27,6 +27,7 @@ interface PagedDocumentCanvasProps {
     showFormattingMarks: boolean;
     paperStyle: CSSProperties;
     headerFooter: DocumentHeaderFooter;
+    showRepeatedPageChrome?: boolean;
     overlayContent?: ReactNode;
     commentAnchors: CommentAnchorInput[];
     onContentChange?: (content: Record<string, unknown>, wordCount: number) => void;
@@ -47,11 +48,13 @@ function PagedPaperSurfaces({
     title,
     status,
     headerFooter,
+    showPageChrome,
 }: {
     pages: PagedDocumentPage[];
     title: string;
     status: string;
     headerFooter: DocumentHeaderFooter;
+    showPageChrome: boolean;
 }) {
     const headerText = headerFooter.headerText || title;
     const footerText = headerFooter.footerText || `${status.toLowerCase()} document`;
@@ -67,7 +70,7 @@ function PagedPaperSurfaces({
                     <header
                         className={[
                             'document-page-surface__header',
-                            !headerFooter.headerEnabled ? 'document-page-surface__chrome--hidden' : '',
+                            (!showPageChrome || !headerFooter.headerEnabled) ? 'document-page-surface__chrome--hidden' : '',
                         ].filter(Boolean).join(' ')}
                     >
                             <span className="document-page-surface__title">{headerText}</span>
@@ -78,7 +81,7 @@ function PagedPaperSurfaces({
                     <footer
                         className={[
                             'document-page-surface__footer',
-                            !headerFooter.footerEnabled ? 'document-page-surface__chrome--hidden' : '',
+                            (!showPageChrome || !headerFooter.footerEnabled) ? 'document-page-surface__chrome--hidden' : '',
                         ].filter(Boolean).join(' ')}
                     >
                             <span>{footerText}</span>
@@ -243,6 +246,7 @@ export function PagedDocumentCanvas({
     showFormattingMarks,
     paperStyle,
     headerFooter,
+    showRepeatedPageChrome = false,
     overlayContent,
     commentAnchors,
     onContentChange,
@@ -286,6 +290,7 @@ export function PagedDocumentCanvas({
                                 title={title}
                                 status={status}
                                 headerFooter={headerFooter}
+                                showPageChrome={showRepeatedPageChrome}
                             />
                         )}
                         <RichTextEditor
