@@ -350,9 +350,9 @@ export function useEditorActions({
             Promise.resolve()
                 .then(async () => {
                     if (editingTitle) await Promise.resolve(onTitleSave());
-                    const sheetEl = document.querySelector('.document-paper-sheet') as HTMLElement | null;
-                    if (!sheetEl) throw new Error('Could not find the rendered document to export.');
-                    await saveRenderedDocumentAs(format, title.trim() || doc.title, sheetEl);
+                    const exportRoot = document.querySelector('[data-document-export-root="true"]') as HTMLElement | null;
+                    if (!exportRoot) throw new Error('Could not find the rendered document to export.');
+                    await saveRenderedDocumentAs(format, title.trim() || doc.title, exportRoot);
                     toast.success(`Saved as ${format.toUpperCase()}`);
                 })
                 .catch((error: unknown) => {
