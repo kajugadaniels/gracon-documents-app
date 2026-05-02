@@ -24,6 +24,7 @@ import {
     type CommentAnchorInput,
 } from './comment-anchor-extension';
 import { PageBreakExtension } from './page-break-extension';
+import { SectionBreakExtension } from './section-break-extension';
 import { ParagraphLayoutExtension } from './paragraph-layout-extension';
 
 interface RichTextEditorProps {
@@ -124,6 +125,7 @@ export function RichTextEditor({
             CharacterCount,
             CommentAnchorExtension,
             PageBreakExtension,
+            SectionBreakExtension,
             ParagraphLayoutExtension,
         ],
         content: initialContent ?? { type: 'doc', content: [{ type: 'paragraph' }] },
