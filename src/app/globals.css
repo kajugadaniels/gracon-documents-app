@@ -344,6 +344,9 @@ body {
 .document-page-surface__tag {
   flex: 0 0 auto;
 }
+.document-page-surface__chrome--hidden {
+  visibility: hidden;
+}
 .document-layout-frame--paged .tiptap-editor-paper {
   position: relative;
   z-index: 1;
@@ -3526,6 +3529,10 @@ body {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
 }
 
+.docs-page-setup__field-input--wide {
+  padding-right: 14px;
+}
+
 .docs-page-setup__field-input:focus-within {
   border-color: rgba(37, 99, 235, 0.3);
   box-shadow:
@@ -3549,6 +3556,37 @@ body {
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.docs-page-setup__toggle-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.docs-page-setup__toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(22,16,58,0.08);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.96);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.docs-page-setup__toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.docs-page-setup__toggle span {
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .docs-page-setup__summary-grid {
