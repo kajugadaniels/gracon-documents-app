@@ -119,6 +119,7 @@ export function DocumentPrintPreviewDialog({
                     showFormattingMarks={false}
                     paperStyle={buildDocumentLayoutStyle(layout)}
                     headerFooter={layout.headerFooter}
+                    showRepeatedPageChrome
                     overlayContent={null}
                     commentAnchors={emptyAnchors}
                     onEditorReady={() => undefined}
