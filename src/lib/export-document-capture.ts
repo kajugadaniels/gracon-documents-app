@@ -114,12 +114,15 @@ function ensurePageSurfaces(frameEl: HTMLElement) {
 function prepareExportFrame(frameEl: HTMLElement, pageCount: number) {
     frameEl.classList.remove('document-layout-frame--web-layout', 'document-layout-frame--show-marks');
     frameEl.classList.add('document-layout-frame--paged');
+    frameEl.style.setProperty('--document-page-gap', '0px');
     frameEl.style.width = `${A4_PAPER_WIDTH_PX}px`;
     frameEl.style.minHeight = `${A4_PAPER_HEIGHT_PX * pageCount}px`;
     frameEl.style.transform = 'none';
     frameEl.style.transformOrigin = 'top left';
-    frameEl.querySelectorAll<HTMLElement>('.document-page-surface').forEach((pageEl) => {
+    frameEl.querySelectorAll<HTMLElement>('.document-page-surface').forEach((pageEl, index) => {
         pageEl.style.boxShadow = 'none';
+        pageEl.style.top = `${index * A4_PAPER_HEIGHT_PX}px`;
+        pageEl.style.height = `${A4_PAPER_HEIGHT_PX}px`;
     });
 }
 
