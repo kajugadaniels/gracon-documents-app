@@ -384,6 +384,11 @@ export function useEditorActions({
             return;
         }
 
+        if (actionId === INSERT_ACTION_IDS.headerFooter) {
+            onViewAction?.('view:page-setup');
+            return;
+        }
+
         const dateTimeInsert = createDateTimeInsert(actionId);
         if (dateTimeInsert) {
             editor.chain().focus().insertContent(dateTimeInsert).run();
