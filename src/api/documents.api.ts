@@ -162,6 +162,13 @@ export interface DocumentSummary {
             bottom: number;
             left: number;
         };
+        headerFooter: {
+            headerEnabled: boolean;
+            footerEnabled: boolean;
+            pageNumbersEnabled: boolean;
+            headerText: string;
+            footerText: string;
+        };
     };
     access?: DocumentAccessSummary;
 }
@@ -327,6 +334,13 @@ export async function updateDocumentMeta(
                 right: number;
                 bottom: number;
                 left: number;
+            }>;
+            headerFooter?: Partial<{
+                headerEnabled: boolean;
+                footerEnabled: boolean;
+                pageNumbersEnabled: boolean;
+                headerText: string;
+                footerText: string;
             }>;
         };
     },
