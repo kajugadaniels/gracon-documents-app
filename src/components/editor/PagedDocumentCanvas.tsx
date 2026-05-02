@@ -10,6 +10,7 @@ import { DocumentPageGuides } from './DocumentPageGuides';
 import { buildPagedDocumentModel } from '@/lib/paged-document-model';
 import type { PagedDocumentPage } from '@/lib/paged-document-model';
 import type { DocumentHeaderFooter } from '@/lib/document-layout';
+import { getPageAwareBlockDecision } from '@/lib/page-aware-layout';
 
 interface PagedDocumentCanvasProps {
     canvasRef: RefObject<HTMLDivElement | null>;
@@ -109,7 +110,78 @@ function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number) {
     });
 }
 
-function useMeasuredPageBreaks(
+function getPrintableBlockThreshold(rootEl: HTMLElement, pageHeight: number) {
+    const styles = window.getComputedStyle(rootEl);
+    const paddingTop = Number.parseFloat(styles.paddingTop) || 0;
+    const paddingBottom = Number.parseFloat(styles.paddingBottom) || 0;
+    return Math.max(pageHeight - paddingTop - paddingBottom, pageHeight * 0.6);
+}
+
+function getPageAwareBlocks(rootEl: HTMLElement) {
+    const blocks = Array.from(rootEl.querySelectorAll<HTMLElement>([
+        '[data-resize-container][data-node="image"]',
+        'img',
+        '.tableWrapper',
+        'table',
+    ].join(',')));
+
+    return blocks.filter((block) => {
+        const resizeContainer = block.closest('[data-resize-container][data-node="image"]');
+        const tableWrapper = block.closest('.tableWrapper');
+        if (resizeContainer && resizeContainer !== block) return false;
+        if (tableWrapper && tableWrapper !== block && block.tagName === 'TABLE') return false;
+        return true;
+    });
+}
+
+function resetPageAwareBlock(block: HTMLElement) {
+    block.classList.add('document-page-aware-block');
+    block.classList.remove(
+        'document-page-aware-block--push-next',
+        'document-page-aware-block--oversized',
+    );
+    block.style.setProperty('--document-page-aware-offset', '0px');
+    block.removeAttribute('data-page-warning');
+}
+
+function applyPageAwareBlocks(rootEl: HTMLElement, pageHeight: number) {
+    const blocks = getPageAwareBlocks(rootEl);
+    const oversizedThreshold = getPrintableBlockThreshold(rootEl, pageHeight);
+
+    blocks.forEach(resetPageAwareBlock);
+    blocks.forEach((block) => {
+        const decision = getPageAwareBlockDecision({
+            offsetTop: block.offsetTop,
+            blockHeight: block.offsetHeight,
+            pageHeight,
+            oversizedThreshold,
+        });
+
+        if (decision.offset > 0) {
+            block.classList.add('document-page-aware-block--push-next');
+            block.style.setProperty('--document-page-aware-offset', `${decision.offset}px`);
+        }
+
+        if (decision.oversized) {
+            block.classList.add('document-page-aware-block--oversized');
+            block.setAttribute('data-page-warning', 'Too large for one page');
+        }
+    });
+}
+
+function clearPageAwareBlocks(rootEl: HTMLElement) {
+    getPageAwareBlocks(rootEl).forEach((block) => {
+        block.classList.remove(
+            'document-page-aware-block',
+            'document-page-aware-block--push-next',
+            'document-page-aware-block--oversized',
+        );
+        block.style.removeProperty('--document-page-aware-offset');
+        block.removeAttribute('data-page-warning');
+    });
+}
+
+function usePagedFlowMeasurement(
     canvasRef: RefObject<HTMLDivElement | null>,
     pageHeight: number,
     printLayout: boolean,
@@ -129,6 +201,7 @@ function useMeasuredPageBreaks(
             frameId = window.requestAnimationFrame(() => {
                 frameId = null;
                 applyMeasuredPageBreaks(measuredEditorEl, pageHeight);
+                applyPageAwareBlocks(measuredEditorEl, pageHeight);
             });
         }
 
@@ -137,12 +210,20 @@ function useMeasuredPageBreaks(
         measuredEditorEl.querySelectorAll('.document-page-break').forEach((node) => {
             if (node instanceof HTMLElement) resizeObserver.observe(node);
         });
+        getPageAwareBlocks(measuredEditorEl).forEach((node) => {
+            resizeObserver.observe(node);
+        });
+
+        const mutationObserver = new MutationObserver(scheduleMeasure);
+        mutationObserver.observe(measuredEditorEl, { childList: true, subtree: true });
 
         scheduleMeasure();
 
         return () => {
             if (frameId !== null) window.cancelAnimationFrame(frameId);
             resizeObserver.disconnect();
+            mutationObserver.disconnect();
+            clearPageAwareBlocks(measuredEditorEl);
         };
     }, [canvasRef, pageHeight, printLayout]);
 }
@@ -172,7 +253,7 @@ export function PagedDocumentCanvas({
     const scaledFrameHeight = pageModel.visualHeight * zoomScale;
     const headerText = headerFooter.headerText || title;
     const footerText = headerFooter.footerText || `${status.toLowerCase()} document`;
-    useMeasuredPageBreaks(canvasRef, pageModel.pageHeight, printLayout);
+    usePagedFlowMeasurement(canvasRef, pageModel.pageHeight, printLayout);
 
     return (
         <div ref={canvasRef} className="ded-canvas">
