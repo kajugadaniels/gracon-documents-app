@@ -9,6 +9,7 @@
  */
 import { useMemo, useState } from 'react';
 import type { DocumentLayout } from '@/lib/document-layout';
+import { DocumentHeaderFooterControls } from './DocumentHeaderFooterControls';
 
 interface DocumentPageSetupDialogProps {
     layout: DocumentLayout;
@@ -52,6 +53,7 @@ export function DocumentPageSetupDialog({
         bottom: pxToInches(layout.margins.bottom).toFixed(2),
         left: pxToInches(layout.margins.left).toFixed(2),
     });
+    const [headerFooter, setHeaderFooter] = useState(layout.headerFooter);
 
     const parsedMargins = useMemo(() => {
         const parseValue = (value: string, fallback: number) => {
@@ -68,12 +70,20 @@ export function DocumentPageSetupDialog({
         };
     }, [layout.margins.bottom, layout.margins.left, layout.margins.right, layout.margins.top, margins]);
 
-    const hasChanges = useMemo(() => (
+    const hasMarginChanges = useMemo(() => (
         inchesToPx(parsedMargins.top) !== layout.margins.top ||
         inchesToPx(parsedMargins.right) !== layout.margins.right ||
         inchesToPx(parsedMargins.bottom) !== layout.margins.bottom ||
         inchesToPx(parsedMargins.left) !== layout.margins.left
     ), [layout.margins.bottom, layout.margins.left, layout.margins.right, layout.margins.top, parsedMargins]);
+    const hasHeaderFooterChanges = useMemo(() => (
+        headerFooter.headerEnabled !== layout.headerFooter.headerEnabled ||
+        headerFooter.footerEnabled !== layout.headerFooter.footerEnabled ||
+        headerFooter.pageNumbersEnabled !== layout.headerFooter.pageNumbersEnabled ||
+        headerFooter.headerText !== layout.headerFooter.headerText ||
+        headerFooter.footerText !== layout.headerFooter.footerText
+    ), [headerFooter, layout.headerFooter]);
+    const hasChanges = hasMarginChanges || hasHeaderFooterChanges;
 
     const activePreset = useMemo(() => (
         PRESETS.find((preset) => (
@@ -116,6 +126,7 @@ export function DocumentPageSetupDialog({
                 bottom: inchesToPx(parsedMargins.bottom),
                 left: inchesToPx(parsedMargins.left),
             },
+            headerFooter,
         });
     }
 
@@ -224,6 +235,12 @@ export function DocumentPageSetupDialog({
                                 </div>
                             </div>
                         </div>
+
+                        <DocumentHeaderFooterControls
+                            value={headerFooter}
+                            saving={saving}
+                            onChange={setHeaderFooter}
+                        />
                     </div>
 
                     <div className="docs-page-setup__preview-wrap">
