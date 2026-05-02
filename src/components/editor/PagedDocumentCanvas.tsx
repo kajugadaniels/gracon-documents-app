@@ -170,6 +170,8 @@ export function PagedDocumentCanvas({
     const pageModel = buildPagedDocumentModel({ pageCount, pageHeight, contentHeight });
     const scaledFrameWidth = Math.round(pageModel.pageWidth * zoomScale);
     const scaledFrameHeight = pageModel.visualHeight * zoomScale;
+    const headerText = headerFooter.headerText || title;
+    const footerText = headerFooter.footerText || `${status.toLowerCase()} document`;
     useMeasuredPageBreaks(canvasRef, pageModel.pageHeight, printLayout);
 
     return (
@@ -181,6 +183,16 @@ export function PagedDocumentCanvas({
                 >
                     <div
                         className={getFrameClassName(printLayout, showFormattingMarks)}
+                        data-document-export-root="true"
+                        data-document-page-count={pageModel.pages.length}
+                        data-document-page-height={pageModel.pageHeight}
+                        data-document-title={title}
+                        data-document-status={status}
+                        data-document-header-enabled={String(headerFooter.headerEnabled)}
+                        data-document-footer-enabled={String(headerFooter.footerEnabled)}
+                        data-document-page-numbers-enabled={String(headerFooter.pageNumbersEnabled)}
+                        data-document-header-text={headerText}
+                        data-document-footer-text={footerText}
                         style={{
                             minHeight: pageModel.visualHeight,
                             transform: `scale(${zoomScale})`,
