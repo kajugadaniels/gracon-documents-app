@@ -15,6 +15,7 @@ test('buildPagedDocumentModel creates measured A4 page containers', () => {
 
     assert.equal(model.pageWidth, A4_PAPER_WIDTH_PX);
     assert.equal(model.pageHeight, A4_PAPER_HEIGHT_PX);
+    assert.equal(model.visualHeight, A4_PAPER_HEIGHT_PX * 3);
     assert.equal(model.pages.length, 3);
     assert.deepEqual(model.pages.map((page) => page.top), [
         0,
