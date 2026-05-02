@@ -124,6 +124,10 @@ function prepareExportFrame(frameEl: HTMLElement, pageCount: number) {
         pageEl.style.top = `${index * A4_PAPER_HEIGHT_PX}px`;
         pageEl.style.height = `${A4_PAPER_HEIGHT_PX}px`;
     });
+    frameEl.querySelectorAll<HTMLElement>('.document-flow-page-gap--push').forEach((blockEl) => {
+        blockEl.classList.remove('document-flow-page-gap--push');
+        blockEl.style.removeProperty('--document-flow-page-gap-offset');
+    });
 }
 
 function createExportSheet(sourceEl: HTMLElement) {
