@@ -21,6 +21,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
+import { PageBreakExtension } from '@/components/editor/page-break-extension';
 import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
@@ -39,6 +40,7 @@ const IMPORT_EXTENSIONS = [
     StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
         codeBlock: { languageClassPrefix: 'language-' },
+        link: false,
     }),
     TextStyle,
     FontFamily,
@@ -67,6 +69,7 @@ const IMPORT_EXTENSIONS = [
         },
     }),
     ParagraphLayoutExtension,
+    PageBreakExtension,
 ];
 
 /**
