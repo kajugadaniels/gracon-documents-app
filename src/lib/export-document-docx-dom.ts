@@ -299,6 +299,9 @@ function convertTable(tableEl: HTMLElement, docx: DocxModule) {
 }
 
 function convertBlock(element: HTMLElement, docx: DocxModule): FileChild[] {
+    if (element.classList.contains('document-page-break')) {
+        return [new docx.Paragraph({ pageBreakBefore: true })];
+    }
     if (element.classList.contains('tableWrapper')) {
         const table = element.querySelector('table');
         return table instanceof HTMLElement ? [convertTable(table, docx)] : [];
