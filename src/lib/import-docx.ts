@@ -22,6 +22,7 @@ import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { PageBreakExtension } from '@/components/editor/page-break-extension';
+import { SectionBreakExtension } from '@/components/editor/section-break-extension';
 import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
@@ -70,6 +71,7 @@ const IMPORT_EXTENSIONS = [
     }),
     ParagraphLayoutExtension,
     PageBreakExtension,
+    SectionBreakExtension,
 ];
 
 /**
