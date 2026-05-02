@@ -1075,6 +1075,43 @@ body {
   border-color: rgba(91,35,255,0.34);
   color: var(--color-primary);
 }
+.document-page-aware-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.document-page-aware-block--push-next {
+  margin-top: var(--document-page-aware-offset, 0px) !important;
+}
+.document-page-aware-block--oversized {
+  position: relative;
+  outline: 1px dashed rgba(245, 158, 11, 0.52);
+  outline-offset: 6px;
+}
+.document-page-aware-block--oversized::after {
+  content: attr(data-page-warning);
+  position: absolute;
+  top: -12px;
+  right: 8px;
+  z-index: 3;
+  padding: 4px 8px;
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: 999px;
+  background: rgba(255, 251, 235, 0.96);
+  box-shadow: 0 10px 24px rgba(22,16,58,0.10);
+  color: rgb(146, 64, 14);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .document-page-aware-block {
+    transition: margin-top 140ms ease, outline-color 140ms ease;
+  }
+}
 .tiptap-editor-paper {
   background: transparent;
   border: none;
@@ -1197,6 +1234,8 @@ body {
   display: block;
   max-width: 100%;
   height: auto;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .tiptap-editor .ProseMirror img {
   margin: 14px auto;
@@ -1206,6 +1245,8 @@ body {
 .tiptap-editor .ProseMirror [data-resize-container][data-node="image"] {
   justify-content: center;
   margin: 14px 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .tiptap-editor .ProseMirror [data-resize-container][data-node="image"] [data-resize-wrapper] {
@@ -1301,6 +1342,8 @@ body {
   max-width: 100%;
   overflow-x: auto;
   margin: 1em 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .tiptap-editor .ProseMirror table {
   border-collapse:collapse;
@@ -1310,9 +1353,17 @@ body {
   overflow:hidden;
   border-radius:var(--radius-md);
   table-layout: fixed;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .tiptap-editor .ProseMirror .tableWrapper table {
   margin: 0;
+}
+.tiptap-editor .ProseMirror tr,
+.tiptap-editor .ProseMirror thead,
+.tiptap-editor .ProseMirror tbody {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .tiptap-editor .ProseMirror td,
 .tiptap-editor .ProseMirror th {
@@ -1341,6 +1392,11 @@ body {
   pointer-events:none;
   position:absolute;
   z-index:2;
+}
+.document-signature-overlay,
+.document-signature-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 @media (max-width: 900px) {
