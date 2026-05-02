@@ -24,6 +24,17 @@ test('buildPagedDocumentModel creates measured A4 page containers', () => {
     ]);
 });
 
+test('buildPagedDocumentModel keeps export height independent from visual page gaps', () => {
+    const model = buildPagedDocumentModel({
+        pageCount: 2,
+        pageHeight: A4_PAPER_HEIGHT_PX,
+        contentHeight: A4_PAPER_HEIGHT_PX * 2,
+    });
+
+    assert.equal(model.totalHeight, A4_PAPER_HEIGHT_PX * 2);
+    assert.equal(model.visualHeight, A4_PAPER_HEIGHT_PX * 2);
+});
+
 test('buildPagedDocumentModel keeps at least one valid page', () => {
     const model = buildPagedDocumentModel({
         pageCount: 0,
