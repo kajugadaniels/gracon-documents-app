@@ -1176,6 +1176,15 @@ body {
 .document-flow-page-gap--push {
   margin-top: var(--document-flow-page-gap-offset, 0px) !important;
 }
+.document-flow-page-gap-widget {
+  display: block;
+  width: 100%;
+  height: var(--document-flow-page-gap-widget-height, 0px);
+  pointer-events: none;
+  user-select: none;
+  break-after: avoid;
+  page-break-after: avoid;
+}
 .document-page-aware-block--oversized {
   position: relative;
   outline: 1px dashed rgba(245, 158, 11, 0.52);
