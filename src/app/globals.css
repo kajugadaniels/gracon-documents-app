@@ -505,7 +505,7 @@ body {
 .document-page-guides {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 3;
   pointer-events: none;
 }
 .document-ruler-overlay {
@@ -1033,7 +1033,7 @@ body {
   position: absolute;
   top: 0;
   width: 28px;
-  border-top: 1px dashed rgba(22,16,58,0.22);
+  border-top: 1px dashed rgba(22,16,58,0.14);
 }
 .document-page-guide__notch--left {
   left: -38px;
@@ -1049,8 +1049,8 @@ body {
   border-radius: 999px;
   background: rgba(255,255,255,0.92);
   border: 1px solid rgba(22,16,58,0.12);
-  color: rgba(22,16,58,0.55);
-  box-shadow: 0 8px 20px rgba(22,16,58,0.08);
+  color: rgba(22,16,58,0.42);
+  box-shadow: 0 8px 20px rgba(22,16,58,0.06);
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
@@ -1059,44 +1059,62 @@ body {
 .document-page-break {
   position: relative;
   height: var(--document-page-break-spacer, 0px);
-  min-height: 34px;
-  margin: 18px 0;
+  min-height: 56px;
+  margin: 0 calc(-1 * var(--paper-content-padding-right)) 0 calc(-1 * var(--paper-content-padding-left));
   break-after: page;
   page-break-after: always;
   user-select: none;
+  z-index: 4;
 }
 .document-page-break::before {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
-  border-top: 1px dashed rgba(22,16,58,0.26);
+  top: var(--document-page-break-control-top, 50%);
+  transform: translateY(-50%);
+  border-top: 1px dashed rgba(91,35,255,0.18);
 }
-.document-page-break__label {
+.document-page-break::after {
+  content: attr(data-page-break-label);
   position: absolute;
-  top: 50%;
+  top: var(--document-page-break-control-top, 50%);
   left: 50%;
   transform: translate(-50%, -50%);
-  padding: 5px 10px;
-  border: 1px solid rgba(22,16,58,0.14);
+  max-width: calc(100% - 48px);
+  padding: 6px 14px;
+  border: 1px dashed rgba(91,35,255,0.18);
   border-radius: 999px;
-  background: rgba(255,255,255,0.96);
-  box-shadow: 0 10px 24px rgba(22,16,58,0.08);
-  color: rgba(22,16,58,0.58);
+  background: rgba(255,255,255,0.94);
+  box-shadow:
+    0 1px 2px rgba(22,16,58,0.04),
+    0 14px 34px rgba(91,35,255,0.10);
+  color: rgba(91,35,255,0.76);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.08em;
   line-height: 1;
   text-transform: uppercase;
   white-space: nowrap;
 }
+.document-page-break__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 .ProseMirror-selectednode.document-page-break::before {
   border-top-color: var(--color-primary);
 }
-.ProseMirror-selectednode.document-page-break .document-page-break__label {
+.ProseMirror-selectednode.document-page-break::after {
   border-color: rgba(91,35,255,0.34);
   color: var(--color-primary);
+  background: rgba(250,248,255,0.98);
+  box-shadow:
+    0 0 0 3px rgba(91,35,255,0.10),
+    0 16px 36px rgba(91,35,255,0.14);
 }
 .document-section-break {
   position: relative;
