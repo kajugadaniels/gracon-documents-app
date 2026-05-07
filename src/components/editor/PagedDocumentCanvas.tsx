@@ -11,6 +11,7 @@ import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
 import { buildPagedDocumentModel } from '@/lib/paged-document-model';
 import type { PagedDocumentPage } from '@/lib/paged-document-model';
 import type { DocumentHeaderFooter } from '@/lib/document-layout';
+import { getManualPageBreakSpacerHeight } from '@/lib/page-break-layout';
 import { getPageAwareBlockDecision } from '@/lib/page-aware-layout';
 
 const EDITOR_PAGE_GAP_PX = PAPER_PAGE_GAP_PX;
@@ -108,16 +109,23 @@ function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number, pageGa
     const breaks = Array.from(
         rootEl.querySelectorAll<HTMLElement>('.document-page-break, .document-section-break'),
     );
-    const pagePitch = pageHeight + pageGap;
+    const rootStyles = window.getComputedStyle(rootEl);
+    const contentTopInset = Number.parseFloat(rootStyles.paddingTop) || 0;
 
     breaks.forEach((breakEl) => {
         breakEl.style.setProperty('--document-page-break-spacer', '0px');
     });
 
     breaks.forEach((breakEl) => {
-        const offsetTop = breakEl.offsetTop;
-        const remainder = offsetTop % pagePitch;
-        const spacerHeight = remainder <= 1 ? 0 : pagePitch - remainder;
+        const breakStyles = window.getComputedStyle(breakEl);
+        const spacerHeight = getManualPageBreakSpacerHeight({
+            breakTop: breakEl.offsetTop,
+            pageHeight,
+            pageGap,
+            contentTopInset,
+            breakMinHeight: Number.parseFloat(breakStyles.minHeight) || 0,
+            breakMarginBottom: Number.parseFloat(breakStyles.marginBottom) || 0,
+        });
 
         breakEl.style.setProperty('--document-page-break-spacer', `${spacerHeight}px`);
     });
