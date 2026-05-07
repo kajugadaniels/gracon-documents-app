@@ -20,7 +20,7 @@ import {
     ParagraphBulletsPoint01Icon, ParagraphBulletsPointIcon,
     TableIcon, EraserIcon, CodeSquareIcon, QuoteUpIcon,
     RowInsertIcon, RowDeleteIcon, ColumnInsertIcon, ColumnDeleteIcon,
-    TextFontIcon, HeadingIcon,
+    TextFontIcon, HeadingIcon, LegalDocument01Icon,
 } from '@hugeicons/core-free-icons';
 import { GOOGLE_FONTS, FONT_SIZES, loadGoogleFont } from '@/constants';
 
@@ -171,6 +171,14 @@ function HeadingPicker({ editor }: { editor: Editor }) {
     const active = HEADING_LABELS.find(h =>
         h.value === 0 ? editor.isActive('paragraph') : editor.isActive('heading', { level: h.value })
     ) ?? HEADING_LABELS[0];
+    function applyHeading(value: typeof HEADING_LABELS[number]['value']) {
+        if (value === 0) {
+            editor.chain().focus().setParagraph().run();
+        } else {
+            editor.chain().focus().toggleHeading({ level: value }).run();
+        }
+        setOpen(false);
+    }
     return (
         <div ref={ref} className="ded-picker" style={{ minWidth: 116 }}>
             <button className="ded-picker__btn" onClick={() => setOpen(v => !v)} title="Heading / paragraph style">
@@ -182,7 +190,7 @@ function HeadingPicker({ editor }: { editor: Editor }) {
                 <div className="ded-picker__dropdown ded-picker__dropdown--left">
                     {HEADING_LABELS.map(h => (
                         <button key={h.value} className={`ded-picker__option${active.value === h.value ? ' ded-picker__option--active' : ''}`}
-                            onClick={() => { h.value === 0 ? editor.chain().focus().setParagraph().run() : editor.chain().focus().toggleHeading({ level: h.value as 1|2|3|4|5|6 }).run(); setOpen(false); }}>
+                            onClick={() => applyHeading(h.value)}>
                             {h.label}
                         </button>
                     ))}
@@ -343,6 +351,9 @@ export function DocEditorToolbar({ editor }: { editor: Editor }) {
             </TbBtn>
             <TbBtn onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert table" disabled={inTable}>
                 <HugeiconsIcon icon={TableIcon} size={15} />
+            </TbBtn>
+            <TbBtn onClick={() => editor.chain().focus().insertPageBreak().run()} title="Insert page break (⌘↵)">
+                <HugeiconsIcon icon={LegalDocument01Icon} size={15} />
             </TbBtn>
 
             {inTable && (
