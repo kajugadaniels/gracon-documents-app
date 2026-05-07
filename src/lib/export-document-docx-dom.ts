@@ -15,6 +15,7 @@ import type {
     Table as DocxTable,
 } from 'docx';
 import { createParagraphExportGeometry } from './document-layout-export-parity';
+import { isDocumentPageBoundaryElement } from './export-document-page-boundary';
 
 type DocxModule = typeof import('docx');
 type TableCellChild = Paragraph | DocxTable;
@@ -299,10 +300,7 @@ function convertTable(tableEl: HTMLElement, docx: DocxModule) {
 }
 
 function convertBlock(element: HTMLElement, docx: DocxModule): FileChild[] {
-    if (
-        element.classList.contains('document-page-break') ||
-        element.classList.contains('document-section-break')
-    ) {
+    if (isDocumentPageBoundaryElement(element)) {
         return [new docx.Paragraph({ pageBreakBefore: true })];
     }
     if (element.classList.contains('tableWrapper')) {
