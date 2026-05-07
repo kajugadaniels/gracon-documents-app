@@ -7,12 +7,13 @@ import type { Editor } from '@tiptap/react';
 import type { CommentAnchorInput } from './comment-anchor-extension';
 import { RichTextEditor } from './RichTextEditor';
 import { DocumentPageGuides } from './DocumentPageGuides';
+import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
 import { buildPagedDocumentModel } from '@/lib/paged-document-model';
 import type { PagedDocumentPage } from '@/lib/paged-document-model';
 import type { DocumentHeaderFooter } from '@/lib/document-layout';
 import { getPageAwareBlockDecision } from '@/lib/page-aware-layout';
 
-const EDITOR_PAGE_GAP_PX = 36;
+const EDITOR_PAGE_GAP_PX = PAPER_PAGE_GAP_PX;
 
 interface PagedDocumentCanvasProps {
     canvasRef: RefObject<HTMLDivElement | null>;
@@ -103,10 +104,11 @@ function PagedPaperSurfaces({
     );
 }
 
-function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number) {
+function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number, pageGap: number) {
     const breaks = Array.from(
         rootEl.querySelectorAll<HTMLElement>('.document-page-break, .document-section-break'),
     );
+    const pagePitch = pageHeight + pageGap;
 
     breaks.forEach((breakEl) => {
         breakEl.style.setProperty('--document-page-break-spacer', '0px');
@@ -114,8 +116,8 @@ function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number) {
 
     breaks.forEach((breakEl) => {
         const offsetTop = breakEl.offsetTop;
-        const remainder = offsetTop % pageHeight;
-        const spacerHeight = remainder <= 1 ? 0 : pageHeight - remainder;
+        const remainder = offsetTop % pagePitch;
+        const spacerHeight = remainder <= 1 ? 0 : pagePitch - remainder;
 
         breakEl.style.setProperty('--document-page-break-spacer', `${spacerHeight}px`);
     });
@@ -155,16 +157,17 @@ function resetPageAwareBlock(block: HTMLElement) {
     block.removeAttribute('data-page-warning');
 }
 
-function applyPageAwareBlocks(rootEl: HTMLElement, pageHeight: number) {
+function applyPageAwareBlocks(rootEl: HTMLElement, pageHeight: number, pageGap: number) {
     const blocks = getPageAwareBlocks(rootEl);
     const oversizedThreshold = getPrintableBlockThreshold(rootEl, pageHeight);
+    const pagePitch = pageHeight + pageGap;
 
     blocks.forEach(resetPageAwareBlock);
     blocks.forEach((block) => {
         const decision = getPageAwareBlockDecision({
             offsetTop: block.offsetTop,
             blockHeight: block.offsetHeight,
-            pageHeight,
+            pageHeight: pagePitch,
             oversizedThreshold,
         });
 
@@ -258,8 +261,8 @@ function usePagedFlowMeasurement(
             if (frameId !== null) window.cancelAnimationFrame(frameId);
             frameId = window.requestAnimationFrame(() => {
                 frameId = null;
-                applyMeasuredPageBreaks(measuredEditorEl, pageHeight);
-                applyPageAwareBlocks(measuredEditorEl, pageHeight);
+                applyMeasuredPageBreaks(measuredEditorEl, pageHeight, pageGap);
+                applyPageAwareBlocks(measuredEditorEl, pageHeight, pageGap);
                 applyFlowPageGaps(measuredEditorEl, pageHeight, pageGap);
             });
         }
@@ -342,6 +345,7 @@ export function PagedDocumentCanvas({
                         style={{
                             minHeight: pageModel.visualHeight,
                             ['--document-page-gap' as string]: `${visualPageGap}px`,
+                            ['--ded-tiptap-min-height' as string]: `${visualFrameHeight}px`,
                             transform: `scale(${zoomScale})`,
                             transformOrigin: 'top center',
                         }}
