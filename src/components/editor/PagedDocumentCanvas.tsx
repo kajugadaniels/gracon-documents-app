@@ -16,6 +16,7 @@ import {
     getManualPageBreakPageIndex,
     getManualPageBreakSpacerHeight,
 } from '@/lib/page-break-layout';
+import { getAutomaticPageFlowBlockOffset } from '@/lib/page-flow-layout';
 import { getPageAwareBlockDecision } from '@/lib/page-aware-layout';
 
 const EDITOR_PAGE_GAP_PX = PAPER_PAGE_GAP_PX;
@@ -243,26 +244,21 @@ function resetFlowGapBlock(block: HTMLElement) {
 
 function applyFlowPageGaps(rootEl: HTMLElement, pageHeight: number, pageGap: number) {
     const blocks = getFlowGapBlocks(rootEl);
+    const styles = window.getComputedStyle(rootEl);
+    const contentTopInset = Number.parseFloat(styles.paddingTop) || 0;
+    const contentBottomInset = Number.parseFloat(styles.paddingBottom) || 0;
     blocks.forEach(resetFlowGapBlock);
     if (pageGap <= 0 || pageHeight <= 0) return;
 
     blocks.forEach((block) => {
-        const offsetTop = block.offsetTop;
-        let pageIndex = Math.max(1, Math.floor(offsetTop / (pageHeight + pageGap)) + 1);
-        let pageEnd = (pageIndex * pageHeight) + ((pageIndex - 1) * pageGap);
-
-        while (offsetTop >= pageEnd + pageGap) {
-            pageIndex += 1;
-            pageEnd = (pageIndex * pageHeight) + ((pageIndex - 1) * pageGap);
-        }
-
-        const blockBottom = offsetTop + block.offsetHeight;
-        const startsInGap = offsetTop > pageEnd && offsetTop < pageEnd + pageGap;
-        const crossesIntoGap = offsetTop < pageEnd && blockBottom > pageEnd;
-
-        if (!startsInGap && !crossesIntoGap) return;
-
-        const offset = Math.max(Math.ceil(pageEnd + pageGap - offsetTop), 0);
+        const offset = getAutomaticPageFlowBlockOffset({
+            offsetTop: block.offsetTop,
+            blockHeight: block.offsetHeight,
+            pageHeight,
+            pageGap,
+            contentTopInset,
+            contentBottomInset,
+        });
         if (offset === 0) return;
 
         block.classList.add('document-flow-page-gap--push');
