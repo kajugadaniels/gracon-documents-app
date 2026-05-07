@@ -11,7 +11,11 @@ import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
 import { buildPagedDocumentModel } from '@/lib/paged-document-model';
 import type { PagedDocumentPage } from '@/lib/paged-document-model';
 import type { DocumentHeaderFooter } from '@/lib/document-layout';
-import { getManualPageBreakSpacerHeight } from '@/lib/page-break-layout';
+import {
+    getManualPageBreakControlTop,
+    getManualPageBreakPageIndex,
+    getManualPageBreakSpacerHeight,
+} from '@/lib/page-break-layout';
 import { getPageAwareBlockDecision } from '@/lib/page-aware-layout';
 
 const EDITOR_PAGE_GAP_PX = PAPER_PAGE_GAP_PX;
@@ -111,7 +115,6 @@ function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number, pageGa
     );
     const rootStyles = window.getComputedStyle(rootEl);
     const contentTopInset = Number.parseFloat(rootStyles.paddingTop) || 0;
-    const pagePitch = pageHeight + pageGap;
 
     breaks.forEach((breakEl) => {
         breakEl.style.setProperty('--document-page-break-spacer', '0px');
@@ -121,10 +124,12 @@ function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number, pageGa
 
     breaks.forEach((breakEl) => {
         const breakStyles = window.getComputedStyle(breakEl);
-        const pageIndex = Math.max(
-            0,
-            Math.floor((breakEl.offsetTop - contentTopInset) / pagePitch),
-        );
+        const pageIndex = getManualPageBreakPageIndex({
+            breakTop: breakEl.offsetTop,
+            pageHeight,
+            pageGap,
+            contentTopInset,
+        });
         const spacerHeight = getManualPageBreakSpacerHeight({
             breakTop: breakEl.offsetTop,
             pageHeight,
@@ -134,14 +139,16 @@ function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number, pageGa
             breakMarginBottom: Number.parseFloat(breakStyles.marginBottom) || 0,
         });
 
-        const pageGapCenter = (pageIndex * pagePitch) + pageHeight + (pageGap / 2);
-        const controlTop = Math.min(
-            Math.max(pageGapCenter - breakEl.offsetTop, 24),
-            Math.max(spacerHeight - 24, 24),
-        );
+        const controlTop = getManualPageBreakControlTop({
+            breakTop: breakEl.offsetTop,
+            pageIndex,
+            pageHeight,
+            pageGap,
+            spacerHeight,
+        });
 
         breakEl.style.setProperty('--document-page-break-spacer', `${spacerHeight}px`);
-        breakEl.style.setProperty('--document-page-break-control-top', `${Math.round(controlTop)}px`);
+        breakEl.style.setProperty('--document-page-break-control-top', `${controlTop}px`);
 
         if (breakEl.classList.contains('document-page-break')) {
             breakEl.setAttribute('data-page-break-label', `PAGE BREAK · AFTER PAGE ${pageIndex + 1}`);
