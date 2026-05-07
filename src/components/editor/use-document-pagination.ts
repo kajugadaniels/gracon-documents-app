@@ -7,9 +7,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import {
-    A4_PAPER_ASPECT_RATIO,
     A4_PAPER_HEIGHT_PX,
+    PAPER_CONTENT_INNER_HEIGHT_PX,
+    PAPER_PAGE_GAP_PX,
 } from '@/constants/document-paper';
+import {
+    createEmptyTiptapPaginationMetrics,
+    measureTiptapPagination,
+    type TiptapPaginationMetrics,
+} from '@/lib/tiptap/tiptap-page-metrics';
 
 export interface DocumentPaginationPage {
     pageNumber: number;
@@ -18,40 +24,46 @@ export interface DocumentPaginationPage {
 
 interface DocumentPaginationLayout {
     pageCount: number;
+    activePage: number;
     pageHeight: number;
     contentHeight: number;
+    metrics: TiptapPaginationMetrics;
 }
 
 const INITIAL_LAYOUT: DocumentPaginationLayout = {
     pageCount: 1,
+    activePage: 1,
     pageHeight: A4_PAPER_HEIGHT_PX,
     contentHeight: A4_PAPER_HEIGHT_PX,
+    metrics: createEmptyTiptapPaginationMetrics(),
 };
 
 function layoutsEqual(a: DocumentPaginationLayout, b: DocumentPaginationLayout) {
     return a.pageCount === b.pageCount
+        && a.activePage === b.activePage
         && a.pageHeight === b.pageHeight
-        && a.contentHeight === b.contentHeight;
+        && a.contentHeight === b.contentHeight
+        && a.metrics.outline.length === b.metrics.outline.length;
 }
 
 function measurePaperLayout(editorRoot: HTMLElement): DocumentPaginationLayout {
-    const paperEl = editorRoot.closest('.document-paper-sheet');
-    if (!(paperEl instanceof HTMLElement)) return INITIAL_LAYOUT;
+    const metrics = measureTiptapPagination(editorRoot, {
+        pageHeight: A4_PAPER_HEIGHT_PX,
+        pageGap: PAPER_PAGE_GAP_PX,
+        contentHeight: PAPER_CONTENT_INNER_HEIGHT_PX,
+    });
 
-    const paperWidth = paperEl.offsetWidth;
-    const pageHeight = paperWidth > 0
-        ? Math.max(Math.round(paperWidth * A4_PAPER_ASPECT_RATIO), 1)
-        : A4_PAPER_HEIGHT_PX;
     const contentHeight = Math.max(
-        paperEl.scrollHeight,
-        paperEl.offsetHeight,
+        editorRoot.scrollHeight,
         A4_PAPER_HEIGHT_PX,
     );
 
     return {
-        pageCount: Math.max(1, Math.ceil(contentHeight / pageHeight)),
-        pageHeight,
+        pageCount: metrics.pageCount,
+        activePage: metrics.activePage,
+        pageHeight: A4_PAPER_HEIGHT_PX,
         contentHeight,
+        metrics,
     };
 }
 
@@ -86,6 +98,7 @@ export function useDocumentPagination(editor: Editor | null) {
         resizeObserver.observe(editorRoot);
         if (paperEl instanceof HTMLElement) resizeObserver.observe(paperEl);
 
+        editor.on('selectionUpdate', scheduleMeasure);
         editor.on('update', scheduleMeasure);
         editor.on('transaction', scheduleMeasure);
         window.addEventListener('resize', scheduleMeasure);
@@ -101,6 +114,7 @@ export function useDocumentPagination(editor: Editor | null) {
             mounted = false;
             if (frameId !== null) window.cancelAnimationFrame(frameId);
             resizeObserver.disconnect();
+            editor.off('selectionUpdate', scheduleMeasure);
             editor.off('update', scheduleMeasure);
             editor.off('transaction', scheduleMeasure);
             window.removeEventListener('resize', scheduleMeasure);
