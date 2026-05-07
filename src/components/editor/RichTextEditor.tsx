@@ -25,6 +25,7 @@ import {
 } from './comment-anchor-extension';
 import { PageBreakExtension } from './page-break-extension';
 import { SectionBreakExtension } from './section-break-extension';
+import { PageFlowGapExtension } from './page-flow-gap-extension';
 import { ParagraphLayoutExtension } from './paragraph-layout-extension';
 
 interface RichTextEditorProps {
@@ -126,6 +127,7 @@ export function RichTextEditor({
             CommentAnchorExtension,
             PageBreakExtension,
             SectionBreakExtension,
+            PageFlowGapExtension,
             ParagraphLayoutExtension,
         ],
         content: initialContent ?? { type: 'doc', content: [{ type: 'paragraph' }] },
