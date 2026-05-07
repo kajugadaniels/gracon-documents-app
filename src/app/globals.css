@@ -74,6 +74,15 @@
   --editor-page-padding-bottom: var(--paper-margin-bottom);
   --paper-width:             794px;
   --paper-height:            1123px;
+  --paper-header-height:     52px;
+  --paper-footer-height:     48px;
+  --paper-content-height:    calc(var(--paper-height) - var(--paper-header-height) - var(--paper-footer-height));
+  --paper-content-padding-top: 56px;
+  --paper-content-padding-right: 76px;
+  --paper-content-padding-bottom: 64px;
+  --paper-content-padding-left: 76px;
+  --paper-content-inner-height: calc(var(--paper-content-height) - var(--paper-content-padding-top) - var(--paper-content-padding-bottom));
+  --paper-content-inner-width: calc(var(--paper-width) - var(--paper-content-padding-left) - var(--paper-content-padding-right));
   --paper-printable-width:   calc(var(--paper-width) - var(--paper-margin-left) - var(--paper-margin-right));
   --paper-gap:               20px;
   --paper-edge:              #ffffff;
@@ -359,13 +368,27 @@ body {
 }
 .document-layout-frame--paged .document-paper-sheet__header,
 .document-layout-frame--paged .document-paper-sheet__footer {
-  visibility: hidden;
+  display: none;
 }
 .document-layout-frame--paged .document-paper-sheet__body {
   min-height: inherit;
 }
 .document-layout-frame--paged .tiptap-editor.tiptap-editor-paper .ProseMirror {
-  min-height: inherit;
+  min-height: var(--ded-tiptap-min-height, inherit);
+  max-width: none;
+  padding:
+    calc(var(--paper-header-height) + var(--paper-content-padding-top))
+    var(--paper-content-padding-right)
+    calc(var(--paper-footer-height) + var(--paper-content-padding-bottom))
+    var(--paper-content-padding-left);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--paper-height) + 23px),
+      rgba(91, 35, 255, 0.14) calc(var(--paper-height) + 23px),
+      rgba(91, 35, 255, 0.14) calc(var(--paper-height) + 24px)
+    );
 }
 .document-layout-frame--web-layout .document-paper-sheet {
   min-height: auto;
