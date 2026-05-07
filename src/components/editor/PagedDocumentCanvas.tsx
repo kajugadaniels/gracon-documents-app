@@ -111,13 +111,20 @@ function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number, pageGa
     );
     const rootStyles = window.getComputedStyle(rootEl);
     const contentTopInset = Number.parseFloat(rootStyles.paddingTop) || 0;
+    const pagePitch = pageHeight + pageGap;
 
     breaks.forEach((breakEl) => {
         breakEl.style.setProperty('--document-page-break-spacer', '0px');
+        breakEl.style.removeProperty('--document-page-break-control-top');
+        breakEl.removeAttribute('data-page-break-label');
     });
 
     breaks.forEach((breakEl) => {
         const breakStyles = window.getComputedStyle(breakEl);
+        const pageIndex = Math.max(
+            0,
+            Math.floor((breakEl.offsetTop - contentTopInset) / pagePitch),
+        );
         const spacerHeight = getManualPageBreakSpacerHeight({
             breakTop: breakEl.offsetTop,
             pageHeight,
@@ -127,7 +134,18 @@ function applyMeasuredPageBreaks(rootEl: HTMLElement, pageHeight: number, pageGa
             breakMarginBottom: Number.parseFloat(breakStyles.marginBottom) || 0,
         });
 
+        const pageGapCenter = (pageIndex * pagePitch) + pageHeight + (pageGap / 2);
+        const controlTop = Math.min(
+            Math.max(pageGapCenter - breakEl.offsetTop, 24),
+            Math.max(spacerHeight - 24, 24),
+        );
+
         breakEl.style.setProperty('--document-page-break-spacer', `${spacerHeight}px`);
+        breakEl.style.setProperty('--document-page-break-control-top', `${Math.round(controlTop)}px`);
+
+        if (breakEl.classList.contains('document-page-break')) {
+            breakEl.setAttribute('data-page-break-label', `PAGE BREAK · AFTER PAGE ${pageIndex + 1}`);
+        }
     });
 }
 
