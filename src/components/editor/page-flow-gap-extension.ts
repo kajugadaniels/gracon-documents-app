@@ -31,7 +31,7 @@ interface PageFlowGapWidget {
 }
 
 const pageFlowGapPluginKey = new PluginKey<PageFlowGapState>('pageFlowGaps');
-const TEXT_BLOCK_TYPES = new Set(['paragraph', 'heading']);
+const TEXT_BLOCK_TYPES = new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'listItem']);
 const MIN_GAP_HEIGHT_PX = 24;
 
 function parseCssPx(value: string, fallback = 0) {
