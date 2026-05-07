@@ -5,7 +5,13 @@
  * rulers, and export pipelines so margins do not drift between surfaces.
  */
 import type { CSSProperties } from 'react';
-import { A4_PAPER_MARGIN_PX, A4_PAPER_WIDTH_PX } from '@/constants/document-paper';
+import {
+    A4_PAPER_WIDTH_PX,
+    PAPER_CONTENT_PADDING_BOTTOM_PX,
+    PAPER_CONTENT_PADDING_LEFT_PX,
+    PAPER_CONTENT_PADDING_RIGHT_PX,
+    PAPER_CONTENT_PADDING_TOP_PX,
+} from '@/constants/document-paper';
 
 export const MIN_DOCUMENT_MARGIN_PX = 48;
 export const MAX_DOCUMENT_MARGIN_PX = 192;
@@ -55,10 +61,10 @@ export interface ParagraphLayoutState extends ParagraphIndentation {
 export const DEFAULT_DOCUMENT_LAYOUT: DocumentLayout = {
     paperSize: 'A4',
     margins: {
-        top: A4_PAPER_MARGIN_PX,
-        right: A4_PAPER_MARGIN_PX,
-        bottom: A4_PAPER_MARGIN_PX,
-        left: A4_PAPER_MARGIN_PX,
+        top: PAPER_CONTENT_PADDING_TOP_PX,
+        right: PAPER_CONTENT_PADDING_RIGHT_PX,
+        bottom: PAPER_CONTENT_PADDING_BOTTOM_PX,
+        left: PAPER_CONTENT_PADDING_LEFT_PX,
     },
     headerFooter: {
         headerEnabled: true,
@@ -149,6 +155,10 @@ export function buildDocumentLayoutStyle(layout: DocumentLayout): CSSProperties 
         '--editor-page-padding-right': `${layout.margins.right}px`,
         '--editor-page-padding-top': `${layout.margins.top}px`,
         '--editor-page-padding-bottom': `${layout.margins.bottom}px`,
+        '--paper-content-padding-left': `${layout.margins.left}px`,
+        '--paper-content-padding-right': `${layout.margins.right}px`,
+        '--paper-content-padding-top': `${layout.margins.top}px`,
+        '--paper-content-padding-bottom': `${layout.margins.bottom}px`,
         '--paper-printable-width': `${printableWidth}px`,
     };
 
