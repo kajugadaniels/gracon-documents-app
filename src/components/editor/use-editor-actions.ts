@@ -21,6 +21,10 @@ import { importDocxToTiptap } from '@/lib/import-docx';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 import { normalizeEditorImageUrl } from '@/lib/editor-image';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
+import {
+    buildSignatureBlockInserts,
+    type SignatureBlockSigner,
+} from '@/lib/editor-signature-blocks';
 
 const INSERT_SPECIAL_CHARACTER_MAP: Partial<Record<string, string>> = {
     [INSERT_ACTION_IDS.emDash]: '—',
@@ -56,6 +60,8 @@ interface UseEditorActionsOptions {
     editingTitle: boolean;
     title: string;
     isReadOnly: boolean;
+    canPrepareSignatureBlocks?: boolean;
+    signatureBlockSigners?: SignatureBlockSigner[];
     onTitleEditStart: () => void;
     onTitleSave: () => void | Promise<void>;
     /** Called when the Edit → Find menu item is dispatched. */
@@ -97,6 +103,8 @@ interface UseEditorActionsReturn {
  */
 export function useEditorActions({
     editor, doc, editingTitle, title, isReadOnly,
+    canPrepareSignatureBlocks = false,
+    signatureBlockSigners = [],
     onTitleEditStart, onTitleSave, onFindToggle, onViewAction,
 }: UseEditorActionsOptions): UseEditorActionsReturn {
     const router = useRouter();
@@ -394,6 +402,29 @@ export function useEditorActions({
             return;
         }
 
+        if (actionId === INSERT_ACTION_IDS.signatureBlocks) {
+            if (!canPrepareSignatureBlocks) {
+                toast.warning('Only the document owner can prepare signature blocks.');
+                return;
+            }
+
+            const blocks = buildSignatureBlockInserts(
+                signatureBlockSigners,
+                doc.completedSignatures,
+            );
+
+            if (blocks.length === 0) {
+                toast.warning('Invite at least one signer before preparing signature blocks.');
+                return;
+            }
+
+            const inserted = editor.commands.insertSignatureBlocks(blocks);
+            if (inserted) {
+                toast.success(`Prepared ${blocks.length} assigned signature block${blocks.length === 1 ? '' : 's'}.`);
+            }
+            return;
+        }
+
         const dateTimeInsert = createDateTimeInsert(actionId);
         if (dateTimeInsert) {
             editor.chain().focus().insertContent(dateTimeInsert).run();
@@ -428,22 +459,16 @@ export function useEditorActions({
             case INSERT_ACTION_IDS.table:
                 chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
                 break;
-            case INSERT_ACTION_IDS.pageBreak:
-                chain.insertPageBreak().run();
-                break;
-            case INSERT_ACTION_IDS.sectionBreak:
-                chain.insertSectionBreak().run();
-                break;
             case INSERT_ACTION_IDS.horizontalRule:
                 chain.setHorizontalRule().run();
                 break;
         }
     }, [
-        copying, doc.id, doc.status, doc.title, doc.wordCount,
+        copying, doc.completedSignatures, doc.id, doc.status, doc.title, doc.wordCount,
         editingTitle, editor, importing, isReadOnly,
-        openImageDialog, openLinkDialog,
+        canPrepareSignatureBlocks, openImageDialog, openLinkDialog,
         onFindToggle, onTitleEditStart, onTitleSave, onViewAction,
-        router, savingAs, title,
+        router, savingAs, signatureBlockSigners, title,
     ]);
 
     return {
