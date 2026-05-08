@@ -11,16 +11,16 @@ test('SignatureBlockExtension renders an assigned pending signature block', () =
         },
     });
 
-    assert.equal(html?.[0], 'div');
+    assert.equal(html?.[0], 'section');
     assert.equal((html?.[1] as Record<string, string>)['data-type'], 'signature-block');
     assert.equal((html?.[1] as Record<string, string>).class, 'document-signature-block');
     assert.deepEqual(html?.[3], [
         'div',
         { class: 'document-signature-block__meta' },
         ['strong', {}, 'Jane Doe'],
-        ['span', {}, 'Required signer · jane@example.com'],
+        ['span', {}, 'Required signer - jane@example.com'],
     ]);
-    assert.deepEqual(html?.[4], ['em', {}, 'Pending']);
+    assert.deepEqual(html?.[4], ['em', {}, 'Required']);
 });
 
 test('SignatureBlockExtension renders signed state when signature data exists', () => {
