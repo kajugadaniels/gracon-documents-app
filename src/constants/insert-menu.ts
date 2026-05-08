@@ -10,8 +10,7 @@ import type { MenuItem, MenuItemAction } from './types';
 export const INSERT_ACTION_IDS = {
     image: 'insert:image',
     table: 'insert:table',
-    pageBreak: 'insert:page-break',
-    sectionBreak: 'insert:section-break',
+    signatureBlocks: 'insert:signature-blocks',
     horizontalRule: 'insert:hr',
     currentDate: 'insert:date',
     currentTime: 'insert:time',
@@ -56,15 +55,9 @@ export const INSERT_ACTIONS = {
         label: 'Table',
         status: 'ready',
     },
-    pageBreak: {
-        actionId: INSERT_ACTION_IDS.pageBreak,
-        label: 'Page break',
-        shortcut: '⌘↵',
-        status: 'ready',
-    },
-    sectionBreak: {
-        actionId: INSERT_ACTION_IDS.sectionBreak,
-        label: 'Section break',
+    signatureBlocks: {
+        actionId: INSERT_ACTION_IDS.signatureBlocks,
+        label: 'Signature blocks',
         status: 'ready',
     },
     horizontalRule: {
@@ -171,8 +164,7 @@ function createInsertAction(action: InsertActionDefinition): MenuItemAction {
 export const INSERT_MENU_ITEMS: MenuItem[] = [
     createInsertAction(INSERT_ACTIONS.image),
     createInsertAction(INSERT_ACTIONS.table),
-    createInsertAction(INSERT_ACTIONS.pageBreak),
-    createInsertAction(INSERT_ACTIONS.sectionBreak),
+    createInsertAction(INSERT_ACTIONS.signatureBlocks),
     createInsertAction(INSERT_ACTIONS.horizontalRule),
     {
         type: 'submenu',
