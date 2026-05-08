@@ -1,5 +1,5 @@
 /**
- * Captures the paged document frame into A4-sized page canvases.
+ * Captures the continuous document frame into A4-sized export canvases.
  *
  * Export uses a cloned paper sheet so responsive editor state never changes
  * the generated PDF/DOCX geometry.
@@ -48,19 +48,13 @@ function applyExportPaperGeometry(
     rootEl.style.setProperty('--paper-height', `${A4_PAPER_HEIGHT_PX}px`);
 }
 
-function removeExportOnlyUi(rootEl: HTMLElement) {
-    rootEl.querySelectorAll('.document-page-guides').forEach((element) => {
-        element.remove();
-    });
-}
-
 function getExportFrame(sourceEl: HTMLElement) {
     if (sourceEl.matches('[data-document-export-root="true"]')) return sourceEl;
 
     const frame = sourceEl.closest('[data-document-export-root="true"]');
     if (frame instanceof HTMLElement) return frame;
 
-    throw new Error('Could not find the paged document frame to export.');
+    throw new Error('Could not find the document frame to export.');
 }
 
 function getLayoutSourceElement(frameEl: HTMLElement) {
@@ -72,6 +66,17 @@ function getLayoutSourceElement(frameEl: HTMLElement) {
 function getPageCount(frameEl: HTMLElement) {
     const parsed = Number.parseInt(frameEl.dataset.documentPageCount ?? '', 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function getContinuousExportPageCount(frameEl: HTMLElement) {
+    const editorEl = frameEl.querySelector('.ProseMirror');
+    const contentHeight = Math.max(
+        frameEl.scrollHeight,
+        editorEl instanceof HTMLElement ? editorEl.scrollHeight : 0,
+        A4_PAPER_HEIGHT_PX,
+    );
+
+    return Math.max(1, Math.ceil(contentHeight / A4_PAPER_HEIGHT_PX));
 }
 
 function createPageSurface(frameEl: HTMLElement, pageNumber: number, pageCount: number) {
@@ -98,11 +103,10 @@ function createPageSurface(frameEl: HTMLElement, pageNumber: number, pageCount: 
     return pageEl;
 }
 
-function ensurePageSurfaces(frameEl: HTMLElement) {
+function ensurePageSurfaces(frameEl: HTMLElement, pageCount: number) {
     if (frameEl.querySelector('.document-page-surfaces')) return;
 
     const surfacesEl = document.createElement('div');
-    const pageCount = getPageCount(frameEl);
     surfacesEl.className = 'document-page-surfaces';
     Array.from({ length: pageCount }, (_, index) => {
         surfacesEl.appendChild(createPageSurface(frameEl, index + 1, pageCount));
@@ -124,10 +128,6 @@ function prepareExportFrame(frameEl: HTMLElement, pageCount: number) {
         pageEl.style.top = `${index * A4_PAPER_HEIGHT_PX}px`;
         pageEl.style.height = `${A4_PAPER_HEIGHT_PX}px`;
     });
-    frameEl.querySelectorAll<HTMLElement>('.document-flow-page-gap--push').forEach((blockEl) => {
-        blockEl.classList.remove('document-flow-page-gap--push');
-        blockEl.style.removeProperty('--document-flow-page-gap-offset');
-    });
 }
 
 function createExportSheet(sourceEl: HTMLElement) {
@@ -136,7 +136,7 @@ function createExportSheet(sourceEl: HTMLElement) {
     const sourceLayout = readDocumentLayoutFromElement(getLayoutSourceElement(sourceFrameEl));
     const frameEl = sourceFrameEl.cloneNode(true) as HTMLElement;
     const sheetEl = frameEl.querySelector('.document-paper-sheet');
-    const pageCount = getPageCount(sourceFrameEl);
+    let pageCount = getPageCount(sourceFrameEl);
 
     if (!(sheetEl instanceof HTMLElement)) {
         throw new Error('Could not prepare the rendered document for export.');
@@ -150,13 +150,15 @@ function createExportSheet(sourceEl: HTMLElement) {
     hostEl.style.pointerEvents = 'none';
     hostEl.style.zIndex = '-1';
 
-    removeExportOnlyUi(frameEl);
     applyExportPaperGeometry(frameEl, sourceLayout.margins);
     applyExportPaperGeometry(sheetEl, sourceLayout.margins);
-    ensurePageSurfaces(frameEl);
-    prepareExportFrame(frameEl, pageCount);
     hostEl.appendChild(frameEl);
     document.body.appendChild(hostEl);
+
+    pageCount = getContinuousExportPageCount(frameEl);
+    frameEl.dataset.documentPageCount = String(pageCount);
+    ensurePageSurfaces(frameEl, pageCount);
+    prepareExportFrame(frameEl, pageCount);
 
     return {
         frameEl,
@@ -191,7 +193,6 @@ async function renderExportSheet(
             const clonedFrame = clonedDocument.querySelector('[data-document-export-root="true"]') as HTMLElement | null;
             if (!clonedFrame) return;
 
-            removeExportOnlyUi(clonedFrame);
             applyExportPaperGeometry(clonedFrame, margins);
             prepareExportFrame(clonedFrame, pageCount);
         },
