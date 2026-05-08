@@ -6,7 +6,6 @@ import type {
     RefObject,
 } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { DocumentPaginationPage } from './use-document-pagination';
 import type {
     DocumentLayoutMargins,
     ParagraphIndentation,
@@ -36,6 +35,11 @@ const TAB_STOP_ALIGN_OPTIONS: {
     { align: 'right', label: 'Right', description: 'Text ends at the stop' },
     { align: 'decimal', label: 'Decimal', description: 'Numbers align on decimals' },
 ];
+
+interface DocumentPaginationPage {
+    pageNumber: number;
+    top: number;
+}
 
 interface ParagraphIndentReadout {
     nodeType: 'paragraph' | 'heading';
