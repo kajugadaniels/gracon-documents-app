@@ -27,14 +27,14 @@ import {
 } from '@/components/editor/document-share-sync';
 import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
 import { useDigitalCertificateStatus } from '@/components/editor/use-digital-certificate-status';
-import { useDocumentPagination } from '@/components/editor/use-document-pagination';
 import { useDocumentViewState } from '@/components/editor/use-document-view-state';
 import { useActiveParagraphLayout } from '@/components/editor/use-active-paragraph-layout';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import { buildViewMenuItems } from '@/constants/view-menu';
-import { A4_PAPER_WIDTH_PX } from '@/constants';
+import { A4_PAPER_HEIGHT_PX, A4_PAPER_WIDTH_PX } from '@/constants';
 import { getDigitalCertificateUrl, redirectToLogin } from '@/lib/session';
+import { getSignatureBlockSigners } from '@/lib/editor-signature-blocks';
 import {
     buildDocumentLayoutStyle,
     clampHorizontalDocumentMargins,
@@ -90,7 +90,13 @@ export default function EditDocumentPage() {
     const [retryKey, setRetryKey] = useState(0);
     const [shareActivityRefreshKey, setShareActivityRefreshKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
-    const pagination = useDocumentPagination(editor);
+    const continuousDocumentLayout = useMemo(() => ({
+        pageCount: 1,
+        activePage: 1,
+        pageHeight: A4_PAPER_HEIGHT_PX,
+        contentHeight: A4_PAPER_HEIGHT_PX,
+        pages: [{ pageNumber: 1, top: 0 }],
+    }), []);
     const pageRootRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLDivElement>(null);
     const signatureRequests = doc?.signatureRequests ?? [];
@@ -549,6 +555,7 @@ export default function EditDocumentPage() {
         request => request.status !== 'SIGNED',
     ).length;
     const canViewSignature = isLocked && (isOwner || canSign);
+    const signatureBlockSigners = getSignatureBlockSigners(doc, user);
     const acceptedSignerCount = doc.collaborators.filter((collaborator) =>
         collaborator.isActive &&
         collaborator.invitationStatus === 'ACCEPTED' &&
@@ -661,6 +668,8 @@ export default function EditDocumentPage() {
                 canLock={canLockDocument}
                 canSign={canSignDocument}
                 canViewSignature={canViewSignature}
+                canPrepareSignatureBlocks={isOwner && doc.status === 'DRAFT'}
+                signatureBlockSigners={signatureBlockSigners}
                 viewMenuItems={viewMenuItems}
                 certificateStatus={certificateStatus.status}
                 onOpenComments={() => setCommentsOpen(true)}
@@ -716,9 +725,9 @@ export default function EditDocumentPage() {
                     status={doc.status}
                     content={contentRef.current ?? doc.content}
                     layout={documentLayout}
-                    pageCount={pagination.pageCount}
-                    pageHeight={pagination.pageHeight}
-                    contentHeight={pagination.contentHeight}
+                    pageCount={continuousDocumentLayout.pageCount}
+                    pageHeight={continuousDocumentLayout.pageHeight}
+                    contentHeight={continuousDocumentLayout.contentHeight}
                     onClose={() => setShowPrintPreview(false)}
                 />
             )}
@@ -728,7 +737,7 @@ export default function EditDocumentPage() {
                 <DocumentRulerOverlay
                     rulerMode="top-only"
                     width={A4_PAPER_WIDTH_PX}
-                    height={pagination.pageHeight}
+                    height={continuousDocumentLayout.pageHeight}
                     margins={documentLayout.margins}
                     paragraphIndent={activeParagraphLayout}
                     disabled={baseIsReadOnly}
@@ -752,8 +761,8 @@ export default function EditDocumentPage() {
                     <div className="ded-ruler-sidebar">
                         <DocumentPageRulerSidebar
                             canvasRef={canvasRef}
-                            pages={pagination.pages}
-                            pageHeight={pagination.pageHeight}
+                            pages={continuousDocumentLayout.pages}
+                            pageHeight={continuousDocumentLayout.pageHeight}
                             margins={documentLayout.margins}
                             disabled={baseIsReadOnly}
                         />
@@ -769,9 +778,9 @@ export default function EditDocumentPage() {
                 content={doc.content}
                 isReadOnly={isReadOnly}
                 zoomScale={zoomScale}
-                pageCount={pagination.pageCount}
-                pageHeight={pagination.pageHeight}
-                contentHeight={pagination.contentHeight}
+                pageCount={continuousDocumentLayout.pageCount}
+                pageHeight={continuousDocumentLayout.pageHeight}
+                contentHeight={continuousDocumentLayout.contentHeight}
                 printLayout={viewState.printLayout}
                 showFormattingMarks={viewState.showFormattingMarks}
                 paperStyle={documentLayoutStyle}
