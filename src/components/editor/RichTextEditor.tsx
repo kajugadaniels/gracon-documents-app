@@ -15,18 +15,17 @@ import CharacterCount from '@tiptap/extension-character-count';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { DocumentPaperSheet } from '@/components/documents/DocumentPaperSheet';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
+import { removeDocumentBoundariesFromTiptapContent } from '@/lib/remove-document-boundaries';
 import {
     CommentAnchorExtension,
     type CommentAnchorInput,
 } from './comment-anchor-extension';
-import { PageBreakExtension } from './page-break-extension';
-import { SectionBreakExtension } from './section-break-extension';
-import { PageFlowGapExtension } from './page-flow-gap-extension';
 import { ParagraphLayoutExtension } from './paragraph-layout-extension';
+import { SignatureBlockExtension } from './signature-block-extension';
 
 interface RichTextEditorProps {
     initialContent?: Record<string, unknown> | null;
@@ -70,6 +69,11 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
     const onChangeRef = useRef(onContentChange);
     const onEditorReadyRef = useRef(onEditorReady);
+    const sanitizedInitialContent = useMemo(
+        () => removeDocumentBoundariesFromTiptapContent(initialContent)
+            ?? { type: 'doc', content: [{ type: 'paragraph' }] },
+        [initialContent],
+    );
 
     useEffect(() => {
         onChangeRef.current = onContentChange;
@@ -125,12 +129,10 @@ export function RichTextEditor({
             Placeholder.configure({ placeholder }),
             CharacterCount,
             CommentAnchorExtension,
-            PageBreakExtension,
-            SectionBreakExtension,
-            PageFlowGapExtension,
             ParagraphLayoutExtension,
+            SignatureBlockExtension,
         ],
-        content: initialContent ?? { type: 'doc', content: [{ type: 'paragraph' }] },
+        content: sanitizedInitialContent,
         editable: !readOnly,
         onUpdate: ({ editor: e }) => {
             const json = e.getJSON();
@@ -144,12 +146,12 @@ export function RichTextEditor({
 
     // Update content when initialContent changes (e.g. version restore)
     useEffect(() => {
-        if (editor && initialContent && !readOnly) {
+        if (editor && sanitizedInitialContent && !readOnly) {
             const current = JSON.stringify(editor.getJSON());
-            const next = JSON.stringify(initialContent);
-            if (current !== next) editor.commands.setContent(initialContent);
+            const next = JSON.stringify(sanitizedInitialContent);
+            if (current !== next) editor.commands.setContent(sanitizedInitialContent);
         }
-    }, [editor, initialContent, readOnly]);
+    }, [editor, sanitizedInitialContent, readOnly]);
 
     useEffect(() => {
         if (!editor) return;
