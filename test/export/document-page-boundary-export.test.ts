@@ -10,21 +10,21 @@ function classListFor(classNames: string[]) {
     } as Pick<DOMTokenList, 'contains'>;
 }
 
-test('isDocumentPageBoundaryElement recognizes manual page breaks', () => {
+test('isDocumentPageBoundaryElement ignores legacy manual page breaks', () => {
     assert.equal(
         isDocumentPageBoundaryElement({
             classList: classListFor(['document-page-break']),
         }),
-        true,
+        false,
     );
 });
 
-test('isDocumentPageBoundaryElement recognizes section breaks as page boundaries', () => {
+test('isDocumentPageBoundaryElement ignores legacy section breaks', () => {
     assert.equal(
         isDocumentPageBoundaryElement({
             classList: classListFor(['document-section-break']),
         }),
-        true,
+        false,
     );
 });
 
