@@ -391,8 +391,10 @@ body {
     );
 }
 .document-layout-frame--web-layout .document-paper-sheet {
-  min-height: auto;
-  border-radius: 18px;
+  width: var(--paper-width);
+  max-width: var(--paper-width);
+  min-height: var(--paper-height);
+  border-radius: 0;
   box-shadow: 0 20px 48px rgba(22,16,58,0.08);
   overflow: visible;
 }
@@ -413,7 +415,7 @@ body {
   overflow: visible;
 }
 .document-paper-sheet {
-  width: min(100%, var(--paper-width));
+  width: var(--paper-width);
   max-width: var(--paper-width);
   min-height: var(--paper-height);
   margin: 0 auto;
@@ -1316,18 +1318,14 @@ body {
   border: 1px solid rgba(91,35,255,0.20);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(245,243,255,0.86) 100%);
-  cursor: default;
-  user-select: none;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .tiptap-editor .ProseMirror .document-signature-block--signed {
   border-color: rgba(5,150,105,0.28);
   background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(236,253,245,0.72) 100%);
 }
-.tiptap-editor .ProseMirror .ProseMirror-selectednode.document-signature-block {
-  outline: 2px solid rgba(91,35,255,0.34);
-  outline-offset: 3px;
-}
-.document-signature-block__signature-area {
+.tiptap-editor .ProseMirror .document-signature-block__signature-area {
   position: relative;
   min-height: 42px;
   grid-column: 1;
@@ -1335,13 +1333,13 @@ body {
   display: flex;
   align-items: flex-end;
 }
-.document-signature-block__line {
+.tiptap-editor .ProseMirror .document-signature-block__line {
   display: block;
   width: 100%;
   height: 1px;
   background: rgba(22,16,58,0.34);
 }
-.document-signature-block__image {
+.tiptap-editor .ProseMirror .document-signature-block__image {
   position: absolute;
   left: 0;
   bottom: 4px;
@@ -1350,7 +1348,7 @@ body {
   object-fit: contain;
   z-index: 1;
 }
-.document-signature-block__signed-text {
+.tiptap-editor .ProseMirror .document-signature-block__signed-text {
   position: absolute;
   left: 0;
   bottom: 7px;
@@ -1361,23 +1359,23 @@ body {
   font-style: italic;
   letter-spacing: 0.02em;
 }
-.document-signature-block__meta {
+.tiptap-editor .ProseMirror .document-signature-block__meta {
   display: flex;
   flex-direction: column;
   gap: 2px;
   grid-column: 1;
   grid-row: 2;
 }
-.document-signature-block__meta strong {
+.tiptap-editor .ProseMirror .document-signature-block__meta strong {
   color: var(--color-text-primary);
   font-size: 13px;
   font-weight: 700;
 }
-.document-signature-block__meta span {
+.tiptap-editor .ProseMirror .document-signature-block__meta span {
   color: var(--color-text-secondary);
   font-size: 11.5px;
 }
-.document-signature-block em {
+.tiptap-editor .ProseMirror .document-signature-block em {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
@@ -1392,7 +1390,7 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.document-signature-block--signed em {
+.tiptap-editor .ProseMirror .document-signature-block--signed em {
   border-color: rgba(5,150,105,0.28);
   background: rgba(5,150,105,0.10);
   color: var(--color-success);
