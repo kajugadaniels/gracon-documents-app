@@ -23,6 +23,7 @@ import {
 import type { MenuItem } from '@/constants';
 import type { DigitalCertificateActionStatus } from '@/components/editor/use-digital-certificate-status';
 import type { DocumentDetail } from '@/api/documents.api';
+import type { SignatureBlockSigner } from '@/lib/editor-signature-blocks';
 import { MENU_BAR } from '@/constants';
 import { DocEditorToolbar } from './DocEditorToolbar';
 import { DocEditorSignatureAction } from './DocEditorSignatureAction';
@@ -53,6 +54,8 @@ interface DocEditorHeaderProps {
     canLock: boolean;
     canSign: boolean;
     canViewSignature: boolean;
+    canPrepareSignatureBlocks?: boolean;
+    signatureBlockSigners?: SignatureBlockSigner[];
     viewMenuItems: readonly MenuItem[];
     certificateStatus: DigitalCertificateActionStatus;
     onOpenComments?: () => void;
@@ -70,7 +73,8 @@ export function DocEditorHeader({
     editor, doc, shareActivityRefreshKey, saveStatus, editingTitle, title,
     onTitleChange, onTitleSave, onTitleEditStart, onTitleKeyDown,
     isReadOnly, isLocked, canShare, canComment = false,
-    canFinalise, canLock, canSign, canViewSignature, viewMenuItems,
+    canFinalise, canLock, canSign, canViewSignature,
+    canPrepareSignatureBlocks = false, signatureBlockSigners = [], viewMenuItems,
     certificateStatus, onOpenComments, onShareActivityRecorded,
     onApplyForDigitalSignature, onFinalise, onLock, onSign, onViewSignature, onViewAction,
 }: DocEditorHeaderProps) {
@@ -92,6 +96,7 @@ export function DocEditorHeader({
         submitImageDialog,
     } = useEditorActions({
         editor, doc, editingTitle, title, isReadOnly,
+        canPrepareSignatureBlocks, signatureBlockSigners,
         onTitleEditStart, onTitleSave,
         onFindToggle: () => setFindOpen((v) => !v),
         onViewAction,
