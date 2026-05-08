@@ -41,34 +41,46 @@ function renderSignatureBlock(HTMLAttributes: Record<string, unknown>): DOMOutpu
     const signatureImageUrl = getStringAttr(HTMLAttributes.signatureImageUrl);
     const signedAt = getStringAttr(HTMLAttributes.signedAt);
     const signatureId = getStringAttr(HTMLAttributes.signatureId);
-    const signed = Boolean(signatureId || signedAt || signatureImageUrl);
-    const statusLabel = signed ? 'Signed' : 'Pending';
+    const signed = Boolean(signatureId || signedAt);
+    const signedDate = signedAt
+        ? new Date(signedAt).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        })
+        : null;
 
     return [
-        'div',
+        'section',
         mergeAttributes(HTMLAttributes, {
             'data-type': 'signature-block',
+            'aria-label': `${getStringAttr(HTMLAttributes.label, signerName)} signature block`,
             class: `document-signature-block${signed ? ' document-signature-block--signed' : ''}`,
         }),
         [
             'div',
             { class: 'document-signature-block__signature-area' },
-            ['span', { class: 'document-signature-block__line' }],
             signatureImageUrl
                 ? ['img', {
                     class: 'document-signature-block__image',
                     src: signatureImageUrl,
                     alt: `${signerName} signature`,
+                    draggable: 'false',
                 }]
-                : ['span', { class: 'document-signature-block__signed-text' }, signed ? signerName : ''],
+                : signed
+                    ? ['span', { class: 'document-signature-block__signed-text' }, 'Digitally signed']
+                    : '',
+            ['span', { class: 'document-signature-block__line' }],
         ],
         [
             'div',
             { class: 'document-signature-block__meta' },
             ['strong', {}, signerName],
-            ['span', {}, signerEmail ? `${signerRole} · ${signerEmail}` : signerRole],
+            ['span', {}, signedDate
+                ? `Signed ${signedDate}`
+                : signerEmail ? `${signerRole} - ${signerEmail}` : signerRole],
         ],
-        ['em', {}, statusLabel],
+        ['em', {}, signed ? 'Signed' : 'Required'],
     ];
 }
 
