@@ -21,9 +21,8 @@ import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
-import { PageBreakExtension } from '@/components/editor/page-break-extension';
-import { SectionBreakExtension } from '@/components/editor/section-break-extension';
 import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
+import { SignatureBlockExtension } from '@/components/editor/signature-block-extension';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
     annotateImportedDocxHtml,
@@ -70,8 +69,7 @@ const IMPORT_EXTENSIONS = [
         },
     }),
     ParagraphLayoutExtension,
-    PageBreakExtension,
-    SectionBreakExtension,
+    SignatureBlockExtension,
 ];
 
 /**
