@@ -10,6 +10,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { Editor } from '@tiptap/react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -20,7 +21,7 @@ import {
     ParagraphBulletsPoint01Icon, ParagraphBulletsPointIcon,
     TableIcon, EraserIcon, CodeSquareIcon, QuoteUpIcon,
     RowInsertIcon, RowDeleteIcon, ColumnInsertIcon, ColumnDeleteIcon,
-    TextFontIcon, HeadingIcon, LegalDocument01Icon,
+    TextFontIcon, HeadingIcon,
 } from '@hugeicons/core-free-icons';
 import { GOOGLE_FONTS, FONT_SIZES, loadGoogleFont } from '@/constants';
 
@@ -46,6 +47,27 @@ function TbBtn({
 
 function TbDivider() {
     return <div className="ded-tb-divider" />;
+}
+
+function preventToolbarFocus(event: ReactMouseEvent<HTMLElement>) {
+    event.preventDefault();
+}
+
+function useEditorRevision(editor: Editor) {
+    const [, setRevision] = useState(0);
+
+    useEffect(() => {
+        const refresh = () => setRevision((value) => value + 1);
+        editor.on('selectionUpdate', refresh);
+        editor.on('transaction', refresh);
+        editor.on('update', refresh);
+
+        return () => {
+            editor.off('selectionUpdate', refresh);
+            editor.off('transaction', refresh);
+            editor.off('update', refresh);
+        };
+    }, [editor]);
 }
 
 // ─── Text color picker ───────────────────────────────────────────────────────
@@ -254,21 +276,73 @@ function FontPicker({ editor }: { editor: Editor }) {
 function FontSizePicker({ editor }: { editor: Editor }) {
     const rawSize = (editor.getAttributes('textStyle').fontSize as string | undefined) ?? '';
     const currentPt = rawSize ? parseInt(rawSize, 10) : 11;
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handler = (event: MouseEvent) => {
+            if (!ref.current?.contains(event.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
     function applySize(pt: number) {
-        editor.chain().focus().setFontSize(`${pt}pt`).run();
+        editor.chain().focus().setFontSize(`${Math.max(1, Math.min(400, pt))}pt`).run();
     }
+
+    function selectSize(pt: number) {
+        applySize(pt);
+        setOpen(false);
+    }
+
     return (
-        <div className="ded-size-picker">
-            <button className="ded-size-picker__step" onClick={() => applySize(Math.max(6, currentPt - 1))} title="Decrease font size">−</button>
-            <select
-                className="ded-size-picker__input"
-                value={currentPt}
-                onChange={e => applySize(Number(e.target.value))}
+        <div ref={ref} className="ded-size-picker">
+            <button
+                className="ded-size-picker__step"
+                type="button"
+                onMouseDown={preventToolbarFocus}
+                onClick={() => applySize(currentPt - 1)}
+                title="Decrease font size"
+            >
+                −
+            </button>
+            <button
+                className="ded-size-picker__value"
+                type="button"
+                onMouseDown={preventToolbarFocus}
+                onClick={() => setOpen(value => !value)}
                 title="Font size"
             >
-                {FONT_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <button className="ded-size-picker__step" onClick={() => applySize(Math.min(400, currentPt + 1))} title="Increase font size">+</button>
+                <span>{currentPt}</span>
+                <span className="ded-size-picker__arrow">▾</span>
+            </button>
+            {open && (
+                <div className="ded-picker__dropdown ded-picker__dropdown--left ded-size-picker__dropdown">
+                    <div className="ded-picker__scroll">
+                        {FONT_SIZES.map((size) => (
+                            <button
+                                key={size}
+                                className={`ded-picker__option${currentPt === size ? ' ded-picker__option--active' : ''}`}
+                                type="button"
+                                onMouseDown={preventToolbarFocus}
+                                onClick={() => selectSize(size)}
+                            >
+                                {size}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+            <button
+                className="ded-size-picker__step"
+                type="button"
+                onMouseDown={preventToolbarFocus}
+                onClick={() => applySize(currentPt + 1)}
+                title="Increase font size"
+            >
+                +
+            </button>
         </div>
     );
 }
@@ -277,6 +351,7 @@ function FontSizePicker({ editor }: { editor: Editor }) {
 
 /** Formatting toolbar — the second row of the sticky editor header. */
 export function DocEditorToolbar({ editor }: { editor: Editor }) {
+    useEditorRevision(editor);
     const inTable = editor.isActive('table');
     return (
         <div className="ded-toolbar">
@@ -352,10 +427,6 @@ export function DocEditorToolbar({ editor }: { editor: Editor }) {
             <TbBtn onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert table" disabled={inTable}>
                 <HugeiconsIcon icon={TableIcon} size={15} />
             </TbBtn>
-            <TbBtn onClick={() => editor.chain().focus().insertPageBreak().run()} title="Insert page break (⌘↵)">
-                <HugeiconsIcon icon={LegalDocument01Icon} size={15} />
-            </TbBtn>
-
             {inTable && (
                 <>
                     <TbDivider />
