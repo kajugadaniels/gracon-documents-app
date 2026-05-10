@@ -30,9 +30,9 @@ export const DEFAULT_BULLET_LIST_STYLE: BulletListStyle = 'disc';
 export const DEFAULT_ORDERED_LIST_STYLE: OrderedListStyle = 'decimal';
 
 export const BULLET_LIST_STYLE_OPTIONS = [
-    { value: 'disc', label: 'Disc', markerPreview: 'disc' },
-    { value: 'circle', label: 'Circle', markerPreview: 'circle' },
-    { value: 'square', label: 'Square', markerPreview: 'square' },
+    { value: 'disc', label: 'Disc', markerPreview: '•' },
+    { value: 'circle', label: 'Circle', markerPreview: '◦' },
+    { value: 'square', label: 'Square', markerPreview: '▪' },
 ] as const satisfies readonly EditorListStyleOption<BulletListStyle>[];
 
 export const ORDERED_LIST_STYLE_OPTIONS = [
