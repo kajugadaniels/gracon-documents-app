@@ -1,4 +1,5 @@
 import { Extension } from '@tiptap/core';
+import type { Editor } from '@tiptap/core';
 import {
     DEFAULT_BULLET_LIST_STYLE,
     DEFAULT_ORDERED_LIST_STYLE,
@@ -28,6 +29,60 @@ function renderListStyleType(style: string) {
         'data-list-style-type': style,
         style: `list-style-type: ${style};`,
     };
+}
+
+export function setBulletListStyle(editor: Editor, style: BulletListStyle) {
+    const listStyleType = normalizeBulletListStyle(style);
+
+    if (editor.isActive('bulletList')) {
+        return editor.chain().focus().updateAttributes('bulletList', { listStyleType }).run();
+    }
+
+    return editor.chain()
+        .focus()
+        .toggleBulletList()
+        .updateAttributes('bulletList', { listStyleType })
+        .run();
+}
+
+export function setOrderedListStyle(editor: Editor, style: OrderedListStyle) {
+    const listStyleType = normalizeOrderedListStyle(style);
+
+    if (editor.isActive('orderedList')) {
+        return editor.chain().focus().updateAttributes('orderedList', { listStyleType }).run();
+    }
+
+    return editor.chain()
+        .focus()
+        .toggleOrderedList()
+        .updateAttributes('orderedList', { listStyleType })
+        .run();
+}
+
+export function toggleBulletListStyle(editor: Editor, style: BulletListStyle = DEFAULT_BULLET_LIST_STYLE) {
+    const listStyleType = normalizeBulletListStyle(style);
+
+    if (
+        editor.isActive('bulletList') &&
+        normalizeBulletListStyle(editor.getAttributes('bulletList').listStyleType) === listStyleType
+    ) {
+        return editor.chain().focus().toggleBulletList().run();
+    }
+
+    return setBulletListStyle(editor, listStyleType);
+}
+
+export function toggleOrderedListStyle(editor: Editor, style: OrderedListStyle = DEFAULT_ORDERED_LIST_STYLE) {
+    const listStyleType = normalizeOrderedListStyle(style);
+
+    if (
+        editor.isActive('orderedList') &&
+        normalizeOrderedListStyle(editor.getAttributes('orderedList').listStyleType) === listStyleType
+    ) {
+        return editor.chain().focus().toggleOrderedList().run();
+    }
+
+    return setOrderedListStyle(editor, listStyleType);
 }
 
 export const ListStyleExtension = Extension.create({
@@ -66,54 +121,10 @@ export const ListStyleExtension = Extension.create({
 
     addCommands() {
         return {
-            setBulletListStyle: (style) => ({ chain, commands, editor }) => {
-                const listStyleType = normalizeBulletListStyle(style);
-
-                if (!editor.isActive('bulletList')) {
-                    return chain()
-                        .toggleBulletList()
-                        .updateAttributes('bulletList', { listStyleType })
-                        .run();
-                }
-
-                return commands.updateAttributes('bulletList', { listStyleType });
-            },
-            setOrderedListStyle: (style) => ({ chain, commands, editor }) => {
-                const listStyleType = normalizeOrderedListStyle(style);
-
-                if (!editor.isActive('orderedList')) {
-                    return chain()
-                        .toggleOrderedList()
-                        .updateAttributes('orderedList', { listStyleType })
-                        .run();
-                }
-
-                return commands.updateAttributes('orderedList', { listStyleType });
-            },
-            toggleBulletListStyle: (style = DEFAULT_BULLET_LIST_STYLE) => ({ commands, editor }) => {
-                const listStyleType = normalizeBulletListStyle(style);
-
-                if (
-                    editor.isActive('bulletList') &&
-                    normalizeBulletListStyle(editor.getAttributes('bulletList').listStyleType) === listStyleType
-                ) {
-                    return commands.toggleBulletList();
-                }
-
-                return editor.commands.setBulletListStyle(listStyleType);
-            },
-            toggleOrderedListStyle: (style = DEFAULT_ORDERED_LIST_STYLE) => ({ commands, editor }) => {
-                const listStyleType = normalizeOrderedListStyle(style);
-
-                if (
-                    editor.isActive('orderedList') &&
-                    normalizeOrderedListStyle(editor.getAttributes('orderedList').listStyleType) === listStyleType
-                ) {
-                    return commands.toggleOrderedList();
-                }
-
-                return editor.commands.setOrderedListStyle(listStyleType);
-            },
+            setBulletListStyle: (style) => ({ editor }) => setBulletListStyle(editor, style),
+            setOrderedListStyle: (style) => ({ editor }) => setOrderedListStyle(editor, style),
+            toggleBulletListStyle: (style = DEFAULT_BULLET_LIST_STYLE) => ({ editor }) => toggleBulletListStyle(editor, style),
+            toggleOrderedListStyle: (style = DEFAULT_ORDERED_LIST_STYLE) => ({ editor }) => toggleOrderedListStyle(editor, style),
         };
     },
 });
