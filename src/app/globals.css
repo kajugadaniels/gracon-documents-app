@@ -4297,6 +4297,13 @@ body {
   transition: background 120ms;
 }
 .ded-icon-btn:hover:not(:disabled) { background: rgba(0,0,0,0.06); color: var(--color-text-primary); }
+.ded-icon-btn--starred {
+  color: #f59e0b;
+}
+.ded-icon-btn--starred:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
 .ded-icon-btn:disabled { opacity: 0.4; cursor: default; }
 
 /* ── Menu dropdown ── */
