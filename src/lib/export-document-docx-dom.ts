@@ -15,6 +15,7 @@ import type {
     Table as DocxTable,
 } from 'docx';
 import { createParagraphExportGeometry } from './document-layout-export-parity';
+import { getListReferenceForElement } from './editor-list-style';
 import { isDocumentPageBoundaryElement } from './export-document-page-boundary';
 
 type DocxModule = typeof import('docx');
@@ -256,7 +257,7 @@ function convertListItem(itemEl: HTMLElement, reference: string, level: number, 
 }
 
 function convertList(listEl: HTMLElement, level: number, docx: DocxModule): FileChild[] {
-    const reference = listEl.tagName === 'OL' ? 'ordered-list' : 'bullet-list';
+    const reference = getListReferenceForElement(listEl);
     const items = Array.from(listEl.children).filter((child): child is HTMLElement => child.tagName === 'LI');
 
     return items.flatMap((item) => convertListItem(item, reference, level, docx));
