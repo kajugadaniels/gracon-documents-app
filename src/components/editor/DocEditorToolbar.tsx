@@ -414,6 +414,8 @@ function ListStylePicker({
             <button
                 className={`ded-list-style-picker__main${active ? ' ded-list-style-picker__main--active' : ''}`}
                 type="button"
+                aria-label={isBullet ? 'Toggle bullet list' : 'Toggle numbered list'}
+                aria-pressed={active}
                 onMouseDown={preventToolbarFocus}
                 onClick={toggleDefaultList}
                 title={isBullet ? 'Bullet list' : 'Numbered list'}
@@ -423,6 +425,9 @@ function ListStylePicker({
             <button
                 className={`ded-list-style-picker__arrow${open ? ' ded-list-style-picker__arrow--open' : ''}`}
                 type="button"
+                aria-label={isBullet ? 'Choose bullet list style' : 'Choose numbered list style'}
+                aria-haspopup="menu"
+                aria-expanded={open}
                 onMouseDown={preventToolbarFocus}
                 onClick={() => setOpen(value => !value)}
                 title={isBullet ? 'Bullet list styles' : 'Numbered list styles'}
@@ -430,13 +435,15 @@ function ListStylePicker({
                 ▾
             </button>
             {open && (
-                <div className="ded-picker__dropdown ded-picker__dropdown--left ded-list-style-picker__dropdown">
+                <div className="ded-picker__dropdown ded-list-style-picker__dropdown" role="menu">
                     <div className="ded-picker__scroll">
                         {options.map((option) => (
                             <button
                                 key={option.value}
                                 className={`ded-picker__option ded-list-style-picker__option${active && currentStyle === option.value ? ' ded-picker__option--active' : ''}`}
                                 type="button"
+                                role="menuitemradio"
+                                aria-checked={active && currentStyle === option.value}
                                 onMouseDown={preventToolbarFocus}
                                 onClick={() => selectStyle(option.value)}
                             >
