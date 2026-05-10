@@ -56,6 +56,13 @@ function PermissionChip({ label }: { label: string }) {
     );
 }
 
+/** Human-readable names for inviter-selected verification requirements. */
+function formatVerificationRequirement(value: string): string {
+    if (value === 'EMAIL_OTP') return 'Email code';
+    if (value === 'IDENTITY_VERIFICATION') return 'Identity check';
+    return value.replaceAll('_', ' ');
+}
+
 /**
  * Shows who sent the invitation, the invited email, permission level,
  * expiry/invite dates, and an optional sender message.
@@ -70,6 +77,9 @@ export function InvitationInfoCard({ preview }: Props) {
 
     const permissions = preview.invitation.permissions.map(
         (p) => p.replaceAll('_', ' ')
+    );
+    const verificationRequirements = preview.invitation.verificationRequirements.map(
+        formatVerificationRequirement,
     );
 
     return (
@@ -113,6 +123,19 @@ export function InvitationInfoCard({ preview }: Props) {
                         {permissions.map((p) => (
                             <PermissionChip key={p} label={p} />
                         ))}
+                    </div>
+                </MetaRow>
+                <MetaRow label="Required verification">
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                        {verificationRequirements.length > 0 ? (
+                            verificationRequirements.map((requirement) => (
+                                <PermissionChip key={requirement} label={requirement} />
+                            ))
+                        ) : (
+                            <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-primary)' }}>
+                                No extra verification after login
+                            </p>
+                        )}
                     </div>
                 </MetaRow>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
