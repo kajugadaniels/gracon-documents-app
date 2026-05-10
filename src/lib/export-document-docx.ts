@@ -11,6 +11,11 @@ import {
 } from '@/lib/document-layout-export-parity';
 import { readDocumentLayoutFromElement } from '@/lib/document-layout';
 import type { DocumentHeaderFooter } from '@/lib/document-layout';
+import {
+    BULLET_LIST_REFERENCE_BY_STYLE,
+    ORDERED_LIST_REFERENCE_BY_STYLE,
+} from '@/lib/editor-list-style';
+import type { OrderedListStyle } from '@/constants';
 import { convertEditorDomToDocxChildren } from './export-document-docx-dom';
 
 type DocxModule = typeof import('docx');
@@ -28,11 +33,31 @@ function getLayoutElement(rootEl: HTMLElement) {
     return layoutEl instanceof HTMLElement ? layoutEl : rootEl;
 }
 
-function createNumberingLevels(docx: DocxModule, format: 'bullet' | 'decimal') {
+function getBulletMarker(reference: string) {
+    if (reference === BULLET_LIST_REFERENCE_BY_STYLE.circle) return '◦';
+    if (reference === BULLET_LIST_REFERENCE_BY_STYLE.square) return '▪';
+    return '•';
+}
+
+function getOrderedLevelFormat(style: OrderedListStyle, docx: DocxModule) {
+    if (style === 'lower-alpha') return docx.LevelFormat.LOWER_LETTER;
+    if (style === 'upper-alpha') return docx.LevelFormat.UPPER_LETTER;
+    if (style === 'lower-roman') return docx.LevelFormat.LOWER_ROMAN;
+    if (style === 'upper-roman') return docx.LevelFormat.UPPER_ROMAN;
+    return docx.LevelFormat.DECIMAL;
+}
+
+function createNumberingLevels(docx: DocxModule, config: {
+    format: 'bullet' | 'ordered';
+    reference: string;
+    orderedStyle?: OrderedListStyle;
+}) {
     return Array.from({ length: 6 }, (_, level) => ({
         level,
-        format: format === 'bullet' ? docx.LevelFormat.BULLET : docx.LevelFormat.DECIMAL,
-        text: format === 'bullet' ? '•' : `%${level + 1}.`,
+        format: config.format === 'bullet'
+            ? docx.LevelFormat.BULLET
+            : getOrderedLevelFormat(config.orderedStyle ?? 'decimal', docx),
+        text: config.format === 'bullet' ? getBulletMarker(config.reference) : `%${level + 1}.`,
         alignment: docx.AlignmentType.LEFT,
         suffix: docx.LevelSuffix.TAB,
         style: {
@@ -49,14 +74,18 @@ function createNumberingLevels(docx: DocxModule, format: 'bullet' | 'decimal') {
 function createNumberingConfig(docx: DocxModule) {
     return {
         config: [
-            {
-                reference: 'bullet-list',
-                levels: createNumberingLevels(docx, 'bullet'),
-            },
-            {
-                reference: 'ordered-list',
-                levels: createNumberingLevels(docx, 'decimal'),
-            },
+            ...Object.values(BULLET_LIST_REFERENCE_BY_STYLE).map((reference) => ({
+                reference,
+                levels: createNumberingLevels(docx, { format: 'bullet', reference }),
+            })),
+            ...Object.entries(ORDERED_LIST_REFERENCE_BY_STYLE).map(([style, reference]) => ({
+                reference,
+                levels: createNumberingLevels(docx, {
+                    format: 'ordered',
+                    reference,
+                    orderedStyle: style as OrderedListStyle,
+                }),
+            })),
         ],
     };
 }
