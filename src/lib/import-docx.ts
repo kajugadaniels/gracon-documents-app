@@ -28,6 +28,7 @@ import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
     annotateImportedDocxHtml,
     collectImportedParagraphLayouts,
+    extractParagraphListStylesFromDocxXml,
     extractParagraphTabStopsFromDocumentXml,
     mergeParagraphTabStopsIntoLayouts,
 } from '@/lib/import-docx-layout';
@@ -97,12 +98,16 @@ export interface ImportResult {
     title: string;
 }
 
-async function readDocumentXmlFromDocx(arrayBuffer: ArrayBuffer) {
+async function readXmlPartsFromDocx(arrayBuffer: ArrayBuffer) {
     const { default: JSZip } = await import('jszip');
     const zip = await JSZip.loadAsync(arrayBuffer);
     const documentXml = zip.file('word/document.xml');
+    const numberingXml = zip.file('word/numbering.xml');
 
-    return documentXml ? documentXml.async('text') : null;
+    return {
+        documentXml: documentXml ? await documentXml.async('text') : null,
+        numberingXml: numberingXml ? await numberingXml.async('text') : null,
+    };
 }
 
 /**
@@ -122,9 +127,12 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
     const mammoth = await import('mammoth');
 
     const arrayBuffer = await file.arrayBuffer();
-    const documentXml = await readDocumentXmlFromDocx(arrayBuffer);
+    const { documentXml, numberingXml } = await readXmlPartsFromDocx(arrayBuffer);
     const paragraphTabStops = documentXml
         ? extractParagraphTabStopsFromDocumentXml(documentXml)
+        : [];
+    const paragraphListStyles = documentXml
+        ? extractParagraphListStylesFromDocxXml(documentXml, numberingXml)
         : [];
 
     let paragraphLayouts = collectImportedParagraphLayouts(null);
@@ -142,7 +150,7 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
             },
         },
     );
-    const html = annotateImportedDocxHtml(rawHtml, paragraphLayouts);
+    const html = annotateImportedDocxHtml(rawHtml, paragraphLayouts, paragraphListStyles);
 
     if (!html.trim()) {
         throw new Error('The document appears to be empty or could not be parsed.');
