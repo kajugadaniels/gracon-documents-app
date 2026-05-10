@@ -58,7 +58,10 @@ interface DocEditorHeaderProps {
     signatureBlockSigners?: SignatureBlockSigner[];
     viewMenuItems: readonly MenuItem[];
     certificateStatus: DigitalCertificateActionStatus;
+    isStarred?: boolean;
     onOpenComments?: () => void;
+    onToggleStar?: () => void;
+    onManualSave?: () => void | Promise<void>;
     onShareActivityRecorded: () => void;
     onApplyForDigitalSignature: () => void;
     onFinalise: () => void;
@@ -75,7 +78,7 @@ export function DocEditorHeader({
     isReadOnly, isLocked, canShare, canComment = false,
     canFinalise, canLock, canSign, canViewSignature,
     canPrepareSignatureBlocks = false, signatureBlockSigners = [], viewMenuItems,
-    certificateStatus, onOpenComments, onShareActivityRecorded,
+    certificateStatus, isStarred = false, onOpenComments, onToggleStar, onManualSave, onShareActivityRecorded,
     onApplyForDigitalSignature, onFinalise, onLock, onSign, onViewSignature, onViewAction,
 }: DocEditorHeaderProps) {
     const [shareOpen, setShareOpen] = useState(false);
@@ -184,10 +187,28 @@ export function DocEditorHeader({
                                 </button>
                             )}
                             <div className="ded-doc-identity__meta">
-                                <button className="ded-icon-btn" title="Star document" disabled>
-                                    <HugeiconsIcon icon={StarIcon} size={14} />
+                                <button
+                                    className={`ded-icon-btn${isStarred ? ' ded-icon-btn--starred' : ''}`}
+                                    title={isStarred ? 'Remove from starred' : 'Add to starred'}
+                                    aria-label={isStarred ? `Remove ${doc.title} from starred` : `Add ${doc.title} to starred`}
+                                    aria-pressed={isStarred}
+                                    onClick={onToggleStar}
+                                    disabled={!onToggleStar}
+                                >
+                                    <HugeiconsIcon
+                                        icon={StarIcon}
+                                        size={14}
+                                        color={isStarred ? '#f59e0b' : 'currentColor'}
+                                        fill={isStarred ? '#f59e0b' : 'none'}
+                                    />
                                 </button>
-                                <button className="ded-icon-btn" title="Move to folder" disabled>
+                                <button
+                                    className="ded-icon-btn"
+                                    title={isReadOnly ? 'Read-only documents cannot be saved' : 'Save document now'}
+                                    aria-label="Save document now"
+                                    onClick={onManualSave}
+                                    disabled={isReadOnly || !onManualSave || saveStatus === 'saving'}
+                                >
                                     <HugeiconsIcon icon={FolderOpenIcon} size={14} />
                                 </button>
                                 {saveLabel && (
