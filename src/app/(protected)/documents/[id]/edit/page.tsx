@@ -19,6 +19,7 @@ import { DocumentRulerOverlay, DocumentPageRulerSidebar } from '@/components/edi
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
+import { DocumentTabsPanel, type DocumentTabItem } from '@/components/editor/DocumentTabsPanel';
 import { PagedDocumentCanvas } from '@/components/editor/PagedDocumentCanvas';
 import { mergeDocumentShareState } from '@/components/editor/document-share-state';
 import {
@@ -93,6 +94,7 @@ export default function EditDocumentPage() {
     const [shareActivityRefreshKey, setShareActivityRefreshKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
     const [leftRulerPages, setLeftRulerPages] = useState([{ pageNumber: 1, top: 0 }]);
+    const [documentTabs, setDocumentTabs] = useState<DocumentTabItem[]>([]);
     const continuousDocumentLayout = useMemo(() => ({
         pageCount: 1,
         activePage: 1,
@@ -126,6 +128,51 @@ export default function EditDocumentPage() {
     const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const rulerCommitLayoutRef = useRef<DocumentLayout | null>(null);
     const saveInFlightRef = useRef<Promise<boolean> | null>(null);
+    const measureDocumentTabs = useCallback(() => {
+        const editorEl = canvasRef.current?.querySelector<HTMLElement>('.ProseMirror');
+        if (!editorEl) return;
+
+        const editorRect = editorEl.getBoundingClientRect();
+        const headings = Array.from(editorEl.querySelectorAll<HTMLElement>('h1, h2, h3'));
+        const nextTabs = headings
+            .map((heading, index) => {
+                const label = heading.textContent?.replace(/\s+/g, ' ').trim();
+
+                if (!label) {
+                    return null;
+                }
+
+                if (!heading.id) {
+                    heading.id = `document-heading-tab-${index + 1}`;
+                }
+
+                const headingRect = heading.getBoundingClientRect();
+                const top = Math.max(0, headingRect.top - editorRect.top + editorEl.scrollTop);
+                const level = Number.parseInt(heading.tagName.replace('H', ''), 10);
+
+                return {
+                    id: heading.id,
+                    label,
+                    pageNumber: Math.max(1, Math.floor(top / A4_PAPER_HEIGHT_PX) + 1),
+                    level: Number.isFinite(level) ? level : 1,
+                };
+            })
+            .filter((tab): tab is DocumentTabItem => Boolean(tab));
+
+        setDocumentTabs((current) => {
+            const unchanged = current.length === nextTabs.length
+                && current.every((tab, index) => {
+                    const nextTab = nextTabs[index];
+
+                    return tab.id === nextTab.id
+                        && tab.label === nextTab.label
+                        && tab.pageNumber === nextTab.pageNumber
+                        && tab.level === nextTab.level;
+                });
+
+            return unchanged ? current : nextTabs;
+        });
+    }, []);
     const measureLeftRulerPages = useCallback(() => {
         const editorEl = canvasRef.current?.querySelector<HTMLElement>('.ProseMirror');
         if (!editorEl) return;
@@ -143,7 +190,8 @@ export default function EditDocumentPage() {
                 top: index * A4_PAPER_HEIGHT_PX,
             }));
         });
-    }, []);
+        measureDocumentTabs();
+    }, [measureDocumentTabs]);
     const beginAccessTransition = useCallback((message: string) => {
         setAccessTransitionMessage((current) => current ?? message);
 
@@ -212,6 +260,7 @@ export default function EditDocumentPage() {
         let ignore = false;
         setLoading(true);
         setLoadError(null);
+        setDocumentTabs([]);
         getDocument(id, true)
             .then(d => {
                 if (ignore) return;
@@ -355,6 +404,20 @@ export default function EditDocumentPage() {
             toast.error('Document could not be saved. Your changes remain queued.');
         }
     }, [doc, save]);
+    const handleSelectDocumentTab = useCallback((tab: DocumentTabItem) => {
+        const editorEl = canvasRef.current?.querySelector<HTMLElement>('.ProseMirror');
+        if (!editorEl) return;
+
+        const safeId = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+            ? CSS.escape(tab.id)
+            : tab.id.replace(/"/g, '\\"');
+        const heading = editorEl.querySelector<HTMLElement>(`#${safeId}`);
+
+        heading?.scrollIntoView({
+            block: 'start',
+            behavior: 'smooth',
+        });
+    }, []);
 
     async function handleTitleSave() {
         setEditingTitle(false);
@@ -846,6 +909,11 @@ export default function EditDocumentPage() {
 
             {/* ── Page body: fixed ruler sidebar + scrollable document canvas ── */}
             <div className="ded-page-body">
+                <DocumentTabsPanel
+                    tabs={documentTabs}
+                    onSelectTab={handleSelectDocumentTab}
+                />
+
                 {/* Vertical ruler sidebar — scroll is driven by canvas, not the user */}
                 {viewState.showRuler && (
                     <div className="ded-ruler-sidebar">
