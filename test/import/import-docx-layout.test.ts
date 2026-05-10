@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+    annotateImportedDocxHtml,
     collectImportedParagraphLayouts,
     createImportedParagraphLayout,
+    extractParagraphListStylesFromDocxXml,
     extractParagraphTabStopsFromDocumentXml,
     mergeParagraphTabStopsIntoLayouts,
     twipToPx,
@@ -172,5 +174,94 @@ describe('DOCX import layout conversion', () => {
             },
             { leftIndent: 0, firstLineIndent: -24, tabStops: [] },
         ]);
+    });
+
+    it('extracts DOCX numbering formats for imported list styles', () => {
+        const numberingXml = `
+            <w:numbering>
+                <w:abstractNum w:abstractNumId="1">
+                    <w:lvl w:ilvl="0"><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%1."/></w:lvl>
+                </w:abstractNum>
+                <w:abstractNum w:abstractNumId="2">
+                    <w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/><w:lvlText w:val="▪"/></w:lvl>
+                </w:abstractNum>
+                <w:num w:numId="10"><w:abstractNumId w:val="1"/></w:num>
+                <w:num w:numId="20"><w:abstractNumId w:val="2"/></w:num>
+            </w:numbering>
+        `;
+        const documentXml = `
+            <w:document><w:body>
+                <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="10"/></w:numPr></w:pPr></w:p>
+                <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="20"/></w:numPr></w:pPr></w:p>
+                <w:p><w:r><w:t>Plain</w:t></w:r></w:p>
+            </w:body></w:document>
+        `;
+
+        assert.deepEqual(extractParagraphListStylesFromDocxXml(documentXml, numberingXml), [
+            { kind: 'orderedList', style: 'lower-alpha' },
+            { kind: 'bulletList', style: 'square' },
+            null,
+        ]);
+    });
+
+    it('annotates imported HTML lists with recovered DOCX list styles', () => {
+        const originalDomParser = globalThis.DOMParser;
+
+        try {
+            class FakeElement {
+                tagName: string;
+                attrs = new Map<string, string>();
+
+                constructor(tagName: string) {
+                    this.tagName = tagName;
+                }
+
+                setAttribute(name: string, value: string) {
+                    this.attrs.set(name, value);
+                }
+
+                getAttribute(name: string) {
+                    return this.attrs.get(name) ?? null;
+                }
+            }
+
+            const paragraph = new FakeElement('P');
+            const orderedList = new FakeElement('OL');
+            const bulletList = new FakeElement('UL');
+
+            // @ts-expect-error Minimal DOMParser implementation for this pure helper test.
+            globalThis.DOMParser = class {
+                parseFromString() {
+                    return {
+                        body: {
+                            querySelectorAll: (selector: string) => {
+                                if (selector === 'p, h1, h2, h3, h4, h5, h6') return [paragraph];
+                                if (selector === 'ul, ol') return [orderedList, bulletList];
+                                return [];
+                            },
+                            get innerHTML() {
+                                return [
+                                    orderedList.getAttribute('data-list-style-type'),
+                                    bulletList.getAttribute('data-list-style-type'),
+                                ].join('|');
+                            },
+                        },
+                    };
+                }
+            };
+
+            const html = annotateImportedDocxHtml(
+                '<ol><li>A</li></ol><ul><li>B</li></ul>',
+                [{ leftIndent: 0, firstLineIndent: 0, tabStops: [] }],
+                [
+                    { kind: 'orderedList', style: 'upper-roman' },
+                    { kind: 'bulletList', style: 'circle' },
+                ],
+            );
+
+            assert.equal(html, 'upper-roman|circle');
+        } finally {
+            globalThis.DOMParser = originalDomParser;
+        }
     });
 });
