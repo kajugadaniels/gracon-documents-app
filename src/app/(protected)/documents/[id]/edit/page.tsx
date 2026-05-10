@@ -33,6 +33,7 @@ import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import { buildViewMenuItems } from '@/constants/view-menu';
 import { A4_PAPER_HEIGHT_PX, A4_PAPER_WIDTH_PX } from '@/constants';
+import { useStarred } from '@/lib/hooks/useStarred';
 import { getDigitalCertificateUrl, redirectToLogin } from '@/lib/session';
 import { getSignatureBlockSigners } from '@/lib/editor-signature-blocks';
 import {
@@ -69,6 +70,7 @@ export default function EditDocumentPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
     const user = useSessionUser();
+    const { isStarred, toggleStar } = useStarred();
 
     const [doc, setDoc] = useState<DocumentDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -258,16 +260,17 @@ export default function EditDocumentPage() {
 
     // Autosave logic
     const save = useCallback(async (force = false) => {
-        if (!dirtyRef.current && !force) return;
-        if (!contentRef.current) return;
-        if (doc?.status !== 'DRAFT') return;
-        if (!hasDocumentPermission(doc, 'EDIT')) return;
+        if (!dirtyRef.current && !force) return false;
+        if (!contentRef.current) return false;
+        if (doc?.status !== 'DRAFT') return false;
+        if (!hasDocumentPermission(doc, 'EDIT')) return false;
         setSaveStatus('saving');
         dirtyRef.current = false;
         try {
             await autosaveDocument(id, contentRef.current, wordCntRef.current);
             setSaveStatus('saved');
             setTimeout(() => setSaveStatus('idle'), 2000);
+            return true;
         } catch (err: unknown) {
             const httpStatus = (err as { response?: { status?: number } })?.response?.status;
 
@@ -282,11 +285,12 @@ export default function EditDocumentPage() {
                 redirectToLogin(
                     `${window.location.pathname}${window.location.search}${window.location.hash}`,
                 );
-                return;
+                return false;
             }
 
             setSaveStatus('error');
             dirtyRef.current = true;
+            return false;
         }
     }, [id, doc]);
 
@@ -304,6 +308,25 @@ export default function EditDocumentPage() {
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => { void save(); }, 3000);
     }, [measureLeftRulerPages, save]);
+
+    const handleManualSave = useCallback(async () => {
+        if (saveTimerRef.current) {
+            clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+        }
+
+        const saved = await save(true);
+
+        if (saved) {
+            toast.success('Document saved.');
+        } else if (doc?.status !== 'DRAFT') {
+            toast.info('Only draft documents can be saved manually.');
+        } else if (!hasDocumentPermission(doc, 'EDIT')) {
+            toast.warning('You do not have permission to save this document.');
+        } else {
+            toast.error('Document could not be saved. Your changes remain queued.');
+        }
+    }, [doc, save]);
 
     async function handleTitleSave() {
         setEditingTitle(false);
@@ -708,7 +731,10 @@ export default function EditDocumentPage() {
                 signatureBlockSigners={signatureBlockSigners}
                 viewMenuItems={viewMenuItems}
                 certificateStatus={certificateStatus.status}
+                isStarred={isStarred(doc.id)}
                 onOpenComments={() => setCommentsOpen(true)}
+                onToggleStar={() => toggleStar(doc.id)}
+                onManualSave={handleManualSave}
                 onShareActivityRecorded={handleShareActivityRecorded}
                 onApplyForDigitalSignature={handleApplyForDigitalSignature}
                 onFinalise={handleFinalise}
