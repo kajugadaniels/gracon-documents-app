@@ -4684,6 +4684,66 @@ body {
   overflow-y: auto;
 }
 
+/* ── List style split controls ── */
+.ded-list-style-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.ded-list-style-picker__main,
+.ded-list-style-picker__arrow {
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: #444746;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 80ms, color 80ms;
+}
+.ded-list-style-picker__main {
+  width: 28px;
+  border-radius: 4px 0 0 4px;
+}
+.ded-list-style-picker__arrow {
+  width: 16px;
+  border-radius: 0 4px 4px 0;
+  font-size: 9px;
+  line-height: 1;
+  color: rgba(68,71,70,0.62);
+}
+.ded-list-style-picker__main:hover,
+.ded-list-style-picker__arrow:hover,
+.ded-list-style-picker__arrow--open {
+  background: rgba(0,0,0,0.09);
+  color: #1a1a1a;
+}
+.ded-list-style-picker__main--active {
+  background: #d3e3fd;
+  color: #1558d6;
+}
+.ded-list-style-picker__dropdown {
+  min-width: 178px;
+}
+.ded-list-style-picker__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-inline: 10px 14px;
+}
+.ded-list-style-picker__marker {
+  width: 34px;
+  min-width: 34px;
+  color: #1558d6;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
 /* ── Text color picker ── */
 .ded-color-picker {
   position: relative;
