@@ -24,6 +24,7 @@ import {
     getDocumentAccessList,
     shareDocumentAccess,
     type CollaboratorPermission,
+    type InvitationVerificationRequirement,
 } from '@/api/documents.api';
 import { toast } from '@/components/ui';
 import { ShareDocumentAuditLog } from './ShareDocumentAuditLog';
@@ -47,6 +48,28 @@ const PERMISSION_OPTIONS: Array<{
     { value: 'SIGN',          label: 'Sign',           description: 'Can review and sign the document' },
     { value: 'EDIT',          label: 'Edit',           description: 'Can change the document content'  },
     { value: 'MANAGE_ACCESS', label: 'Manage access',  description: 'Can invite and update collaborators' },
+];
+
+const DEFAULT_VERIFICATION_REQUIREMENTS: InvitationVerificationRequirement[] = [
+    'EMAIL_OTP',
+    'IDENTITY_VERIFICATION',
+];
+
+const VERIFICATION_OPTIONS: Array<{
+    value: InvitationVerificationRequirement;
+    label: string;
+    description: string;
+}> = [
+    {
+        value: 'EMAIL_OTP',
+        label: 'Email code',
+        description: 'Recipient confirms the invited email with a one-time code',
+    },
+    {
+        value: 'IDENTITY_VERIFICATION',
+        label: 'Identity check',
+        description: 'Recipient completes the invitation identity challenge',
+    },
 ];
 
 const SEARCH_PLACEHOLDER: Record<UserSearchMode, string> = {
@@ -122,11 +145,13 @@ function ShareDialogAvatar({ user }: { user: UserSearchResult }) {
 interface InviteFormProps {
     user: UserSearchResult;
     permissions: CollaboratorPermission[];
+    verificationRequirements: InvitationVerificationRequirement[];
     note: string;
     loading: boolean;
     error: string | null;
     canGrantManageAccess: boolean;
     onTogglePermission: (p: Exclude<CollaboratorPermission, 'READ'>) => void;
+    onToggleVerificationRequirement: (requirement: InvitationVerificationRequirement) => void;
     onNoteChange: (value: string) => void;
     onDeselect: () => void;
 }
@@ -136,8 +161,8 @@ interface InviteFormProps {
  * All state is lifted to the parent; this component is purely presentational.
  */
 function InviteForm({
-    user, permissions, note, loading, error, canGrantManageAccess,
-    onTogglePermission, onNoteChange, onDeselect,
+    user, permissions, verificationRequirements, note, loading, error, canGrantManageAccess,
+    onTogglePermission, onToggleVerificationRequirement, onNoteChange, onDeselect,
 }: InviteFormProps) {
     const options = canGrantManageAccess
         ? PERMISSION_OPTIONS
@@ -190,6 +215,40 @@ function InviteForm({
                         );
                     })}
                 </div>
+            </div>
+
+            {/* Verification requirements */}
+            <div>
+                <p className="share-invite__section-title">Required verification</p>
+                <p className="share-invite__section-hint">
+                    Choose what the recipient must complete after signing in.
+                </p>
+                <div className="share-invite__verification-grid">
+                    {VERIFICATION_OPTIONS.map((option) => {
+                        const checked = verificationRequirements.includes(option.value);
+                        return (
+                            <label
+                                key={option.value}
+                                className={`share-invite__verification-option${checked ? ' share-invite__verification-option--checked' : ''}`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => onToggleVerificationRequirement(option.value)}
+                                />
+                                <span>
+                                    <span className="share-invite__perm-name">{option.label}</span>
+                                    <span className="share-invite__perm-desc">{option.description}</span>
+                                </span>
+                            </label>
+                        );
+                    })}
+                </div>
+                {verificationRequirements.length === 0 && (
+                    <p className="share-invite__verification-note">
+                        No extra verification will be required after login.
+                    </p>
+                )}
             </div>
 
             {/* Note */}
@@ -271,6 +330,8 @@ export function ShareDocumentDialog({
 
     // ── Invite form state ──
     const [permissions,  setPermissions]  = useState<CollaboratorPermission[]>(['READ']);
+    const [verificationRequirements, setVerificationRequirements] =
+        useState<InvitationVerificationRequirement[]>(DEFAULT_VERIFICATION_REQUIREMENTS);
     const [note,         setNote]         = useState('');
     const [shareLoading, setShareLoading] = useState(false);
     const [shareError,   setShareError]   = useState<string | null>(null);
@@ -351,6 +412,14 @@ export function ShareDocumentDialog({
         );
     }
 
+    function handleToggleVerificationRequirement(requirement: InvitationVerificationRequirement) {
+        setVerificationRequirements((prev) =>
+            prev.includes(requirement)
+                ? prev.filter((item) => item !== requirement)
+                : [...prev, requirement],
+        );
+    }
+
     async function handleSendInvitation() {
         if (!selectedUser || shareLoading) return;
         setShareLoading(true);
@@ -359,6 +428,7 @@ export function ShareDocumentDialog({
             const response = await shareDocumentAccess(documentId, {
                 userId: selectedUser.id,
                 permissions,
+                verificationRequirements,
                 note: note.trim() || undefined,
             });
             if (response.emailStatus === 'failed') {
@@ -367,7 +437,9 @@ export function ShareDocumentDialog({
                 toast.success('Invitation sent successfully.');
             }
             setQuery(''); setResults([]); setSelectedId(null);
-            setSelectedUser(null); setPermissions(['READ']); setNote('');
+            setSelectedUser(null); setPermissions(['READ']);
+            setVerificationRequirements(DEFAULT_VERIFICATION_REQUIREMENTS);
+            setNote('');
             setAccessRefreshKey((k) => k + 1);
             onActivityRecorded();
             setActiveTab('people');
@@ -566,11 +638,13 @@ export function ShareDocumentDialog({
                                     <InviteForm
                                         user={selectedUser}
                                         permissions={permissions}
+                                        verificationRequirements={verificationRequirements}
                                         note={note}
                                         loading={shareLoading}
                                         error={shareError}
                                         canGrantManageAccess={canGrantManageAccess}
                                         onTogglePermission={handleTogglePermission}
+                                        onToggleVerificationRequirement={handleToggleVerificationRequirement}
                                         onNoteChange={setNote}
                                         onDeselect={handleDeselect}
                                     />
