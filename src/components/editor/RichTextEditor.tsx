@@ -305,8 +305,8 @@ function EditorToolbar({
             <Divider />
 
             {/* Lists */}
-            <ToolbarButton onClick={() => editor.chain().focus().toggleBulletListStyle().run()} active={editor.isActive('bulletList')} title="Bullet list">• —</ToolbarButton>
-            <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedListStyle().run()} active={editor.isActive('orderedList')} title="Numbered list">1.</ToolbarButton>
+            <ToolbarButton onClick={() => { editor.commands.focus(); editor.commands.toggleBulletListStyle(); }} active={editor.isActive('bulletList')} title="Bullet list">• —</ToolbarButton>
+            <ToolbarButton onClick={() => { editor.commands.focus(); editor.commands.toggleOrderedListStyle(); }} active={editor.isActive('orderedList')} title="Numbered list">1.</ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Quote">❝</ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} title="Code block">{'{}'}</ToolbarButton>
 
