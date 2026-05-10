@@ -42,6 +42,9 @@ export type CollaboratorPermission =
     | 'SIGN'
     | 'EDIT'
     | 'MANAGE_ACCESS';
+export type InvitationVerificationRequirement =
+    | 'EMAIL_OTP'
+    | 'IDENTITY_VERIFICATION';
 
 export interface DocumentAccessSummary {
     isOwner: boolean;
@@ -61,6 +64,7 @@ export interface DocumentCollaboratorAccess {
     userId: string;
     role: 'VIEWER' | 'EDITOR' | 'SIGNER';
     permissions: CollaboratorPermission[];
+    verificationRequirements: InvitationVerificationRequirement[];
     invitationStatus: CollaboratorInvitationStatus;
     invitationExpiresAt: string | null;
     invitationEmailSentAt: string | null;
@@ -447,6 +451,7 @@ export async function shareDocumentAccess(
     data: {
         userId: string;
         permissions: CollaboratorPermission[];
+        verificationRequirements?: InvitationVerificationRequirement[];
         note?: string;
         expiresInDays?: number;
     },
