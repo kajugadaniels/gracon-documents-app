@@ -14,13 +14,14 @@ export interface DocumentTabItem {
 
 interface DocumentTabsPanelProps {
     tabs: DocumentTabItem[];
+    activeTabId: string | null;
     onSelectTab: (tab: DocumentTabItem) => void;
 }
 
 /**
  * Shows document heading tabs with page references and scroll navigation.
  */
-export function DocumentTabsPanel({ tabs, onSelectTab }: DocumentTabsPanelProps) {
+export function DocumentTabsPanel({ tabs, activeTabId, onSelectTab }: DocumentTabsPanelProps) {
     return (
         <aside className="ded-document-tabs" aria-label="Document tabs">
             <div className="ded-document-tabs__header">
@@ -34,12 +35,13 @@ export function DocumentTabsPanel({ tabs, onSelectTab }: DocumentTabsPanelProps)
                         <button
                             key={tab.id}
                             type="button"
-                            className="ded-document-tabs__item"
+                            className={`ded-document-tabs__item${activeTabId === tab.id ? ' ded-document-tabs__item--active' : ''}`}
                             style={{
                                 '--tab-indent': `${Math.max(0, tab.level - 1) * 10}px`,
                             } as CSSProperties & Record<'--tab-indent', string>}
                             onClick={() => onSelectTab(tab)}
                             title={tab.label}
+                            aria-current={activeTabId === tab.id ? 'location' : undefined}
                         >
                             <span>{tab.label}</span>
                             <em>p. {tab.pageNumber}</em>
