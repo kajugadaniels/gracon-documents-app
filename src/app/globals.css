@@ -1124,6 +1124,14 @@ body {
 }
 .tiptap-editor .ProseMirror ul,
 .tiptap-editor .ProseMirror ol { padding-left:1.5em; margin:0.5em 0; }
+.tiptap-editor .ProseMirror ul[data-list-style-type="disc"] { list-style-type: disc; }
+.tiptap-editor .ProseMirror ul[data-list-style-type="circle"] { list-style-type: circle; }
+.tiptap-editor .ProseMirror ul[data-list-style-type="square"] { list-style-type: square; }
+.tiptap-editor .ProseMirror ol[data-list-style-type="decimal"] { list-style-type: decimal; }
+.tiptap-editor .ProseMirror ol[data-list-style-type="lower-alpha"] { list-style-type: lower-alpha; }
+.tiptap-editor .ProseMirror ol[data-list-style-type="upper-alpha"] { list-style-type: upper-alpha; }
+.tiptap-editor .ProseMirror ol[data-list-style-type="lower-roman"] { list-style-type: lower-roman; }
+.tiptap-editor .ProseMirror ol[data-list-style-type="upper-roman"] { list-style-type: upper-roman; }
 .tiptap-editor .ProseMirror li { margin:0.2em 0; }
 .tiptap-editor .ProseMirror blockquote {
   border-left:  3px solid var(--color-primary);
