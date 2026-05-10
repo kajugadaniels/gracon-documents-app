@@ -66,20 +66,26 @@ export const ListStyleExtension = Extension.create({
 
     addCommands() {
         return {
-            setBulletListStyle: (style) => ({ commands, editor }) => {
+            setBulletListStyle: (style) => ({ chain, commands, editor }) => {
                 const listStyleType = normalizeBulletListStyle(style);
 
-                if (!editor.isActive('bulletList') && !commands.toggleBulletList()) {
-                    return false;
+                if (!editor.isActive('bulletList')) {
+                    return chain()
+                        .toggleBulletList()
+                        .updateAttributes('bulletList', { listStyleType })
+                        .run();
                 }
 
                 return commands.updateAttributes('bulletList', { listStyleType });
             },
-            setOrderedListStyle: (style) => ({ commands, editor }) => {
+            setOrderedListStyle: (style) => ({ chain, commands, editor }) => {
                 const listStyleType = normalizeOrderedListStyle(style);
 
-                if (!editor.isActive('orderedList') && !commands.toggleOrderedList()) {
-                    return false;
+                if (!editor.isActive('orderedList')) {
+                    return chain()
+                        .toggleOrderedList()
+                        .updateAttributes('orderedList', { listStyleType })
+                        .run();
                 }
 
                 return commands.updateAttributes('orderedList', { listStyleType });
