@@ -716,6 +716,7 @@ interface DocumentPageRulerSidebarProps {
     canvasRef: RefObject<HTMLDivElement | null>;
     pages: DocumentPaginationPage[];
     pageHeight: number;
+    zoomScale?: number;
     margins: DocumentLayoutMargins;
     disabled?: boolean;
 }
@@ -731,6 +732,7 @@ export function DocumentPageRulerSidebar({
     canvasRef,
     pages,
     pageHeight,
+    zoomScale = 1,
     margins,
     disabled = false,
 }: DocumentPageRulerSidebarProps) {
@@ -766,6 +768,7 @@ export function DocumentPageRulerSidebar({
     const bottomMarginPercent = (margins.bottom / pageHeight) * 100;
     const topMarginIn = margins.top / DPI;
     const bottomMarginIn = margins.bottom / DPI;
+    const visualPageHeight = pageHeight * zoomScale;
 
     // Pre-compute tick data once — shared across all page rulers.
     const ticks = VERTICAL_TICKS.map((tick) => {
@@ -788,7 +791,7 @@ export function DocumentPageRulerSidebar({
                 <div
                     key={page.pageNumber}
                     className={`document-ruler document-ruler--left document-ruler--page${disabled ? ' document-ruler--disabled' : ''}`}
-                    style={{ height: pageHeight }}
+                    style={{ height: visualPageHeight }}
                 >
                     <span
                         className="document-ruler__margin-zone document-ruler__margin-zone--top"
