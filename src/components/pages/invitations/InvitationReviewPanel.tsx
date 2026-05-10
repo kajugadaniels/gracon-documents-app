@@ -61,6 +61,47 @@ function CheckItem({ label, value }: { label: string; value: string }) {
     );
 }
 
+/** Renders only the proof rows selected by the inviter. */
+function VerificationProofChain({ review }: { review: InvitationReview }) {
+    const requirements = review.invitation.verificationRequirements;
+
+    if (requirements.length === 0) {
+        return (
+            <CheckItem
+                label="Extra verification"
+                value="Not required by the inviter"
+            />
+        );
+    }
+
+    return (
+        <>
+            {requirements.includes('EMAIL_OTP') && (
+                <CheckItem
+                    label="Email OTP passed"
+                    value={formatDate(review.verification.emailOtpVerifiedAt)}
+                />
+            )}
+            {requirements.includes('IDENTITY_VERIFICATION') && (
+                <>
+                    <CheckItem
+                        label="Identity challenge started"
+                        value={formatDate(review.verification.identityChallengeStartedAt)}
+                    />
+                    <CheckItem
+                        label="Identity verified"
+                        value={formatDate(review.verification.identityVerifiedAt)}
+                    />
+                    <CheckItem
+                        label="Attempt reference"
+                        value={formatAttemptId(review.verification.identityVerificationAttemptId)}
+                    />
+                </>
+            )}
+        </>
+    );
+}
+
 /**
  * Full review surface: document title reveal, verification proof chain,
  * and Accept / Decline controls. Shows an accepted banner on success.
@@ -119,22 +160,7 @@ export function InvitationReviewPanel({
                 <p style={{ margin: 0, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-success)' }}>
                     Verification complete
                 </p>
-                <CheckItem
-                    label="Email OTP passed"
-                    value={formatDate(review.verification.emailOtpVerifiedAt)}
-                />
-                <CheckItem
-                    label="Identity challenge started"
-                    value={formatDate(review.verification.identityChallengeStartedAt)}
-                />
-                <CheckItem
-                    label="Identity verified"
-                    value={formatDate(review.verification.identityVerifiedAt)}
-                />
-                <CheckItem
-                    label="Attempt reference"
-                    value={formatAttemptId(review.verification.identityVerificationAttemptId)}
-                />
+                <VerificationProofChain review={review} />
             </div>
 
             {/* Error feedback */}
