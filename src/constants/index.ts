@@ -4,6 +4,26 @@
 export type { MenuItem, MenuItemAction, MenuItemDivider, MenuItemSubmenu } from './types';
 export { GOOGLE_FONTS, FONT_SIZES, loadGoogleFont } from './google-fonts';
 export type { GoogleFont } from './google-fonts';
+export {
+    BULLET_LIST_STYLE_OPTIONS,
+    BULLET_LIST_STYLE_VALUES,
+    DEFAULT_BULLET_LIST_STYLE,
+    DEFAULT_ORDERED_LIST_STYLE,
+    LIST_STYLE_OPTIONS_BY_KIND,
+    ORDERED_LIST_STYLE_OPTIONS,
+    ORDERED_LIST_STYLE_VALUES,
+    isBulletListStyle,
+    isOrderedListStyle,
+    normalizeBulletListStyle,
+    normalizeOrderedListStyle,
+} from './list-styles';
+export type {
+    BulletListStyle,
+    EditorListKind,
+    EditorListStyle,
+    EditorListStyleOption,
+    OrderedListStyle,
+} from './list-styles';
 export { FILE_MENU_ITEMS } from './file-menu';
 export { EDIT_MENU_ITEMS } from './edit-menu';
 export { VIEW_MENU_ITEMS } from './view-menu';
