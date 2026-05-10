@@ -36,6 +36,12 @@ import {
     type BulletListStyle,
     type OrderedListStyle,
 } from '@/constants';
+import {
+    setBulletListStyle,
+    setOrderedListStyle,
+    toggleBulletListStyle,
+    toggleOrderedListStyle,
+} from './list-style-extension';
 
 // ─── Toolbar primitive ────────────────────────────────────────────────────────
 
@@ -386,22 +392,18 @@ function ListStylePicker({
     }, []);
 
     function toggleDefaultList() {
-        editor.commands.focus();
-
         if (isBullet) {
-            editor.commands.toggleBulletListStyle(DEFAULT_BULLET_LIST_STYLE);
+            toggleBulletListStyle(editor, DEFAULT_BULLET_LIST_STYLE);
         } else {
-            editor.commands.toggleOrderedListStyle(DEFAULT_ORDERED_LIST_STYLE);
+            toggleOrderedListStyle(editor, DEFAULT_ORDERED_LIST_STYLE);
         }
     }
 
     function selectStyle(style: BulletListStyle | OrderedListStyle) {
-        editor.commands.focus();
-
         if (isBullet) {
-            editor.commands.setBulletListStyle(style as BulletListStyle);
+            setBulletListStyle(editor, style as BulletListStyle);
         } else {
-            editor.commands.setOrderedListStyle(style as OrderedListStyle);
+            setOrderedListStyle(editor, style as OrderedListStyle);
         }
 
         setOpen(false);
