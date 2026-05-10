@@ -386,18 +386,22 @@ function ListStylePicker({
     }, []);
 
     function toggleDefaultList() {
+        editor.commands.focus();
+
         if (isBullet) {
-            editor.chain().focus().toggleBulletListStyle(DEFAULT_BULLET_LIST_STYLE).run();
+            editor.commands.toggleBulletListStyle(DEFAULT_BULLET_LIST_STYLE);
         } else {
-            editor.chain().focus().toggleOrderedListStyle(DEFAULT_ORDERED_LIST_STYLE).run();
+            editor.commands.toggleOrderedListStyle(DEFAULT_ORDERED_LIST_STYLE);
         }
     }
 
     function selectStyle(style: BulletListStyle | OrderedListStyle) {
+        editor.commands.focus();
+
         if (isBullet) {
-            editor.chain().focus().setBulletListStyle(style as BulletListStyle).run();
+            editor.commands.setBulletListStyle(style as BulletListStyle);
         } else {
-            editor.chain().focus().setOrderedListStyle(style as OrderedListStyle).run();
+            editor.commands.setOrderedListStyle(style as OrderedListStyle);
         }
 
         setOpen(false);
