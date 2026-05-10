@@ -90,6 +90,7 @@ export default function EditDocumentPage() {
     const [retryKey, setRetryKey] = useState(0);
     const [shareActivityRefreshKey, setShareActivityRefreshKey] = useState(0);
     const [editor, setEditor] = useState<Editor | null>(null);
+    const [leftRulerPages, setLeftRulerPages] = useState([{ pageNumber: 1, top: 0 }]);
     const continuousDocumentLayout = useMemo(() => ({
         pageCount: 1,
         activePage: 1,
@@ -122,6 +123,24 @@ export default function EditDocumentPage() {
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const rulerCommitLayoutRef = useRef<DocumentLayout | null>(null);
+    const measureLeftRulerPages = useCallback(() => {
+        const editorEl = canvasRef.current?.querySelector<HTMLElement>('.ProseMirror');
+        if (!editorEl) return;
+
+        const contentHeight = Math.max(A4_PAPER_HEIGHT_PX, editorEl.scrollHeight);
+        const pageCount = Math.max(1, Math.ceil(contentHeight / A4_PAPER_HEIGHT_PX));
+
+        setLeftRulerPages((current) => {
+            if (current.length === pageCount) {
+                return current;
+            }
+
+            return Array.from({ length: pageCount }, (_, index) => ({
+                pageNumber: index + 1,
+                top: index * A4_PAPER_HEIGHT_PX,
+            }));
+        });
+    }, []);
     const beginAccessTransition = useCallback((message: string) => {
         setAccessTransitionMessage((current) => current ?? message);
 
@@ -168,6 +187,22 @@ export default function EditDocumentPage() {
             clearTimeout(redirectTimerRef.current);
         }
     }, []);
+
+    useEffect(() => {
+        const editorEl = canvasRef.current?.querySelector<HTMLElement>('.ProseMirror');
+        if (!editorEl) return;
+
+        const animationFrame = window.requestAnimationFrame(measureLeftRulerPages);
+        const resizeObserver = new ResizeObserver(measureLeftRulerPages);
+        resizeObserver.observe(editorEl);
+        window.addEventListener('resize', measureLeftRulerPages);
+
+        return () => {
+            window.cancelAnimationFrame(animationFrame);
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', measureLeftRulerPages);
+        };
+    }, [doc?.id, editor, measureLeftRulerPages]);
 
     // Load document
     useEffect(() => {
@@ -265,9 +300,10 @@ export default function EditDocumentPage() {
         wordCntRef.current = wordCount;
         dirtyRef.current = true;
         setSaveStatus('idle');
+        window.requestAnimationFrame(measureLeftRulerPages);
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => { void save(); }, 3000);
-    }, [save]);
+    }, [measureLeftRulerPages, save]);
 
     async function handleTitleSave() {
         setEditingTitle(false);
@@ -761,7 +797,7 @@ export default function EditDocumentPage() {
                     <div className="ded-ruler-sidebar">
                         <DocumentPageRulerSidebar
                             canvasRef={canvasRef}
-                            pages={continuousDocumentLayout.pages}
+                            pages={leftRulerPages}
                             pageHeight={continuousDocumentLayout.pageHeight}
                             zoomScale={zoomScale}
                             margins={documentLayout.margins}
