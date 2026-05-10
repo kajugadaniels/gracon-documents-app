@@ -13,8 +13,16 @@ export const IMPORT_MAX_PARAGRAPH_WIDTH_PX = IMPORT_A4_PAPER_WIDTH_PX - (IMPORT_
 export const IMPORT_MAX_PARAGRAPH_TAB_STOPS = 12;
 export const IMPORT_TAB_STOP_SNAP_PX = 24;
 export const IMPORT_PARAGRAPH_TAB_STOP_ALIGNS = ['left', 'center', 'right', 'decimal'] as const;
+export const IMPORT_BULLET_LIST_STYLES = ['disc', 'circle', 'square'] as const;
+export const IMPORT_ORDERED_LIST_STYLES = ['decimal', 'lower-alpha', 'upper-alpha', 'lower-roman', 'upper-roman'] as const;
 
 export type ImportedParagraphTabStopAlign = typeof IMPORT_PARAGRAPH_TAB_STOP_ALIGNS[number];
+export type ImportedBulletListStyle = typeof IMPORT_BULLET_LIST_STYLES[number];
+export type ImportedOrderedListStyle = typeof IMPORT_ORDERED_LIST_STYLES[number];
+
+export type ImportedParagraphListStyle =
+    | { kind: 'bulletList'; style: ImportedBulletListStyle }
+    | { kind: 'orderedList'; style: ImportedOrderedListStyle };
 
 export interface ImportedParagraphTabStop {
     position: number;
@@ -163,6 +171,102 @@ function getAttributeValue(xml: string, localName: string) {
     return xml.match(pattern)?.[1] ?? null;
 }
 
+function mapDocxNumberFormat(value: string | null, levelText: string | null): ImportedParagraphListStyle | null {
+    if (!value) {
+        return null;
+    }
+
+    if (value === 'bullet') {
+        if (levelText === '▪' || levelText === '■' || levelText === '□') {
+            return { kind: 'bulletList', style: 'square' };
+        }
+
+        if (levelText === '◦' || levelText === 'o' || levelText === '○') {
+            return { kind: 'bulletList', style: 'circle' };
+        }
+
+        return { kind: 'bulletList', style: 'disc' };
+    }
+
+    if (value === 'lowerLetter') return { kind: 'orderedList', style: 'lower-alpha' };
+    if (value === 'upperLetter') return { kind: 'orderedList', style: 'upper-alpha' };
+    if (value === 'lowerRoman') return { kind: 'orderedList', style: 'lower-roman' };
+    if (value === 'upperRoman') return { kind: 'orderedList', style: 'upper-roman' };
+
+    return { kind: 'orderedList', style: 'decimal' };
+}
+
+function parseDocxNumberingStyles(numberingXml: string) {
+    const abstractStyles = new Map<string, Map<string, ImportedParagraphListStyle>>();
+    const numberingStyles = new Map<string, Map<string, ImportedParagraphListStyle>>();
+    const abstractMatches = numberingXml.match(/<w:abstractNum\b[\s\S]*?<\/w:abstractNum>/g) ?? [];
+
+    abstractMatches.forEach((abstractXml) => {
+        const abstractNumId = getAttributeValue(abstractXml.match(/<w:abstractNum\b[^>]*>/)?.[0] ?? '', 'abstractNumId');
+        if (!abstractNumId) return;
+
+        const levelStyles = new Map<string, ImportedParagraphListStyle>();
+        const levelMatches = abstractXml.match(/<w:lvl\b[\s\S]*?<\/w:lvl>/g) ?? [];
+
+        levelMatches.forEach((levelXml) => {
+            const level = getAttributeValue(levelXml.match(/<w:lvl\b[^>]*>/)?.[0] ?? '', 'ilvl') ?? '0';
+            const numberFormat = getAttributeValue(levelXml.match(/<w:numFmt\b[^>]*\/?>/)?.[0] ?? '', 'val');
+            const levelText = getAttributeValue(levelXml.match(/<w:lvlText\b[^>]*\/?>/)?.[0] ?? '', 'val');
+            const style = mapDocxNumberFormat(numberFormat, levelText);
+
+            if (style) {
+                levelStyles.set(level, style);
+            }
+        });
+
+        abstractStyles.set(abstractNumId, levelStyles);
+    });
+
+    const numberingMatches = numberingXml.match(/<w:num\b[\s\S]*?<\/w:num>/g) ?? [];
+
+    numberingMatches.forEach((numberingXmlBlock) => {
+        const numId = getAttributeValue(numberingXmlBlock.match(/<w:num\b[^>]*>/)?.[0] ?? '', 'numId');
+        const abstractNumId = getAttributeValue(numberingXmlBlock.match(/<w:abstractNumId\b[^>]*\/?>/)?.[0] ?? '', 'val');
+
+        if (numId && abstractNumId) {
+            numberingStyles.set(numId, abstractStyles.get(abstractNumId) ?? new Map());
+        }
+    });
+
+    return numberingStyles;
+}
+
+/**
+ * Extracts paragraph list styles from DOCX numbering metadata in document order.
+ *
+ * Mammoth emits semantic `<ul>`/`<ol>` elements, but it does not expose all Word
+ * numbering formats in HTML. This parser recovers the list marker style for
+ * each numbered paragraph so imported HTML can be annotated before TipTap parses
+ * it into schema-backed list attributes.
+ */
+export function extractParagraphListStylesFromDocxXml(documentXml: string, numberingXml: string | null) {
+    if (!documentXml.trim() || !numberingXml?.trim()) {
+        return [];
+    }
+
+    const numberingStyles = parseDocxNumberingStyles(numberingXml);
+    const paragraphMatches = documentXml.match(/<w:p\b[\s\S]*?<\/w:p>/g) ?? [];
+
+    return paragraphMatches.map((paragraphXml): ImportedParagraphListStyle | null => {
+        const paragraphProperties = paragraphXml.match(/<w:pPr\b[\s\S]*?<\/w:pPr>/)?.[0] ?? '';
+        const numberingProperties = paragraphProperties.match(/<w:numPr\b[\s\S]*?<\/w:numPr>/)?.[0] ?? '';
+
+        if (!numberingProperties) {
+            return null;
+        }
+
+        const level = getAttributeValue(numberingProperties.match(/<w:ilvl\b[^>]*\/?>/)?.[0] ?? '', 'val') ?? '0';
+        const numId = getAttributeValue(numberingProperties.match(/<w:numId\b[^>]*\/?>/)?.[0] ?? '', 'val');
+
+        return numId ? numberingStyles.get(numId)?.get(level) ?? null : null;
+    });
+}
+
 /**
  * Extracts paragraph-level tab stops from `word/document.xml`.
  *
@@ -229,7 +333,11 @@ function mergeStyle(existingStyle: string | null, nextStyle: string) {
     return [trimmedExisting, trimmedNext].filter(Boolean).join('; ');
 }
 
-export function annotateImportedDocxHtml(html: string, paragraphLayouts: ImportedParagraphLayout[]) {
+export function annotateImportedDocxHtml(
+    html: string,
+    paragraphLayouts: ImportedParagraphLayout[],
+    paragraphListStyles: Array<ImportedParagraphListStyle | null> = [],
+) {
     if (!html.trim() || paragraphLayouts.length === 0 || typeof DOMParser === 'undefined') {
         return html;
     }
@@ -237,6 +345,8 @@ export function annotateImportedDocxHtml(html: string, paragraphLayouts: Importe
     const parser = new DOMParser();
     const document = parser.parseFromString(html, 'text/html');
     const paragraphNodes = Array.from(document.body.querySelectorAll('p, h1, h2, h3, h4, h5, h6'));
+    const listNodes = Array.from(document.body.querySelectorAll('ul, ol'));
+    let paragraphListStyleIndex = 0;
 
     paragraphNodes.forEach((node, index) => {
         const layout = paragraphLayouts[index];
@@ -264,6 +374,27 @@ export function annotateImportedDocxHtml(html: string, paragraphLayouts: Importe
         if (styleParts.length > 0) {
             node.setAttribute('style', mergeStyle(node.getAttribute('style'), styleParts.join('; ')));
         }
+    });
+
+    listNodes.forEach((node) => {
+        const expectedKind = node.tagName === 'OL' ? 'orderedList' : 'bulletList';
+
+        while (
+            paragraphListStyleIndex < paragraphListStyles.length &&
+            paragraphListStyles[paragraphListStyleIndex]?.kind !== expectedKind
+        ) {
+            paragraphListStyleIndex += 1;
+        }
+
+        const listStyle = paragraphListStyles[paragraphListStyleIndex];
+        paragraphListStyleIndex += 1;
+
+        if (!listStyle || listStyle.kind !== expectedKind) {
+            return;
+        }
+
+        node.setAttribute('data-list-style-type', listStyle.style);
+        node.setAttribute('style', mergeStyle(node.getAttribute('style'), `list-style-type: ${listStyle.style}`));
     });
 
     return document.body.innerHTML;
