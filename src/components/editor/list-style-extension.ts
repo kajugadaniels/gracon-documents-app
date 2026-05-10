@@ -1,5 +1,6 @@
 import { Extension } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
+import type { Node as ProseMirrorNode, ResolvedPos } from '@tiptap/pm/model';
 import {
     DEFAULT_BULLET_LIST_STYLE,
     DEFAULT_ORDERED_LIST_STYLE,
@@ -31,11 +32,70 @@ function renderListStyleType(style: string) {
     };
 }
 
+function collectActiveListPositions(editor: Editor, typeName: 'bulletList' | 'orderedList') {
+    const { state } = editor;
+    const { selection } = state;
+    const positions = new Map<number, ProseMirrorNode>();
+
+    function addAncestorLists($pos: ResolvedPos) {
+        for (let depth = $pos.depth; depth > 0; depth -= 1) {
+            const node = $pos.node(depth);
+            if (node.type.name === typeName) {
+                positions.set($pos.before(depth), node);
+            }
+        }
+    }
+
+    addAncestorLists(selection.$from);
+    addAncestorLists(selection.$to);
+
+    state.doc.nodesBetween(selection.from, selection.to, (node, pos) => {
+        if (node.type.name === typeName) {
+            positions.set(pos, node);
+        }
+    });
+
+    return positions;
+}
+
+function updateSelectedListStyles(
+    editor: Editor,
+    typeName: 'bulletList' | 'orderedList',
+    listStyleType: BulletListStyle | OrderedListStyle,
+) {
+    const positions = collectActiveListPositions(editor, typeName);
+
+    if (positions.size === 0) {
+        return false;
+    }
+
+    let tr = editor.state.tr;
+    let changed = false;
+
+    positions.forEach((node, pos) => {
+        if (node.attrs.listStyleType === listStyleType) {
+            return;
+        }
+
+        tr = tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            listStyleType,
+        }, node.marks);
+        changed = true;
+    });
+
+    if (changed) {
+        editor.view.dispatch(tr);
+    }
+
+    return true;
+}
+
 export function setBulletListStyle(editor: Editor, style: BulletListStyle) {
     const listStyleType = normalizeBulletListStyle(style);
 
     if (editor.isActive('bulletList')) {
-        return editor.chain().focus().updateAttributes('bulletList', { listStyleType }).run();
+        return updateSelectedListStyles(editor, 'bulletList', listStyleType);
     }
 
     return editor.chain()
@@ -49,7 +109,7 @@ export function setOrderedListStyle(editor: Editor, style: OrderedListStyle) {
     const listStyleType = normalizeOrderedListStyle(style);
 
     if (editor.isActive('orderedList')) {
-        return editor.chain().focus().updateAttributes('orderedList', { listStyleType }).run();
+        return updateSelectedListStyles(editor, 'orderedList', listStyleType);
     }
 
     return editor.chain()
