@@ -1,10 +1,12 @@
 import { apiClient } from './client';
+import type { InvitationVerificationRequirement } from './documents.api';
 
 export interface InvitationPreview {
     status: 'pending';
     requiresAuthentication: boolean;
     invitation: {
         permissions: string[];
+        verificationRequirements: InvitationVerificationRequirement[];
         note: string | null;
         invitedAt: string;
         expiresAt: string | null;
@@ -26,6 +28,7 @@ export interface InvitationReview {
     };
     invitation: {
         permissions: string[];
+        verificationRequirements: InvitationVerificationRequirement[];
         note: string | null;
         invitedAt: string;
         expiresAt: string | null;
@@ -56,6 +59,7 @@ export type InvitationGateNextStep =
 export interface InvitationGateStatus {
     status: 'pending';
     nextStep: InvitationGateNextStep;
+    verificationRequirements: InvitationVerificationRequirement[];
     recipient: {
         email: string;
         displayName: string;
