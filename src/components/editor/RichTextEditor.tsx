@@ -24,6 +24,7 @@ import {
     CommentAnchorExtension,
     type CommentAnchorInput,
 } from './comment-anchor-extension';
+import { ListStyleExtension } from './list-style-extension';
 import { ParagraphLayoutExtension } from './paragraph-layout-extension';
 import { SignatureBlockExtension } from './signature-block-extension';
 
@@ -129,6 +130,7 @@ export function RichTextEditor({
             Placeholder.configure({ placeholder }),
             CharacterCount,
             CommentAnchorExtension,
+            ListStyleExtension,
             ParagraphLayoutExtension,
             SignatureBlockExtension,
         ],
@@ -303,8 +305,8 @@ function EditorToolbar({
             <Divider />
 
             {/* Lists */}
-            <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">• —</ToolbarButton>
-            <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered list">1.</ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleBulletListStyle().run()} active={editor.isActive('bulletList')} title="Bullet list">• —</ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedListStyle().run()} active={editor.isActive('orderedList')} title="Numbered list">1.</ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Quote">❝</ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} title="Code block">{'{}'}</ToolbarButton>
 
