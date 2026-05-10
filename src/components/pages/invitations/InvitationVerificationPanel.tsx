@@ -18,6 +18,7 @@ import {
     verifyInvitationEmailOtp,
     type InvitationGateStatus,
 } from '@/api/invitations.api';
+import type { InvitationVerificationRequirement } from '@/api/documents.api';
 import { APP_URL, DOCS_URL } from '@/lib/session';
 
 interface InvitationVerificationPanelProps {
@@ -76,34 +77,53 @@ function StepBubble({ n, active, done }: { n: number; active: boolean; done: boo
 }
 
 /** Horizontal two-step progress track. */
-function StepIndicator({ currentStep }: { currentStep: 1 | 2 }) {
-    const step1Done = currentStep > 1;
+function getRequirementLabel(requirement: InvitationVerificationRequirement): string {
+    return requirement === 'EMAIL_OTP' ? 'Email OTP' : 'Identity';
+}
+
+/** Horizontal progress track for the verifier-selected gates. */
+function StepIndicator({
+    requirements,
+    activeRequirement,
+}: {
+    requirements: InvitationVerificationRequirement[];
+    activeRequirement: InvitationVerificationRequirement;
+}) {
+    const activeIndex = Math.max(0, requirements.indexOf(activeRequirement));
 
     return (
         <div style={{ marginBottom: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-                <StepBubble n={1} active={currentStep === 1} done={step1Done} />
-                <div style={{
-                    flex: 1, height: 2, margin: '0 8px',
-                    background: step1Done ? 'var(--color-primary)' : 'var(--color-border)',
-                    borderRadius: 2,
-                    transition: 'background 0.3s',
-                }} />
-                <StepBubble n={2} active={currentStep === 2} done={false} />
+                {requirements.map((requirement, index) => (
+                    <div key={requirement} style={{ display: 'contents' }}>
+                        {index > 0 && (
+                            <div style={{
+                                flex: 1, height: 2, margin: '0 8px',
+                                background: index <= activeIndex ? 'var(--color-primary)' : 'var(--color-border)',
+                                borderRadius: 2,
+                                transition: 'background 0.3s',
+                            }} />
+                        )}
+                        <StepBubble
+                            n={index + 1}
+                            active={index === activeIndex}
+                            done={index < activeIndex}
+                        />
+                    </div>
+                ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-                <span style={{
-                    fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em',
-                    color: currentStep === 1 ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                }}>
-                    Email OTP
-                </span>
-                <span style={{
-                    fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em',
-                    color: currentStep === 2 ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                }}>
-                    Identity
-                </span>
+                {requirements.map((requirement, index) => (
+                    <span
+                        key={requirement}
+                        style={{
+                            fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em',
+                            color: index === activeIndex ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        }}
+                    >
+                        {getRequirementLabel(requirement)}
+                    </span>
+                ))}
             </div>
         </div>
     );
@@ -153,7 +173,13 @@ export function InvitationVerificationPanel({
         }
     }
 
-    const currentStep: 1 | 2 = gateStatus.nextStep === 'identity_verification' ? 2 : 1;
+    const activeRequirement: InvitationVerificationRequirement =
+        gateStatus.nextStep === 'identity_verification'
+            ? 'IDENTITY_VERIFICATION'
+            : 'EMAIL_OTP';
+    const requirements = gateStatus.verificationRequirements.length > 0
+        ? gateStatus.verificationRequirements
+        : [activeRequirement];
 
     return (
         <div style={{
@@ -162,7 +188,10 @@ export function InvitationVerificationPanel({
             background: 'var(--color-bg-elevated)',
             padding: '22px',
         }}>
-            <StepIndicator currentStep={currentStep} />
+            <StepIndicator
+                requirements={requirements}
+                activeRequirement={activeRequirement}
+            />
 
             {gateStatus.nextStep === 'identity_verification' ? (
                 // ── Step 2: Identity verification ──────────────────────────────
