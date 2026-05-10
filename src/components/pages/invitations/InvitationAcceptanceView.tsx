@@ -68,6 +68,29 @@ function AlertBanner({ variant, children }: { variant: 'error' | 'warning'; chil
     );
 }
 
+/** Describes the inviter-selected verification gates without exposing document details. */
+function getVerificationIntro(preview: InvitationPreview | null): string {
+    if (!preview) {
+        return 'The document title stays hidden until the invited account is allowed to review this invitation.';
+    }
+
+    const requirements = preview?.invitation.verificationRequirements ?? [];
+
+    if (requirements.length === 0) {
+        return 'After signing in with the invited account, you can review this invitation without extra verification.';
+    }
+
+    if (requirements.length === 1 && requirements[0] === 'EMAIL_OTP') {
+        return 'The document title stays hidden until the invited account confirms the invited email address.';
+    }
+
+    if (requirements.length === 1 && requirements[0] === 'IDENTITY_VERIFICATION') {
+        return 'The document title stays hidden until the invited account completes identity verification.';
+    }
+
+    return 'The document title stays hidden until the invited account completes the required verification steps below.';
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 /** Full invitation acceptance page — handles loading, gate, and review states. */
@@ -220,11 +243,10 @@ export function InvitationAcceptanceView({ token }: Props) {
                         Invitation Review
                     </div>
                     <h1 style={{ margin: '0 0 8px', fontSize: 26, lineHeight: 1.2, fontWeight: 800, color: 'var(--color-text-primary)' }}>
-                        You've been invited to access a document
+                        You&apos;ve been invited to access a document
                     </h1>
                     <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--color-text-secondary)' }}>
-                        The document title stays hidden until the invited verified account
-                        completes both verification steps below.
+                        {getVerificationIntro(preview)}
                     </p>
                 </div>
 
