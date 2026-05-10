@@ -763,6 +763,7 @@ export default function EditDocumentPage() {
                             canvasRef={canvasRef}
                             pages={continuousDocumentLayout.pages}
                             pageHeight={continuousDocumentLayout.pageHeight}
+                            zoomScale={zoomScale}
                             margins={documentLayout.margins}
                             disabled={baseIsReadOnly}
                         />
