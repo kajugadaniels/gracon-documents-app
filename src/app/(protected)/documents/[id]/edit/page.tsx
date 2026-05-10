@@ -125,6 +125,7 @@ export default function EditDocumentPage() {
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const rulerCommitLayoutRef = useRef<DocumentLayout | null>(null);
+    const saveInFlightRef = useRef<Promise<boolean> | null>(null);
     const measureLeftRulerPages = useCallback(() => {
         const editorEl = canvasRef.current?.querySelector<HTMLElement>('.ProseMirror');
         if (!editorEl) return;
@@ -260,38 +261,65 @@ export default function EditDocumentPage() {
 
     // Autosave logic
     const save = useCallback(async (force = false) => {
+        if (saveInFlightRef.current) {
+            if (!force) return false;
+            await saveInFlightRef.current;
+        }
+
         if (!dirtyRef.current && !force) return false;
         if (!contentRef.current) return false;
         if (doc?.status !== 'DRAFT') return false;
         if (!hasDocumentPermission(doc, 'EDIT')) return false;
+
+        const content = contentRef.current;
+        const wordCount = wordCntRef.current;
         setSaveStatus('saving');
         dirtyRef.current = false;
-        try {
-            await autosaveDocument(id, contentRef.current, wordCntRef.current);
-            setSaveStatus('saved');
-            setTimeout(() => setSaveStatus('idle'), 2000);
-            return true;
-        } catch (err: unknown) {
-            const httpStatus = (err as { response?: { status?: number } })?.response?.status;
 
-            if (httpStatus === 401) {
-                // The token refresh interceptor already attempted a silent refresh.
-                // Reaching here means the session is definitively expired — either
-                // the refresh was rejected as unauthenticated, or the refresh service
-                // was unreachable. Do not mark as dirty so autosave stops retrying,
-                // then redirect the user so they can log in again without losing context.
-                dirtyRef.current = false;
-                toast.error('Your session has expired. Redirecting to login…');
-                redirectToLogin(
-                    `${window.location.pathname}${window.location.search}${window.location.hash}`,
-                );
+        const operation = (async () => {
+            try {
+                for (let attempt = 0; attempt < 2; attempt += 1) {
+                    try {
+                        await autosaveDocument(id, content, wordCount);
+                        setSaveStatus('saved');
+                        setTimeout(() => setSaveStatus('idle'), 2000);
+                        return true;
+                    } catch (err: unknown) {
+                        const httpStatus = (err as { response?: { status?: number } })?.response?.status;
+
+                        if (httpStatus === 409 && attempt === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 250));
+                            continue;
+                        }
+
+                        if (httpStatus === 401) {
+                            // The token refresh interceptor already attempted a silent refresh.
+                            // Reaching here means the session is definitively expired — either
+                            // the refresh was rejected as unauthenticated, or the refresh service
+                            // was unreachable. Do not mark as dirty so autosave stops retrying,
+                            // then redirect the user so they can log in again without losing context.
+                            dirtyRef.current = false;
+                            toast.error('Your session has expired. Redirecting to login…');
+                            redirectToLogin(
+                                `${window.location.pathname}${window.location.search}${window.location.hash}`,
+                            );
+                            return false;
+                        }
+
+                        setSaveStatus('error');
+                        dirtyRef.current = true;
+                        return false;
+                    }
+                }
+
                 return false;
+            } finally {
+                saveInFlightRef.current = null;
             }
+        })();
 
-            setSaveStatus('error');
-            dirtyRef.current = true;
-            return false;
-        }
+        saveInFlightRef.current = operation;
+        return operation;
     }, [id, doc]);
 
     useEffect(() => {
