@@ -23,7 +23,19 @@ import {
     RowInsertIcon, RowDeleteIcon, ColumnInsertIcon, ColumnDeleteIcon,
     TextFontIcon, HeadingIcon,
 } from '@hugeicons/core-free-icons';
-import { GOOGLE_FONTS, FONT_SIZES, loadGoogleFont } from '@/constants';
+import {
+    BULLET_LIST_STYLE_OPTIONS,
+    DEFAULT_BULLET_LIST_STYLE,
+    DEFAULT_ORDERED_LIST_STYLE,
+    FONT_SIZES,
+    GOOGLE_FONTS,
+    ORDERED_LIST_STYLE_OPTIONS,
+    loadGoogleFont,
+    normalizeBulletListStyle,
+    normalizeOrderedListStyle,
+    type BulletListStyle,
+    type OrderedListStyle,
+} from '@/constants';
 
 // ─── Toolbar primitive ────────────────────────────────────────────────────────
 
@@ -347,6 +359,98 @@ function FontSizePicker({ editor }: { editor: Editor }) {
     );
 }
 
+// ─── List style pickers ──────────────────────────────────────────────────────
+
+function ListStylePicker({
+    editor,
+    kind,
+}: {
+    editor: Editor;
+    kind: 'bulletList' | 'orderedList';
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const isBullet = kind === 'bulletList';
+    const active = editor.isActive(kind);
+    const options = isBullet ? BULLET_LIST_STYLE_OPTIONS : ORDERED_LIST_STYLE_OPTIONS;
+    const currentStyle = isBullet
+        ? normalizeBulletListStyle(editor.getAttributes('bulletList').listStyleType)
+        : normalizeOrderedListStyle(editor.getAttributes('orderedList').listStyleType);
+
+    useEffect(() => {
+        const handler = (event: MouseEvent) => {
+            if (!ref.current?.contains(event.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    function toggleDefaultList() {
+        if (isBullet) {
+            editor.chain().focus().toggleBulletListStyle(DEFAULT_BULLET_LIST_STYLE).run();
+        } else {
+            editor.chain().focus().toggleOrderedListStyle(DEFAULT_ORDERED_LIST_STYLE).run();
+        }
+    }
+
+    function selectStyle(style: BulletListStyle | OrderedListStyle) {
+        if (isBullet) {
+            editor.chain().focus().setBulletListStyle(style as BulletListStyle).run();
+        } else {
+            editor.chain().focus().setOrderedListStyle(style as OrderedListStyle).run();
+        }
+
+        setOpen(false);
+    }
+
+    return (
+        <div ref={ref} className="ded-list-style-picker">
+            <button
+                className={`ded-list-style-picker__main${active ? ' ded-list-style-picker__main--active' : ''}`}
+                type="button"
+                onMouseDown={preventToolbarFocus}
+                onClick={toggleDefaultList}
+                title={isBullet ? 'Bullet list' : 'Numbered list'}
+            >
+                <HugeiconsIcon icon={isBullet ? ParagraphBulletsPoint01Icon : ParagraphBulletsPointIcon} size={15} />
+            </button>
+            <button
+                className={`ded-list-style-picker__arrow${open ? ' ded-list-style-picker__arrow--open' : ''}`}
+                type="button"
+                onMouseDown={preventToolbarFocus}
+                onClick={() => setOpen(value => !value)}
+                title={isBullet ? 'Bullet list styles' : 'Numbered list styles'}
+            >
+                ▾
+            </button>
+            {open && (
+                <div className="ded-picker__dropdown ded-picker__dropdown--left ded-list-style-picker__dropdown">
+                    <div className="ded-picker__scroll">
+                        {options.map((option) => (
+                            <button
+                                key={option.value}
+                                className={`ded-picker__option ded-list-style-picker__option${active && currentStyle === option.value ? ' ded-picker__option--active' : ''}`}
+                                type="button"
+                                onMouseDown={preventToolbarFocus}
+                                onClick={() => selectStyle(option.value)}
+                            >
+                                <span
+                                    className="ded-list-style-picker__marker"
+                                    style={{ listStyleType: option.value }}
+                                    aria-hidden="true"
+                                >
+                                    {option.markerPreview}
+                                </span>
+                                <span>{option.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Main toolbar ─────────────────────────────────────────────────────────────
 
 /** Formatting toolbar — the second row of the sticky editor header. */
@@ -404,12 +508,8 @@ export function DocEditorToolbar({ editor }: { editor: Editor }) {
             </TbBtn>
 
             <TbDivider />
-            <TbBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
-                <HugeiconsIcon icon={ParagraphBulletsPoint01Icon} size={15} />
-            </TbBtn>
-            <TbBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered list">
-                <HugeiconsIcon icon={ParagraphBulletsPointIcon} size={15} />
-            </TbBtn>
+            <ListStylePicker editor={editor} kind="bulletList" />
+            <ListStylePicker editor={editor} kind="orderedList" />
             <TbBtn onClick={() => editor.chain().focus().sinkListItem('listItem').run()} title="Increase indent" disabled={!editor.can().sinkListItem('listItem')}>
                 <HugeiconsIcon icon={TextIndentMoreIcon} size={15} />
             </TbBtn>
