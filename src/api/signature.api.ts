@@ -20,6 +20,15 @@ export interface CertificateResponse {
     daysRemaining: number;
 }
 
+export interface SignatureImageResponse {
+    id: string;
+    url: string;
+    mimeType: string;
+    sizeBytes: number;
+    expiresIn: number;
+    createdAt: string;
+}
+
 function isUsableCertificate(certificate: CertificateResponse) {
     return !certificate.isRevoked && !certificate.isExpired;
 }
@@ -40,5 +49,22 @@ export async function getDigitalCertificateStatus(): Promise<DigitalCertificateS
         return isUsableCertificate(response.data) ? 'active' : 'missing';
     } catch {
         return 'unavailable';
+    }
+}
+
+/**
+ * Returns the current user's handwritten signature image as a presigned URL.
+ */
+export async function getSignatureImage(): Promise<SignatureImageResponse | null> {
+    try {
+        const response = await authClient.get<SignatureImageResponse>(
+            '/signature/image',
+            { validateStatus: (status) => status < 500 },
+        );
+
+        if (response.status !== 200) return null;
+        return response.data;
+    } catch {
+        return null;
     }
 }
