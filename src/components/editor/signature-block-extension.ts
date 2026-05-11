@@ -410,55 +410,25 @@ export const SignatureBlockExtension = Node.create({
                 const signatureType = state.schema.nodes.signatureBlock;
                 if (!signatureType) return false;
 
-                const blocksByKey = new Map(
-                    blocks
-                        .map((block) => [getSignatureBlockKey(block as Record<string, unknown>), block] as const)
-                        .filter(([key]) => key),
-                );
-                if (blocksByKey.size === 0) return false;
-
                 const tr = state.tr;
-                const existingPositions: Array<{ key: string; pos: number; size: number }> = [];
-                const seenKeys = new Set<string>();
+                const existingPositions: Array<{ pos: number; size: number }> = [];
 
                 state.doc.descendants((node, pos) => {
                     if (node.type.name !== 'signatureBlock') return;
 
-                    const key = getSignatureBlockKey(node.attrs);
-                    if (!key || !blocksByKey.has(key) || seenKeys.has(key)) {
-                        existingPositions.push({ key, pos, size: node.nodeSize });
-                        return;
-                    }
-
-                    const nextBlock = blocksByKey.get(key);
-                    if (!nextBlock) return;
-
-                    seenKeys.add(key);
-                    const nextAttrs = { ...node.attrs, ...nextBlock };
-                    const attrsChanged = Object.entries(nextAttrs).some(
-                        ([attrKey, value]) => node.attrs[attrKey] !== value,
-                    );
-
-                    if (attrsChanged) {
-                        tr.setNodeMarkup(pos, undefined, nextAttrs);
-                    }
+                    existingPositions.push({ pos, size: node.nodeSize });
                 });
 
+                const insertAnchor = existingPositions[0]?.pos ?? state.selection.from;
                 existingPositions.reverse().forEach(({ pos, size }) => {
                     tr.delete(pos, pos + size);
                 });
 
-                const missingBlocks = blocks.filter((block) => (
-                    !seenKeys.has(getSignatureBlockKey(block as Record<string, unknown>))
-                ));
-
-                if (missingBlocks.length > 0) {
-                    const insertPos = Math.min(
-                        tr.mapping.map(tr.selection.from),
-                        tr.doc.content.size,
-                    );
-                    tr.insert(insertPos, missingBlocks.map((block) => signatureType.create(block)));
-                }
+                const insertPos = Math.min(
+                    tr.mapping.map(insertAnchor, -1),
+                    tr.doc.content.size,
+                );
+                tr.insert(insertPos, blocks.map((block) => signatureType.create(block)));
 
                 dispatch?.(tr.scrollIntoView());
                 return true;
