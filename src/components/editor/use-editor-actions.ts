@@ -419,7 +419,7 @@ export function useEditorActions({
                 return;
             }
 
-            const inserted = editor.commands.insertSignatureBlocks(blocks);
+            const inserted = editor.commands.syncAssignedSignatureBlocks(blocks);
             if (inserted) {
                 toast.success(`Prepared ${blocks.length} assigned signature block${blocks.length === 1 ? '' : 's'}.`);
             }
