@@ -411,6 +411,7 @@ export function useEditorActions({
             const blocks = buildSignatureBlockInserts(
                 signatureBlockSigners,
                 doc.completedSignatures,
+                doc.signatureSnapshot,
             );
 
             if (blocks.length === 0) {
