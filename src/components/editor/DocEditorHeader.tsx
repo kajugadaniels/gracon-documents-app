@@ -56,6 +56,7 @@ interface DocEditorHeaderProps {
     canViewSignature: boolean;
     canPrepareSignatureBlocks?: boolean;
     signatureBlockSigners?: SignatureBlockSigner[];
+    onPrepareSignatureBlocks?: () => void;
     viewMenuItems: readonly MenuItem[];
     certificateStatus: DigitalCertificateActionStatus;
     isStarred?: boolean;
@@ -78,7 +79,7 @@ export function DocEditorHeader({
     isReadOnly, isLocked, canShare, canComment = false,
     canFinalise, canLock, canSign, canViewSignature,
     canPrepareSignatureBlocks = false, signatureBlockSigners = [], viewMenuItems,
-    certificateStatus, isStarred = false, onOpenComments, onToggleStar, onManualSave, onShareActivityRecorded,
+    onPrepareSignatureBlocks, certificateStatus, isStarred = false, onOpenComments, onToggleStar, onManualSave, onShareActivityRecorded,
     onApplyForDigitalSignature, onFinalise, onLock, onSign, onViewSignature, onViewAction,
 }: DocEditorHeaderProps) {
     const [shareOpen, setShareOpen] = useState(false);
@@ -99,7 +100,7 @@ export function DocEditorHeader({
         submitImageDialog,
     } = useEditorActions({
         editor, doc, editingTitle, title, isReadOnly,
-        canPrepareSignatureBlocks, signatureBlockSigners,
+        canPrepareSignatureBlocks, signatureBlockSigners, onPrepareSignatureBlocks,
         onTitleEditStart, onTitleSave,
         onFindToggle: () => setFindOpen((v) => !v),
         onViewAction,
