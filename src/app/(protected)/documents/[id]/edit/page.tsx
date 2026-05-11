@@ -28,11 +28,11 @@ import {
     useDocumentShareSync,
 } from '@/components/editor/document-share-sync';
 import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
-import { useDigitalCertificateStatus } from '@/components/editor/use-digital-certificate-status';
 import { useDocumentViewState } from '@/components/editor/use-document-view-state';
 import { useActiveParagraphLayout } from '@/components/editor/use-active-paragraph-layout';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
+import type { SigningActionStatus } from '@/components/editor/DocEditorSignatureAction';
 import { buildViewMenuItems } from '@/constants/view-menu';
 import { A4_PAPER_HEIGHT_PX, A4_PAPER_WIDTH_PX } from '@/constants';
 import { useStarred } from '@/lib/hooks/useStarred';
@@ -61,6 +61,7 @@ import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument, lockDocument,
     getDocumentSigningReadiness, listDocumentComments,
     type CollaboratorPermission, type DocumentComment, type DocumentDetail,
+    type DocumentSigningReadiness,
 } from '@/api/documents.api';
 
 const AUTOSAVE_INTERVAL_MS = 30_000;
@@ -104,6 +105,8 @@ export default function EditDocumentPage() {
     const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
     const [retryKey, setRetryKey] = useState(0);
     const [shareActivityRefreshKey, setShareActivityRefreshKey] = useState(0);
+    const [signingReadiness, setSigningReadiness] = useState<DocumentSigningReadiness | null>(null);
+    const [signingReadinessLoading, setSigningReadinessLoading] = useState(false);
     const [editor, setEditor] = useState<Editor | null>(null);
     const [leftRulerPages, setLeftRulerPages] = useState([{ pageNumber: 1, top: 0 }]);
     const [documentTabs, setDocumentTabs] = useState<DocumentTabItem[]>([]);
@@ -132,7 +135,19 @@ export default function EditDocumentPage() {
         && doc.status === 'FINALISED'
         && Boolean(currentSignatureRequest)
         && !hasSignedCurrentRequest;
-    const certificateStatus = useDigitalCertificateStatus(canSignDocument);
+    const signingStatus: SigningActionStatus = !canSignDocument
+        ? 'not-required'
+        : signingReadinessLoading
+            ? 'checking'
+            : signingReadiness?.status === 'ready'
+                ? 'ready'
+                : signingReadiness?.status === 'needs_certificate'
+                    ? 'needs_certificate'
+                    : signingReadiness?.status === 'needs_identity_verification'
+                        ? 'needs_identity_verification'
+                        : signingReadiness
+                            ? 'blocked'
+                            : 'checking';
 
     const contentRef = useRef<Record<string, unknown> | null>(null);
     const wordCntRef = useRef(0);
@@ -383,6 +398,77 @@ export default function EditDocumentPage() {
         void loadComments();
     }, [doc?.id, loadComments]);
 
+    useEffect(() => {
+        if (!doc?.id || !canSignDocument) {
+            setSigningReadiness(null);
+            setSigningReadinessLoading(false);
+            return undefined;
+        }
+
+        let ignore = false;
+        setSigningReadinessLoading(true);
+
+        getDocumentSigningReadiness(doc.id)
+            .then((readiness) => {
+                if (!ignore) setSigningReadiness(readiness);
+            })
+            .catch(() => {
+                if (!ignore) setSigningReadiness(null);
+            })
+            .finally(() => {
+                if (!ignore) setSigningReadinessLoading(false);
+            });
+
+        return () => { ignore = true; };
+    }, [canSignDocument, doc?.id]);
+
+    const getSigningReturnPath = useCallback(() => {
+        if (typeof window === 'undefined') return `/documents/${id}/edit?sign=1`;
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('sign', '1');
+        return `${url.pathname}${url.search}${url.hash}`;
+    }, [id]);
+
+    const consumeSigningReturnFlag = useCallback(() => {
+        if (typeof window === 'undefined') return;
+
+        const url = new URL(window.location.href);
+        if (!url.searchParams.has('sign')) return;
+
+        url.searchParams.delete('sign');
+        window.history.replaceState(
+            window.history.state,
+            '',
+            `${url.pathname}${url.search}${url.hash}`,
+        );
+    }, []);
+
+    useEffect(() => {
+        if (!doc?.id || !canSignDocument || signingReadinessLoading) return;
+        if (typeof window === 'undefined') return;
+
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('sign') !== '1') return;
+
+        if (signingReadiness?.status === 'ready') {
+            consumeSigningReturnFlag();
+            setShowSigning(true);
+            return;
+        }
+
+        if (signingReadiness) {
+            consumeSigningReturnFlag();
+            toast.info(signingReadiness.message);
+        }
+    }, [
+        canSignDocument,
+        consumeSigningReturnFlag,
+        doc?.id,
+        signingReadiness,
+        signingReadinessLoading,
+    ]);
+
     const commentAnchors = useMemo(
         () => comments.map((comment) => ({
             id: comment.id,
@@ -572,7 +658,11 @@ export default function EditDocumentPage() {
         if (!doc) return;
 
         try {
-            const readiness = await getDocumentSigningReadiness(doc.id);
+            const readiness = signingReadiness?.documentId === doc.id && !signingReadinessLoading
+                ? signingReadiness
+                : await getDocumentSigningReadiness(doc.id);
+
+            setSigningReadiness(readiness);
 
             if (readiness.status === 'ready') {
                 setShowSigning(true);
@@ -586,14 +676,14 @@ export default function EditDocumentPage() {
 
             if (readiness.status === 'needs_identity_verification') {
                 window.location.href = getIdentityVerificationUrl(
-                    `${window.location.pathname}${window.location.search}`,
+                    getSigningReturnPath(),
                 );
                 return;
             }
 
             if (readiness.status === 'needs_certificate') {
                 toast.warning(readiness.message);
-                window.location.href = getDigitalCertificateUrl();
+                window.location.href = getDigitalCertificateUrl(getSigningReturnPath());
                 return;
             }
 
@@ -631,7 +721,11 @@ export default function EditDocumentPage() {
     }
 
     function handleApplyForDigitalSignature() {
-        window.location.href = getDigitalCertificateUrl();
+        window.location.href = getDigitalCertificateUrl(getSigningReturnPath());
+    }
+
+    function handleCompleteIdentityVerification() {
+        window.location.href = getIdentityVerificationUrl(getSigningReturnPath());
     }
 
     const canEdit = hasDocumentPermission(doc, 'EDIT');
@@ -998,13 +1092,14 @@ export default function EditDocumentPage() {
                 signatureBlockSigners={signatureBlockSigners}
                 onPrepareSignatureBlocks={() => setShowSignatureBlockDialog(true)}
                 viewMenuItems={viewMenuItems}
-                certificateStatus={certificateStatus.status}
+                signingStatus={signingStatus}
                 isStarred={isStarred(doc.id)}
                 onOpenComments={() => setCommentsOpen(true)}
                 onToggleStar={() => toggleStar(doc.id)}
                 onManualSave={handleManualSave}
                 onShareActivityRecorded={handleShareActivityRecorded}
                 onApplyForDigitalSignature={handleApplyForDigitalSignature}
+                onCompleteIdentityVerification={handleCompleteIdentityVerification}
                 onFinalise={handleFinalise}
                 onLock={handleLockDocument}
                 onSign={handleSignDocument}
@@ -1027,7 +1122,7 @@ export default function EditDocumentPage() {
                 document={doc}
                 currentUserId={user?.userId ?? null}
                 canManageAccess={canManageAccess}
-                onOpenSigning={() => setShowSigning(true)}
+                onOpenSigning={() => { void handleSignDocument(); }}
                 onActivityRecorded={handleShareActivityRecorded}
                 onDocumentRefresh={() => setRetryKey(v => v + 1)}
             />
