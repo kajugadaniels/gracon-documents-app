@@ -69,6 +69,7 @@ function SignatureMark({
 }) {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [currentSignatureUrl, setCurrentSignatureUrl] = useState<string | null>(null);
+    const [cleanSignatureUrl, setCleanSignatureUrl] = useState<string | null>(null);
     const [shouldUseCurrentSignature, setShouldUseCurrentSignature] = useState(false);
     const normalizedImageUrl = imageUrl?.trim() || null;
     const isCurrentSigner = Boolean(signerUserId && currentUserId === signerUserId);
@@ -127,9 +128,59 @@ function SignatureMark({
         };
     }, [shouldResolveCurrentSignature]);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        setCleanSignatureUrl(null);
+        if (!displayImageUrl) return undefined;
+
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.onload = () => {
+            if (cancelled) return;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (!context) return;
+
+            try {
+                context.drawImage(image, 0, 0);
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const { data } = imageData;
+
+                for (let index = 0; index < data.length; index += 4) {
+                    const red = data[index];
+                    const green = data[index + 1];
+                    const blue = data[index + 2];
+                    const max = Math.max(red, green, blue);
+                    const min = Math.min(red, green, blue);
+                    const isNearWhite = red > 220 && green > 220 && blue > 220;
+                    const isLightNeutral = red > 175 && green > 175 && blue > 175 && max - min < 34;
+
+                    if (isNearWhite || isLightNeutral) {
+                        data[index + 3] = 0;
+                    }
+                }
+
+                context.putImageData(imageData, 0, 0);
+                setCleanSignatureUrl(canvas.toDataURL('image/png'));
+            } catch {
+                setCleanSignatureUrl(null);
+            }
+        };
+        image.src = displayImageUrl;
+
+        return () => {
+            cancelled = true;
+        };
+    }, [displayImageUrl]);
+
     if (displayImageUrl) {
         return createElement('img', {
-            src: displayImageUrl,
+            src: cleanSignatureUrl ?? displayImageUrl,
             alt: `${signerName} signature`,
             className: 'document-signature-block__image',
             draggable: false,
