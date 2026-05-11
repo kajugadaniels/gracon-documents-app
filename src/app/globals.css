@@ -1397,7 +1397,7 @@ body {
   box-shadow: 0 1px 2px rgba(22,16,58,0.06);
 }
 .tiptap-editor .ProseMirror .document-signature-block--signed {
-  border-color: rgba(5,150,105,0.34);
+  border-color: rgba(22,16,58,0.16);
 }
 .tiptap-editor .ProseMirror .document-signature-block__signature-area {
   position: relative;
@@ -1421,6 +1421,8 @@ body {
   max-height: 74px;
   object-fit: contain;
   background: transparent;
+  box-shadow: none;
+  filter: none;
   mix-blend-mode: multiply;
   z-index: 1;
 }
