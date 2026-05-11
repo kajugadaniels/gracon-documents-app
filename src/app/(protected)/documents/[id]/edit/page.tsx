@@ -737,6 +737,26 @@ export default function EditDocumentPage() {
         },
         [baseIsReadOnly, doc, id],
     );
+    const signatureBlockSigners = useMemo(
+        () => (doc ? getSignatureBlockSigners(doc, user) : []),
+        [doc, user],
+    );
+    const signatureBlockEvidence = useMemo(
+        () => (
+            doc
+                ? buildSignatureBlockInserts(signatureBlockSigners, doc.completedSignatures)
+                : []
+        ),
+        [doc, signatureBlockSigners],
+    );
+
+    useEffect(() => {
+        if (!editor || signatureBlockEvidence.length === 0) {
+            return;
+        }
+
+        editor.commands.updateSignatureBlockEvidence(signatureBlockEvidence);
+    }, [editor, signatureBlockEvidence]);
 
     // ── Loading state ────────────────────────────────────────────────────────
     if (loading) {
@@ -792,14 +812,6 @@ export default function EditDocumentPage() {
         request => request.status !== 'SIGNED',
     ).length;
     const canViewSignature = isLocked && (isOwner || canSign);
-    const signatureBlockSigners = useMemo(
-        () => getSignatureBlockSigners(doc, user),
-        [doc, user],
-    );
-    const signatureBlockEvidence = useMemo(
-        () => buildSignatureBlockInserts(signatureBlockSigners, doc.completedSignatures),
-        [doc.completedSignatures, signatureBlockSigners],
-    );
     const acceptedSignerCount = doc.collaborators.filter((collaborator) =>
         collaborator.isActive &&
         collaborator.invitationStatus === 'ACCEPTED' &&
@@ -829,14 +841,6 @@ export default function EditDocumentPage() {
             ? 'locked'
             : 'finalised';
     const zoomScale = viewState.zoom / 100;
-
-    useEffect(() => {
-        if (!editor || signatureBlockEvidence.length === 0) {
-            return;
-        }
-
-        editor.commands.updateSignatureBlockEvidence(signatureBlockEvidence);
-    }, [editor, signatureBlockEvidence]);
 
     async function handleSavePageSetup(nextLayout: DocumentLayout) {
         if (!doc || baseIsReadOnly) {
