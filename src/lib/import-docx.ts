@@ -1,8 +1,10 @@
 /**
  * import-docx.ts
  *
- * Converts a .docx File into a TipTap JSON document using mammoth for the
- * DOCX → HTML step and TipTap's generateJSON for the HTML → JSON step.
+ * Converts imported office files into TipTap JSON.
+ *
+ * DOCX files use mammoth for DOCX → HTML, then TipTap's generateJSON.
+ * PDF files use pdf.js text extraction and become editable paragraphs.
  *
  * Only the extensions registered in the editor are included here so that the
  * resulting JSON is always valid for the current schema. Unsupported formatting
@@ -98,6 +100,39 @@ export interface ImportResult {
     title: string;
 }
 
+interface PdfTextItem {
+    str?: string;
+    transform?: number[];
+}
+
+interface PdfLine {
+    y: number;
+    items: Array<{ x: number; text: string }>;
+}
+
+function getImportedDocumentTitle(file: File) {
+    return file.name
+        .replace(/\.(docx?|pdf)$/i, '')
+        .replace(/[_-]+/g, ' ')
+        .trim() || 'Imported Document';
+}
+
+function escapeHtml(value: string) {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function textLinesToHtml(lines: string[]) {
+    return lines
+        .filter((line) => line.trim().length > 0)
+        .map((line) => `<p>${escapeHtml(line)}</p>`)
+        .join('');
+}
+
 async function readXmlPartsFromDocx(arrayBuffer: ArrayBuffer) {
     const { default: JSZip } = await import('jszip');
     const zip = await JSZip.loadAsync(arrayBuffer);
@@ -158,12 +193,106 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
 
     const content = generateJSON(html, IMPORT_EXTENSIONS) as Record<string, unknown>;
 
-    // Strip the .docx extension and replace underscores/hyphens with spaces
-    // to produce a clean default title the user can edit after import.
-    const title = file.name
-        .replace(/\.docx?$/i, '')
-        .replace(/[_-]+/g, ' ')
-        .trim() || 'Imported Document';
+    const title = getImportedDocumentTitle(file);
 
     return { content, title };
+}
+
+function findLine(lines: PdfLine[], y: number) {
+    return lines.find((line) => Math.abs(line.y - y) <= 3);
+}
+
+function collectPageLines(items: PdfTextItem[]) {
+    const lines: PdfLine[] = [];
+
+    for (const item of items) {
+        const text = item.str?.replace(/\s+/g, ' ').trim();
+        const transform = item.transform;
+
+        if (!text || !transform || transform.length < 6) continue;
+
+        const x = transform[4] ?? 0;
+        const y = transform[5] ?? 0;
+        const line = findLine(lines, y);
+
+        if (line) {
+            line.items.push({ x, text });
+        } else {
+            lines.push({ y, items: [{ x, text }] });
+        }
+    }
+
+    return lines
+        .sort((a, b) => b.y - a.y)
+        .map((line) =>
+            line.items
+                .sort((a, b) => a.x - b.x)
+                .map((item) => item.text)
+                .join(' ')
+                .replace(/\s+/g, ' ')
+                .trim(),
+        )
+        .filter(Boolean);
+}
+
+/**
+ * Converts a text-based PDF File to editable TipTap paragraphs.
+ *
+ * This intentionally imports selectable PDF text. Scanned/image-only PDFs do
+ * not contain text content, so they need OCR before they can become editable.
+ */
+export async function importPdfToTiptap(file: File): Promise<ImportResult> {
+    if (!file.name.match(/\.pdf$/i)) {
+        throw new Error('Only .pdf files are supported.');
+    }
+
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/legacy/build/pdf.worker.mjs',
+        import.meta.url,
+    ).toString();
+    const arrayBuffer = await file.arrayBuffer();
+    const documentTask = pdfjs.getDocument({
+        data: new Uint8Array(arrayBuffer),
+        useWorkerFetch: false,
+    });
+    const pdfDocument = await documentTask.promise;
+    const lines: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+        const page = await pdfDocument.getPage(pageNumber);
+        const textContent = await page.getTextContent();
+        const pageLines = collectPageLines(textContent.items as PdfTextItem[]);
+
+        if (pageLines.length > 0) {
+            if (lines.length > 0) lines.push('');
+            lines.push(...pageLines);
+        }
+    }
+
+    const html = textLinesToHtml(lines);
+
+    if (!html.trim()) {
+        throw new Error('This PDF has no selectable text. Use an OCR version, then import again.');
+    }
+
+    return {
+        content: generateJSON(html, IMPORT_EXTENSIONS) as Record<string, unknown>,
+        title: getImportedDocumentTitle(file),
+    };
+}
+
+/**
+ * Imports a supported document file into editable TipTap JSON.
+ */
+export async function importFileToTiptap(file: File): Promise<ImportResult> {
+    if (file.name.match(/\.pdf$/i) || file.type === 'application/pdf') {
+        return importPdfToTiptap(file);
+    }
+
+    if (file.name.match(/\.docx?$/i)) {
+        return importDocxToTiptap(file);
+    }
+
+    throw new Error('Only .docx, .doc, and text-based .pdf files are supported.');
 }
