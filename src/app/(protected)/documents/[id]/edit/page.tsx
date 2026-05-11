@@ -20,6 +20,7 @@ import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
 import { DocumentTabsPanel, type DocumentTabItem } from '@/components/editor/DocumentTabsPanel';
+import { SignatureBlockPreparationDialog } from '@/components/editor/SignatureBlockPreparationDialog';
 import { PagedDocumentCanvas } from '@/components/editor/PagedDocumentCanvas';
 import { mergeDocumentShareState } from '@/components/editor/document-share-state';
 import {
@@ -36,7 +37,13 @@ import { buildViewMenuItems } from '@/constants/view-menu';
 import { A4_PAPER_HEIGHT_PX, A4_PAPER_WIDTH_PX } from '@/constants';
 import { useStarred } from '@/lib/hooks/useStarred';
 import { getDigitalCertificateUrl, redirectToLogin } from '@/lib/session';
-import { buildSignatureBlockInserts, getSignatureBlockSigners } from '@/lib/editor-signature-blocks';
+import {
+    buildSignatureBlockInserts,
+    getSignatureBlockSignerOrder,
+    getSignatureBlockSigners,
+    hasSignatureBlockForUser,
+    type SignatureBlockSigner,
+} from '@/lib/editor-signature-blocks';
 import {
     buildDocumentLayoutStyle,
     clampHorizontalDocumentMargins,
@@ -81,6 +88,7 @@ export default function EditDocumentPage() {
     const [editingTitle, setEditingTitle] = useState(false);
     const [title, setTitle] = useState('');
     const [showFinaliseDialog, setShowFinaliseDialog] = useState(false);
+    const [showSignatureBlockDialog, setShowSignatureBlockDialog] = useState(false);
     const [showPageSetupDialog, setShowPageSetupDialog] = useState(false);
     const [showPrintPreview, setShowPrintPreview] = useState(false);
     const [savingPageSetup, setSavingPageSetup] = useState(false);
@@ -845,6 +853,33 @@ export default function EditDocumentPage() {
             ? 'locked'
             : 'finalised';
     const zoomScale = viewState.zoom / 100;
+    const currentEditorContent = editor?.getJSON() ?? contentRef.current ?? doc.content;
+    const currentSignatureBlockOrder = getSignatureBlockSignerOrder(currentEditorContent);
+    const ownerSignatureBlockPrepared = hasSignatureBlockForUser(
+        currentEditorContent,
+        user?.userId,
+    );
+
+    function handlePrepareSignatureBlocks(selectedSigners: SignatureBlockSigner[]) {
+        if (!editor || !doc) return;
+
+        const blocks = buildSignatureBlockInserts(
+            selectedSigners,
+            doc.completedSignatures,
+            doc.signatureSnapshot,
+        );
+
+        const inserted = editor.commands.syncAssignedSignatureBlocks(blocks);
+        if (!inserted) {
+            toast.error('Signature blocks could not be prepared.');
+            return;
+        }
+
+        setShowSignatureBlockDialog(false);
+        toast.success(
+            `Prepared ${blocks.length} assigned signature block${blocks.length === 1 ? '' : 's'} in order.`,
+        );
+    }
 
     async function handleSavePageSetup(nextLayout: DocumentLayout) {
         if (!doc || baseIsReadOnly) {
@@ -931,6 +966,7 @@ export default function EditDocumentPage() {
                 canViewSignature={canViewSignature}
                 canPrepareSignatureBlocks={isOwner && doc.status === 'DRAFT'}
                 signatureBlockSigners={signatureBlockSigners}
+                onPrepareSignatureBlocks={() => setShowSignatureBlockDialog(true)}
                 viewMenuItems={viewMenuItems}
                 certificateStatus={certificateStatus.status}
                 isStarred={isStarred(doc.id)}
@@ -968,9 +1004,18 @@ export default function EditDocumentPage() {
 
             <DocumentFinaliseDialog
                 acceptedSignerCount={acceptedSignerCount}
+                ownerSignaturePrepared={ownerSignatureBlockPrepared}
                 open={showFinaliseDialog}
                 onClose={() => setShowFinaliseDialog(false)}
                 onConfirm={submitFinalise}
+            />
+
+            <SignatureBlockPreparationDialog
+                open={showSignatureBlockDialog}
+                signers={signatureBlockSigners}
+                existingSignerOrder={currentSignatureBlockOrder}
+                onClose={() => setShowSignatureBlockDialog(false)}
+                onConfirm={handlePrepareSignatureBlocks}
             />
 
             {showPageSetupDialog && (
