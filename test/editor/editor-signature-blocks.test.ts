@@ -121,3 +121,29 @@ test('buildSignatureBlockInserts falls back to signed request evidence', () => {
     assert.equal(blocks[0].signedAt, '2026-05-11T00:00:00.000Z');
     assert.equal(blocks[0].signatureImageUrl, null);
 });
+
+test('buildSignatureBlockInserts uses locked snapshot image for a single signer block', () => {
+    const blocks = buildSignatureBlockInserts([
+        {
+            accessId: 'owner',
+            userId: 'owner-user',
+            displayName: 'Owner Person',
+            email: 'owner@example.com',
+        },
+    ], [], {
+        signatureId: 'snapshot-signature',
+        certificateId: 'cert-1',
+        signerName: 'Owner Person',
+        imageUrl: 'https://example.com/snapshot-signature.png',
+        mimeType: 'image/png',
+        sizeBytes: 1234,
+        x: null,
+        y: null,
+        signedAt: '2026-05-11T01:00:00.000Z',
+        lockedAt: '2026-05-11T01:05:00.000Z',
+    });
+
+    assert.equal(blocks[0].signatureId, 'snapshot-signature');
+    assert.equal(blocks[0].signedAt, '2026-05-11T01:00:00.000Z');
+    assert.equal(blocks[0].signatureImageUrl, 'https://example.com/snapshot-signature.png');
+});
