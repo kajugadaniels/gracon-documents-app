@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildSignatureBlockInserts } from '../../src/lib/editor-signature-blocks.ts';
+import {
+    buildSignatureBlockInserts,
+    getSignatureBlockSigners,
+} from '../../src/lib/editor-signature-blocks.ts';
 
 test('buildSignatureBlockInserts maps signers and completed signature evidence', () => {
     const blocks = buildSignatureBlockInserts([
@@ -28,7 +31,7 @@ test('buildSignatureBlockInserts maps signers and completed signature evidence',
     assert.deepEqual(blocks, [{
         blockId: 'signature-user-1-1',
         label: 'Jane Doe',
-        signerRole: 'Required signer',
+        signerRole: 'Signer',
         required: true,
         signerUserId: 'user-1',
         signerAccessId: 'access-1',
@@ -38,4 +41,56 @@ test('buildSignatureBlockInserts maps signers and completed signature evidence',
         signedAt: '2026-05-08T00:00:00.000Z',
         signatureImageUrl: 'https://example.com/signature.png',
     }]);
+});
+
+test('getSignatureBlockSigners uses finalised signature requests as the exact signer set', () => {
+    const signers = getSignatureBlockSigners({
+        access: { isOwner: true },
+        collaborators: [{
+            id: 'access-collaborator',
+            userId: 'collaborator-user',
+            permissions: ['SIGN'],
+            invitationStatus: 'ACCEPTED',
+            isActive: true,
+            user: {
+                email: 'collaborator@example.com',
+                displayName: 'Collaborator User',
+            },
+        }],
+        signatureRequests: [
+            {
+                id: 'request-owner',
+                requestedUserId: 'owner-user',
+                requestedUser: null,
+            },
+            {
+                id: 'request-invited',
+                requestedUserId: 'invited-user',
+                requestedUser: {
+                    email: 'invited@example.com',
+                    displayName: 'Invited User',
+                },
+            },
+        ],
+    } as never, {
+        userId: 'owner-user',
+        email: 'owner@example.com',
+        postNames: 'Owner',
+        surName: 'Person',
+    } as never);
+
+    assert.deepEqual(signers, [
+        {
+            accessId: 'request-owner',
+            userId: 'owner-user',
+            displayName: 'Owner Person',
+            email: 'owner@example.com',
+        },
+        {
+            accessId: 'request-invited',
+            userId: 'invited-user',
+            displayName: 'Invited User',
+            email: 'invited@example.com',
+        },
+    ]);
 });
