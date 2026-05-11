@@ -10,6 +10,7 @@ export interface SignatureBlockSigner {
     userId: string;
     displayName: string;
     email: string;
+    isOwner?: boolean;
     signatureId?: string | null;
     signedAt?: string | null;
 }
@@ -37,6 +38,16 @@ function getCompletedSignatureForSigner(
     signerUserId: string,
 ) {
     return completedSignatures.find((signature) => signature.signerId === signerUserId);
+}
+
+function buildOwnerSigner(owner: SessionUser): SignatureBlockSigner {
+    return {
+        accessId: 'owner',
+        userId: owner.userId,
+        displayName: getOwnerDisplayName(owner),
+        email: owner.email,
+        isOwner: true,
+    };
 }
 
 function canUseSnapshotForSigner(
@@ -82,11 +93,16 @@ export function getSignatureBlockSigners(
                 userId: request.requestedUserId,
                 displayName,
                 email,
+                isOwner: isOwnerRequest,
                 signatureId: request.personalSignedDocumentId,
                 signedAt: request.signedAt,
             };
         });
     }
+
+    const ownerSigner = owner && doc.access?.isOwner !== false
+        ? buildOwnerSigner(owner)
+        : null;
 
     const invitedSigners = doc.collaborators
         .filter((collaborator) => (
@@ -94,23 +110,49 @@ export function getSignatureBlockSigners(
             collaborator.permissions.includes('SIGN') &&
             collaborator.invitationStatus !== 'DECLINED' &&
             collaborator.invitationStatus !== 'REVOKED'
+            && collaborator.userId !== ownerSigner?.userId
         ))
         .map((collaborator) => ({
             accessId: collaborator.id,
             userId: collaborator.userId,
             displayName: collaborator.user.displayName || collaborator.user.email,
             email: collaborator.user.email,
+            isOwner: false,
         }));
 
-    if (invitedSigners.length > 0) return invitedSigners;
-    if (!owner || doc.access?.isOwner === false) return [];
+    if (ownerSigner) return [ownerSigner, ...invitedSigners];
 
-    return [{
-        accessId: 'owner',
-        userId: owner.userId,
-        displayName: getOwnerDisplayName(owner),
-        email: owner.email,
-    }];
+    return invitedSigners;
+}
+
+export function getSignatureBlockSignerOrder(content: unknown): string[] {
+    const signerIds: string[] = [];
+
+    function visit(value: unknown) {
+        if (!value || typeof value !== 'object') return;
+
+        const node = value as {
+            type?: unknown;
+            attrs?: { signerUserId?: unknown };
+            content?: unknown;
+        };
+
+        if (node.type === 'signatureBlock' && typeof node.attrs?.signerUserId === 'string') {
+            signerIds.push(node.attrs.signerUserId);
+        }
+
+        if (Array.isArray(node.content)) {
+            node.content.forEach(visit);
+        }
+    }
+
+    visit(content);
+    return signerIds;
+}
+
+export function hasSignatureBlockForUser(content: unknown, userId: string | null | undefined) {
+    if (!userId) return false;
+    return getSignatureBlockSignerOrder(content).includes(userId);
 }
 
 /**
@@ -121,7 +163,7 @@ export function buildSignatureBlockInserts(
     completedSignatures: DocumentCompletedSignature[],
     signatureSnapshot?: DocumentSignatureSnapshot | null,
 ): SignatureBlockInsert[] {
-    return signers.map((signer, index) => {
+    return signers.map((signer) => {
         const signature = getCompletedSignatureForSigner(completedSignatures, signer.userId);
         const snapshotMatchesSigner = canUseSnapshotForSigner(
             signatureSnapshot,
@@ -134,7 +176,7 @@ export function buildSignatureBlockInserts(
         const snapshotSignatureId = snapshotMatchesSigner ? signatureSnapshot?.signatureId : null;
 
         return {
-            blockId: `signature-${signer.userId}-${index + 1}`,
+            blockId: `signature-${signer.userId}`,
             label: signer.displayName,
             signerRole: 'Signer',
             required: true,
