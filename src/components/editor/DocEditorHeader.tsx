@@ -21,12 +21,14 @@ import {
     Share01Icon, Comment01Icon, Clock01Icon,
 } from '@hugeicons/core-free-icons';
 import type { MenuItem } from '@/constants';
-import type { DigitalCertificateActionStatus } from '@/components/editor/use-digital-certificate-status';
 import type { DocumentDetail } from '@/api/documents.api';
 import type { SignatureBlockSigner } from '@/lib/editor-signature-blocks';
 import { MENU_BAR } from '@/constants';
 import { DocEditorToolbar } from './DocEditorToolbar';
-import { DocEditorSignatureAction } from './DocEditorSignatureAction';
+import {
+    DocEditorSignatureAction,
+    type SigningActionStatus,
+} from './DocEditorSignatureAction';
 import { ShareDocumentDialog } from './ShareDocumentDialog';
 import { InsertImageDialog } from './InsertImageDialog';
 import { InsertLinkDialog } from './InsertLinkDialog';
@@ -58,13 +60,14 @@ interface DocEditorHeaderProps {
     signatureBlockSigners?: SignatureBlockSigner[];
     onPrepareSignatureBlocks?: () => void;
     viewMenuItems: readonly MenuItem[];
-    certificateStatus: DigitalCertificateActionStatus;
+    signingStatus: SigningActionStatus;
     isStarred?: boolean;
     onOpenComments?: () => void;
     onToggleStar?: () => void;
     onManualSave?: () => void | Promise<void>;
     onShareActivityRecorded: () => void;
     onApplyForDigitalSignature: () => void;
+    onCompleteIdentityVerification: () => void;
     onFinalise: () => void;
     onLock: () => void;
     onSign: () => void;
@@ -79,8 +82,8 @@ export function DocEditorHeader({
     isReadOnly, isLocked, canShare, canComment = false,
     canFinalise, canLock, canSign, canViewSignature,
     canPrepareSignatureBlocks = false, signatureBlockSigners = [], viewMenuItems,
-    onPrepareSignatureBlocks, certificateStatus, isStarred = false, onOpenComments, onToggleStar, onManualSave, onShareActivityRecorded,
-    onApplyForDigitalSignature, onFinalise, onLock, onSign, onViewSignature, onViewAction,
+    onPrepareSignatureBlocks, signingStatus, isStarred = false, onOpenComments, onToggleStar, onManualSave, onShareActivityRecorded,
+    onApplyForDigitalSignature, onCompleteIdentityVerification, onFinalise, onLock, onSign, onViewSignature, onViewAction,
 }: DocEditorHeaderProps) {
     const [shareOpen, setShareOpen] = useState(false);
     const [findOpen,  setFindOpen]  = useState(false);
@@ -250,11 +253,12 @@ export function DocEditorHeader({
 
                     {!isLocked && (canFinalise || canLock || canSign) && (
                         <DocEditorSignatureAction
-                            certificateStatus={certificateStatus}
+                            signingStatus={signingStatus}
                             canFinalise={canFinalise}
                             canLock={canLock}
                             canSign={canSign}
                             onApplyForDigitalSignature={onApplyForDigitalSignature}
+                            onCompleteIdentityVerification={onCompleteIdentityVerification}
                             onFinalise={onFinalise}
                             onLock={onLock}
                             onSign={onSign}
