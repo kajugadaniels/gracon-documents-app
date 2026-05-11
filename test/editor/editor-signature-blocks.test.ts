@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
     buildSignatureBlockInserts,
+    getSignatureBlockSignerOrder,
     getSignatureBlockSigners,
+    hasSignatureBlockForUser,
 } from '../../src/lib/editor-signature-blocks.ts';
 
 test('buildSignatureBlockInserts maps signers and completed signature evidence', () => {
@@ -31,7 +33,7 @@ test('buildSignatureBlockInserts maps signers and completed signature evidence',
     ]);
 
     assert.deepEqual(blocks, [{
-        blockId: 'signature-user-1-1',
+        blockId: 'signature-user-1',
         label: 'Jane Doe',
         signerRole: 'Signer',
         required: true,
@@ -43,6 +45,61 @@ test('buildSignatureBlockInserts maps signers and completed signature evidence',
         signedAt: '2026-05-08T00:00:00.000Z',
         signatureImageUrl: 'https://example.com/signature.png',
     }]);
+});
+
+test('getSignatureBlockSignerOrder reads prepared signer order from editor content', () => {
+    const content = {
+        type: 'doc',
+        content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'Intro' }] },
+            { type: 'signatureBlock', attrs: { signerUserId: 'owner-user' } },
+            { type: 'signatureBlock', attrs: { signerUserId: 'invited-user' } },
+        ],
+    };
+
+    assert.deepEqual(getSignatureBlockSignerOrder(content), ['owner-user', 'invited-user']);
+    assert.equal(hasSignatureBlockForUser(content, 'owner-user'), true);
+    assert.equal(hasSignatureBlockForUser(content, 'missing-user'), false);
+});
+
+test('getSignatureBlockSigners includes owner and invited draft signers for block preparation', () => {
+    const signers = getSignatureBlockSigners({
+        access: { isOwner: true },
+        collaborators: [{
+            id: 'access-collaborator',
+            userId: 'collaborator-user',
+            permissions: ['READ', 'SIGN'],
+            invitationStatus: 'ACCEPTED',
+            isActive: true,
+            user: {
+                email: 'collaborator@example.com',
+                displayName: 'Collaborator User',
+            },
+        }],
+        signatureRequests: [],
+    } as never, {
+        userId: 'owner-user',
+        email: 'owner@example.com',
+        postNames: 'Owner',
+        surName: 'Person',
+    } as never);
+
+    assert.deepEqual(signers, [
+        {
+            accessId: 'owner',
+            userId: 'owner-user',
+            displayName: 'Owner Person',
+            email: 'owner@example.com',
+            isOwner: true,
+        },
+        {
+            accessId: 'access-collaborator',
+            userId: 'collaborator-user',
+            displayName: 'Collaborator User',
+            email: 'collaborator@example.com',
+            isOwner: false,
+        },
+    ]);
 });
 
 test('getSignatureBlockSigners uses finalised signature requests as the exact signer set', () => {
@@ -91,6 +148,7 @@ test('getSignatureBlockSigners uses finalised signature requests as the exact si
             userId: 'owner-user',
             displayName: 'Owner Person',
             email: 'owner@example.com',
+            isOwner: true,
             signatureId: 'signed-owner',
             signedAt: '2026-05-11T00:00:00.000Z',
         },
@@ -99,6 +157,7 @@ test('getSignatureBlockSigners uses finalised signature requests as the exact si
             userId: 'invited-user',
             displayName: 'Invited User',
             email: 'invited@example.com',
+            isOwner: false,
             signatureId: null,
             signedAt: null,
         },
