@@ -18,9 +18,10 @@ test('SignatureBlockExtension renders an assigned pending signature block', () =
         'div',
         { class: 'document-signature-block__meta' },
         ['strong', {}, 'Jane Doe'],
-        ['span', {}, 'Required signer - jane@example.com'],
+        ['span', {}, 'jane@example.com'],
+        '',
     ]);
-    assert.deepEqual(html?.[4], ['em', {}, 'Required']);
+    assert.equal(html?.length, 4);
 });
 
 test('SignatureBlockExtension renders signed state when signature data exists', () => {
@@ -36,5 +37,21 @@ test('SignatureBlockExtension renders signed state when signature data exists', 
         (html?.[1] as Record<string, string>).class,
         'document-signature-block document-signature-block--signed',
     );
-    assert.deepEqual(html?.[4], ['em', {}, 'Signed']);
+    assert.equal(html?.length, 4);
+});
+
+test('SignatureBlockExtension renders digitally signed text when signed without an image', () => {
+    const html = SignatureBlockExtension.config.renderHTML?.({
+        HTMLAttributes: {
+            signerName: 'Jane Doe',
+            signatureId: 'sig_123',
+            signedAt: '2026-05-08T00:00:00.000Z',
+        },
+    });
+
+    assert.deepEqual((html?.[2] as unknown[])[2], [
+        'span',
+        { class: 'document-signature-block__signed-text' },
+        'Digitally signed',
+    ]);
 });
