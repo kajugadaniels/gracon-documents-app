@@ -12,6 +12,8 @@ test('buildSignatureBlockInserts maps signers and completed signature evidence',
             userId: 'user-1',
             displayName: 'Jane Doe',
             email: 'jane@example.com',
+            signatureId: null,
+            signedAt: null,
         },
     ], [
         {
@@ -61,11 +63,15 @@ test('getSignatureBlockSigners uses finalised signature requests as the exact si
             {
                 id: 'request-owner',
                 requestedUserId: 'owner-user',
+                personalSignedDocumentId: 'signed-owner',
+                signedAt: '2026-05-11T00:00:00.000Z',
                 requestedUser: null,
             },
             {
                 id: 'request-invited',
                 requestedUserId: 'invited-user',
+                personalSignedDocumentId: null,
+                signedAt: null,
                 requestedUser: {
                     email: 'invited@example.com',
                     displayName: 'Invited User',
@@ -85,12 +91,33 @@ test('getSignatureBlockSigners uses finalised signature requests as the exact si
             userId: 'owner-user',
             displayName: 'Owner Person',
             email: 'owner@example.com',
+            signatureId: 'signed-owner',
+            signedAt: '2026-05-11T00:00:00.000Z',
         },
         {
             accessId: 'request-invited',
             userId: 'invited-user',
             displayName: 'Invited User',
             email: 'invited@example.com',
+            signatureId: null,
+            signedAt: null,
         },
     ]);
+});
+
+test('buildSignatureBlockInserts falls back to signed request evidence', () => {
+    const blocks = buildSignatureBlockInserts([
+        {
+            accessId: 'request-owner',
+            userId: 'owner-user',
+            displayName: 'Owner Person',
+            email: 'owner@example.com',
+            signatureId: 'signed-owner',
+            signedAt: '2026-05-11T00:00:00.000Z',
+        },
+    ], []);
+
+    assert.equal(blocks[0].signatureId, 'signed-owner');
+    assert.equal(blocks[0].signedAt, '2026-05-11T00:00:00.000Z');
+    assert.equal(blocks[0].signatureImageUrl, null);
 });
