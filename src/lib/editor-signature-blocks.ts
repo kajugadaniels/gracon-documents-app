@@ -40,6 +40,26 @@ export function getSignatureBlockSigners(
     doc: DocumentDetail,
     owner: SessionUser | null,
 ): SignatureBlockSigner[] {
+    if (doc.signatureRequests.length > 0) {
+        return doc.signatureRequests.map((request, index) => {
+            const requestedUser = request.requestedUser;
+            const isOwnerRequest = owner?.userId === request.requestedUserId;
+            const displayName = requestedUser
+                ? requestedUser.displayName || requestedUser.email
+                : isOwnerRequest && owner
+                    ? getOwnerDisplayName(owner)
+                    : `Signer ${index + 1}`;
+            const email = requestedUser?.email ?? (isOwnerRequest ? owner?.email : '') ?? '';
+
+            return {
+                accessId: request.id,
+                userId: request.requestedUserId,
+                displayName,
+                email,
+            };
+        });
+    }
+
     const invitedSigners = doc.collaborators
         .filter((collaborator) => (
             collaborator.isActive &&
@@ -78,7 +98,7 @@ export function buildSignatureBlockInserts(
         return {
             blockId: `signature-${signer.userId}-${index + 1}`,
             label: signer.displayName,
-            signerRole: 'Required signer',
+            signerRole: 'Signer',
             required: true,
             signerUserId: signer.userId,
             signerAccessId: signer.accessId,
