@@ -68,8 +68,12 @@ export function normalizeDocsPath(path: string | null | undefined): string {
 /**
  * Builds the main-app URL where users manage keys and digital certificates.
  */
-export function getDigitalCertificateUrl(): string {
-    return new URL(DIGITAL_CERTIFICATE_PATH, APP_URL).toString();
+export function getDigitalCertificateUrl(nextPath?: string): string {
+    const url = new URL(DIGITAL_CERTIFICATE_PATH, APP_URL);
+    if (nextPath) {
+        url.searchParams.set('next', new URL(nextPath, DOCS_URL).toString());
+    }
+    return url.toString();
 }
 
 export function getIdentityVerificationUrl(nextPath?: string): string {
