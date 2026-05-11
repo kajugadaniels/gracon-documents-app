@@ -36,7 +36,7 @@ import { buildViewMenuItems } from '@/constants/view-menu';
 import { A4_PAPER_HEIGHT_PX, A4_PAPER_WIDTH_PX } from '@/constants';
 import { useStarred } from '@/lib/hooks/useStarred';
 import { getDigitalCertificateUrl, redirectToLogin } from '@/lib/session';
-import { getSignatureBlockSigners } from '@/lib/editor-signature-blocks';
+import { buildSignatureBlockInserts, getSignatureBlockSigners } from '@/lib/editor-signature-blocks';
 import {
     buildDocumentLayoutStyle,
     clampHorizontalDocumentMargins,
@@ -792,7 +792,14 @@ export default function EditDocumentPage() {
         request => request.status !== 'SIGNED',
     ).length;
     const canViewSignature = isLocked && (isOwner || canSign);
-    const signatureBlockSigners = getSignatureBlockSigners(doc, user);
+    const signatureBlockSigners = useMemo(
+        () => getSignatureBlockSigners(doc, user),
+        [doc, user],
+    );
+    const signatureBlockEvidence = useMemo(
+        () => buildSignatureBlockInserts(signatureBlockSigners, doc.completedSignatures),
+        [doc.completedSignatures, signatureBlockSigners],
+    );
     const acceptedSignerCount = doc.collaborators.filter((collaborator) =>
         collaborator.isActive &&
         collaborator.invitationStatus === 'ACCEPTED' &&
@@ -822,6 +829,15 @@ export default function EditDocumentPage() {
             ? 'locked'
             : 'finalised';
     const zoomScale = viewState.zoom / 100;
+
+    useEffect(() => {
+        if (!editor || signatureBlockEvidence.length === 0) {
+            return;
+        }
+
+        editor.commands.updateSignatureBlockEvidence(signatureBlockEvidence);
+    }, [editor, signatureBlockEvidence]);
+
     async function handleSavePageSetup(nextLayout: DocumentLayout) {
         if (!doc || baseIsReadOnly) {
             return;
