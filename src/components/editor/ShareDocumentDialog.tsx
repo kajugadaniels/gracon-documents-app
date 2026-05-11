@@ -29,6 +29,7 @@ import {
 import { toast } from '@/components/ui';
 import { ShareDocumentAuditLog } from './ShareDocumentAuditLog';
 import { ShareDocumentAccessManager } from './ShareDocumentAccessManager';
+import styles from './share-document-dialog.module.css';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -56,10 +57,15 @@ const DEFAULT_VERIFICATION_REQUIREMENTS: InvitationVerificationRequirement[] = [
 ];
 
 const VERIFICATION_OPTIONS: Array<{
-    value: InvitationVerificationRequirement;
+    value: InvitationVerificationRequirement | 'NONE';
     label: string;
     description: string;
 }> = [
+    {
+        value: 'NONE',
+        label: 'No verification',
+        description: 'Recipient opens the invitation after signing in',
+    },
     {
         value: 'EMAIL_OTP',
         label: 'Email code',
@@ -123,7 +129,7 @@ function extractApiError(error: unknown, fallback: string): string {
 /** Fixed-size user avatar with initials fallback for share dialog results. */
 function ShareDialogAvatar({ user }: { user: UserSearchResult }) {
     return (
-        <div className="share-dialog__avatar" aria-hidden="true">
+        <div className={styles.avatar} aria-hidden="true">
             {user.imageUrl ? (
                 <Image
                     src={user.imageUrl}
@@ -131,10 +137,10 @@ function ShareDialogAvatar({ user }: { user: UserSearchResult }) {
                     width={40}
                     height={40}
                     unoptimized
-                    className="share-dialog__avatar-img"
+                    className={styles.avatarImg}
                 />
             ) : (
-                <span className="share-dialog__avatar-initials">{getInitials(user)}</span>
+                <span className={styles.avatarInitials}>{getInitials(user)}</span>
             )}
         </div>
     );
@@ -152,6 +158,7 @@ interface InviteFormProps {
     canGrantManageAccess: boolean;
     onTogglePermission: (p: Exclude<CollaboratorPermission, 'READ'>) => void;
     onToggleVerificationRequirement: (requirement: InvitationVerificationRequirement) => void;
+    onSetNoVerification: (enabled: boolean) => void;
     onNoteChange: (value: string) => void;
     onDeselect: () => void;
 }
@@ -162,24 +169,25 @@ interface InviteFormProps {
  */
 function InviteForm({
     user, permissions, verificationRequirements, note, loading, error, canGrantManageAccess,
-    onTogglePermission, onToggleVerificationRequirement, onNoteChange, onDeselect,
+    onTogglePermission, onToggleVerificationRequirement, onSetNoVerification, onNoteChange, onDeselect,
 }: InviteFormProps) {
     const options = canGrantManageAccess
         ? PERMISSION_OPTIONS
         : PERMISSION_OPTIONS.filter((o) => o.value !== 'MANAGE_ACCESS');
+    const noVerification = verificationRequirements.length === 0;
 
     return (
-        <div className="share-invite__form">
+        <div className={styles.inviteForm}>
             {/* Recipient chip */}
-            <div className="share-invite__recipient">
+            <div className={styles.recipient}>
                 <ShareDialogAvatar user={user} />
-                <div className="share-invite__recipient-body">
-                    <p className="share-invite__recipient-meta">Selected recipient</p>
-                    <p className="share-invite__recipient-name">{getDisplayName(user)}</p>
-                    <p className="share-invite__recipient-email">{user.email}</p>
+                <div className={styles.recipientBody}>
+                    <p className={styles.recipientMeta}>Selected recipient</p>
+                    <p className={styles.recipientName}>{getDisplayName(user)}</p>
+                    <p className={styles.recipientEmail}>{user.email}</p>
                 </div>
                 <button
-                    className="share-invite__deselect-btn"
+                    className={styles.deselectBtn}
                     onClick={onDeselect}
                     aria-label="Deselect user"
                     disabled={loading}
@@ -190,26 +198,29 @@ function InviteForm({
 
             {/* Permissions */}
             <div>
-                <p className="share-invite__section-title">Permissions</p>
-                <p className="share-invite__section-hint">
+                <p className={styles.sectionTitle}>Permissions</p>
+                <p className={styles.sectionHint}>
                     Read access is always included. Add one or more extra permissions.
                 </p>
-                <div className="share-invite__perm-grid">
+                <div className={styles.switchGrid}>
                     {options.map((option) => {
                         const checked = permissions.includes(option.value);
                         return (
                             <label
                                 key={option.value}
-                                className={`share-invite__perm-option${checked ? ' share-invite__perm-option--checked' : ''}`}
+                                className={`${styles.switchOption}${checked ? ` ${styles.switchOptionChecked}` : ''}`}
                             >
                                 <input
                                     type="checkbox"
                                     checked={checked}
                                     onChange={() => onTogglePermission(option.value)}
                                 />
-                                <span>
-                                    <span className="share-invite__perm-name">{option.label}</span>
-                                    <span className="share-invite__perm-desc">{option.description}</span>
+                                <span className={styles.switchCopy}>
+                                    <span className={styles.switchName}>{option.label}</span>
+                                    <span className={styles.switchDesc}>{option.description}</span>
+                                </span>
+                                <span className={styles.switchTrack} aria-hidden="true">
+                                    <span className={styles.switchThumb} />
                                 </span>
                             </label>
                         );
@@ -218,34 +229,65 @@ function InviteForm({
             </div>
 
             {/* Verification requirements */}
-            <div>
-                <p className="share-invite__section-title">Required verification</p>
-                <p className="share-invite__section-hint">
-                    Choose what the recipient must complete after signing in.
+            <div className={styles.verificationPanel}>
+                <div className={styles.verificationHead}>
+                    <div>
+                        <p className={styles.sectionTitle}>Required verification</p>
+                        <p className={styles.sectionHint}>
+                            Choose the proof required before the invitation opens.
+                        </p>
+                    </div>
+                    <span className={styles.verificationCount}>
+                        {noVerification ? 'None' : `${verificationRequirements.length} active`}
+                    </span>
+                </div>
+                <p className={styles.verificationLead}>
+                    Login is always required. These settings control the extra checks after login.
                 </p>
-                <div className="share-invite__verification-grid">
+                <div className={styles.verificationGrid}>
                     {VERIFICATION_OPTIONS.map((option) => {
-                        const checked = verificationRequirements.includes(option.value);
+                        const isNoneOption = option.value === 'NONE';
+                        const requirement = isNoneOption
+                            ? null
+                            : option.value as InvitationVerificationRequirement;
+                        const checked = requirement
+                            ? verificationRequirements.includes(requirement)
+                            : noVerification;
+                        const disabled = !isNoneOption && noVerification;
                         return (
                             <label
                                 key={option.value}
-                                className={`share-invite__verification-option${checked ? ' share-invite__verification-option--checked' : ''}`}
+                                className={[
+                                    styles.verificationOption,
+                                    checked ? styles.verificationOptionChecked : '',
+                                    disabled ? styles.verificationOptionDisabled : '',
+                                ].filter(Boolean).join(' ')}
                             >
                                 <input
                                     type="checkbox"
                                     checked={checked}
-                                    onChange={() => onToggleVerificationRequirement(option.value)}
+                                    disabled={disabled}
+                                    onChange={() => {
+                                        if (isNoneOption) {
+                                            onSetNoVerification(!noVerification);
+                                        } else if (requirement) {
+                                            onToggleVerificationRequirement(requirement);
+                                        }
+                                    }}
                                 />
-                                <span>
-                                    <span className="share-invite__perm-name">{option.label}</span>
-                                    <span className="share-invite__perm-desc">{option.description}</span>
+                                <span className={styles.switchCopy}>
+                                    <span className={styles.switchName}>{option.label}</span>
+                                    <span className={styles.switchDesc}>{option.description}</span>
+                                </span>
+                                <span className={styles.switchTrack} aria-hidden="true">
+                                    <span className={styles.switchThumb} />
                                 </span>
                             </label>
                         );
                     })}
                 </div>
-                {verificationRequirements.length === 0 && (
-                    <p className="share-invite__verification-note">
+                {noVerification && (
+                    <p className={styles.verificationNote}>
                         No extra verification will be required after login.
                     </p>
                 )}
@@ -253,7 +295,7 @@ function InviteForm({
 
             {/* Note */}
             <div>
-                <label htmlFor="share-note" className="share-invite__note-label">
+                <label htmlFor="share-note" className={styles.noteLabel}>
                     Note for the recipient
                 </label>
                 <textarea
@@ -262,11 +304,11 @@ function InviteForm({
                     onChange={(e) => onNoteChange(e.target.value)}
                     placeholder="Optional message for the invited user…"
                     maxLength={1000}
-                    className="share-invite__note-field"
+                    className={styles.noteField}
                 />
             </div>
 
-            {error && <p className="share-invite__error">{error}</p>}
+            {error && <p className={styles.inviteError}>{error}</p>}
         </div>
     );
 }
@@ -420,6 +462,10 @@ export function ShareDocumentDialog({
         );
     }
 
+    function handleSetNoVerification(enabled: boolean) {
+        setVerificationRequirements(enabled ? [] : DEFAULT_VERIFICATION_REQUIREMENTS);
+    }
+
     async function handleSendInvitation() {
         if (!selectedUser || shareLoading) return;
         setShareLoading(true);
@@ -471,45 +517,45 @@ export function ShareDocumentDialog({
     return (
         <div
             ref={backdropRef}
-            className="share-dialog-backdrop"
+            className={styles.backdrop}
             onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="share-dialog-title"
         >
-            <div className="share-dialog">
+            <div className={styles.dialog}>
                 {/* ── Header ── */}
-                <div className="share-dialog__header">
-                    <div className="share-dialog__header-left">
-                        <div className="share-dialog__header-icon" aria-hidden="true">
+                <div className={styles.header}>
+                    <div className={styles.headerLeft}>
+                        <div className={styles.headerIcon} aria-hidden="true">
                             <HugeiconsIcon icon={Share01Icon} size={15} color="var(--color-primary)" />
                         </div>
                         <div>
-                            <h2 id="share-dialog-title" className="share-dialog__title">Share document</h2>
-                            <p className="share-dialog__doc-name" title={docTitle}>{docTitle}</p>
+                            <h2 id="share-dialog-title" className={styles.title}>Share document</h2>
+                            <p className={styles.docName} title={docTitle}>{docTitle}</p>
                         </div>
                     </div>
-                    <button className="share-dialog__close-btn" onClick={onClose} aria-label="Close share dialog">
+                    <button className={styles.closeBtn} onClick={onClose} aria-label="Close share dialog">
                         <HugeiconsIcon icon={Cancel01Icon} size={15} />
                     </button>
                 </div>
 
-                <div className="share-dialog__divider" aria-hidden="true" />
+                <div className={styles.divider} aria-hidden="true" />
 
                 {/* ── Navigation tabs ── */}
-                <div className="share-dialog__tabs" role="tablist" aria-label="Share dialog sections">
+                <div className={styles.tabs} role="tablist" aria-label="Share dialog sections">
                     {(['invite', 'people'] as const).map((tab) => (
                         <button
                             key={tab}
                             type="button"
                             role="tab"
                             aria-selected={activeTab === tab}
-                            className={`share-dialog__tab${activeTab === tab ? ' share-dialog__tab--active' : ''}`}
+                            className={`${styles.tab}${activeTab === tab ? ` ${styles.tabActive}` : ''}`}
                             onClick={() => setActiveTab(tab)}
                         >
                             {tab === 'invite' ? 'Invite user' : 'People with access'}
                             {tab === 'people' && accessCount > 0 && (
-                                <span className="share-dialog__tab-count">{accessCount}</span>
+                                <span className={styles.tabCount}>{accessCount}</span>
                             )}
                         </button>
                     ))}
@@ -518,12 +564,12 @@ export function ShareDocumentDialog({
                             type="button"
                             role="tab"
                             aria-selected={activeTab === 'activity'}
-                            className={`share-dialog__tab${activeTab === 'activity' ? ' share-dialog__tab--active' : ''}`}
+                            className={`${styles.tab}${activeTab === 'activity' ? ` ${styles.tabActive}` : ''}`}
                             onClick={() => setActiveTab('activity')}
                         >
                             Activity
                             {activityCount > 0 && (
-                                <span className="share-dialog__tab-count">{activityCount}</span>
+                                <span className={styles.tabCount}>{activityCount}</span>
                             )}
                         </button>
                     )}
@@ -533,14 +579,14 @@ export function ShareDocumentDialog({
                 {activeTab === 'invite' && (
                     <>
                         {/* Search mode switch */}
-                        <div className="share-dialog__mode-switch" role="tablist" aria-label="Search mode">
+                        <div className={styles.modeSwitch} role="tablist" aria-label="Search mode">
                             {(['email', 'platformId', 'citizenId'] as UserSearchMode[]).map((mode) => (
                                 <button
                                     key={mode}
                                     type="button"
                                     role="tab"
                                     aria-selected={searchMode === mode}
-                                    className={`share-dialog__mode-btn${searchMode === mode ? ' share-dialog__mode-btn--active' : ''}`}
+                                    className={`${styles.modeBtn}${searchMode === mode ? ` ${styles.modeBtnActive}` : ''}`}
                                     onClick={() => handleModeChange(mode)}
                                 >
                                     {mode === 'email' ? 'Email' : mode === 'platformId' ? 'Platform ID' : 'Citizen ID'}
@@ -549,10 +595,10 @@ export function ShareDocumentDialog({
                         </div>
 
                         {/* Search input */}
-                        <div className="share-dialog__search-wrap">
-                            <div className="share-dialog__search-icon" aria-hidden="true">
+                        <div className={styles.searchWrap}>
+                            <div className={styles.searchIcon} aria-hidden="true">
                                 {loading
-                                    ? <span className="share-dialog__search-spinner" />
+                                    ? <span className={styles.searchSpinner} />
                                     : <HugeiconsIcon icon={Search01Icon} size={15} color="#9ca3af" />
                                 }
                             </div>
@@ -562,7 +608,7 @@ export function ShareDocumentDialog({
                                 value={query}
                                 onChange={(e) => handleQueryChange(e.target.value)}
                                 placeholder={SEARCH_PLACEHOLDER[searchMode]}
-                                className="share-dialog__search-input"
+                                className={styles.searchInput}
                                 autoComplete="off"
                                 spellCheck={false}
                                 aria-label={`Search users by ${searchMode}`}
@@ -570,7 +616,7 @@ export function ShareDocumentDialog({
                             />
                             {query.length > 0 && (
                                 <button
-                                    className="share-dialog__search-clear"
+                                    className={styles.searchClear}
                                     onClick={() => handleQueryChange('')}
                                     aria-label="Clear search"
                                 >
@@ -580,22 +626,22 @@ export function ShareDocumentDialog({
                         </div>
 
                         {/* Scrollable results + form */}
-                        <div className="share-dialog__body">
-                            {!query && <p className="share-dialog__idle">{IDLE_COPY[searchMode]}</p>}
-                            {showHint && <p className="share-dialog__hint">{SEARCH_HINT[searchMode]}</p>}
-                            {searchError && <p className="share-dialog__error">{searchError}</p>}
-                            {showEmpty && <p className="share-dialog__empty">No users found matching &quot;{query}&quot;</p>}
+                        <div className={styles.body}>
+                            {!query && <p className={styles.idle}>{IDLE_COPY[searchMode]}</p>}
+                            {showHint && <p className={styles.hint}>{SEARCH_HINT[searchMode]}</p>}
+                            {searchError && <p className={styles.error}>{searchError}</p>}
+                            {showEmpty && <p className={styles.empty}>No users found matching &quot;{query}&quot;</p>}
 
                             {showResults && (
-                                <ul className="share-dialog__results" role="listbox" aria-label="Search results">
+                                <ul className={styles.results} role="listbox" aria-label="Search results">
                                     {results.map((user) => {
                                         const isSelected  = selectedId === user.id;
                                         const accessStatus = existingAccess.get(user.id);
                                         const hasAccess   = Boolean(accessStatus);
                                         const className   = [
-                                            'share-dialog__result',
-                                            isSelected && 'share-dialog__result--selected',
-                                            hasAccess  && 'share-dialog__result--has-access',
+                                            styles.result,
+                                            isSelected && styles.resultSelected,
+                                            hasAccess  && styles.resultHasAccess,
                                         ].filter(Boolean).join(' ');
                                         return (
                                             <li
@@ -607,18 +653,18 @@ export function ShareDocumentDialog({
                                                 onClick={() => { if (!hasAccess) handleSelectUser(user); }}
                                             >
                                                 <ShareDialogAvatar user={user} />
-                                                <div className="share-dialog__user-info">
-                                                    <span className="share-dialog__user-name">{getDisplayName(user)}</span>
-                                                    <span className="share-dialog__user-email">{user.email}</span>
-                                                    <span className="share-dialog__user-match">{getMatchLabel(user)}</span>
+                                                <div className={styles.userInfo}>
+                                                    <span className={styles.userName}>{getDisplayName(user)}</span>
+                                                    <span className={styles.userEmail}>{user.email}</span>
+                                                    <span className={styles.userMatch}>{getMatchLabel(user)}</span>
                                                 </div>
                                                 {accessStatus && (
-                                                    <span className={`share-dialog__access-badge share-dialog__access-badge--${accessStatus}`}>
+                                                    <span className={`${styles.accessBadge} ${accessStatus === 'active' ? styles.accessBadgeActive : styles.accessBadgePending}`}>
                                                         {accessStatus === 'active' ? 'Has access' : 'Invite pending'}
                                                     </span>
                                                 )}
                                                 {isSelected && !hasAccess && (
-                                                    <div className="share-dialog__check" aria-hidden="true">
+                                                    <div className={styles.check} aria-hidden="true">
                                                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                                             <circle cx="8" cy="8" r="8" fill="var(--color-primary)" />
                                                             <path d="M4.5 8l2.5 2.5 4.5-5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -634,7 +680,7 @@ export function ShareDocumentDialog({
                             {/* Invite form — appears once a user is selected */}
                             {selectedUser && (
                                 <>
-                                    <div className="share-invite__divider" aria-hidden="true" />
+                                    <div className={styles.inviteDivider} aria-hidden="true" />
                                     <InviteForm
                                         user={selectedUser}
                                         permissions={permissions}
@@ -645,6 +691,7 @@ export function ShareDocumentDialog({
                                         canGrantManageAccess={canGrantManageAccess}
                                         onTogglePermission={handleTogglePermission}
                                         onToggleVerificationRequirement={handleToggleVerificationRequirement}
+                                        onSetNoVerification={handleSetNoVerification}
                                         onNoteChange={setNote}
                                         onDeselect={handleDeselect}
                                     />
@@ -656,7 +703,7 @@ export function ShareDocumentDialog({
 
                 {/* ── People tab ── */}
                 {activeTab === 'people' && (
-                    <div className="share-dialog__body share-dialog__body--access">
+                    <div className={`${styles.body} share-dialog__body--access`}>
                         <ShareDocumentAccessManager
                             documentId={documentId}
                             canGrantManageAccess={canGrantManageAccess}
@@ -669,7 +716,7 @@ export function ShareDocumentDialog({
 
                 {/* ── Activity tab ── */}
                 {canGrantManageAccess && activeTab === 'activity' && (
-                    <div className="share-dialog__body share-dialog__body--access">
+                    <div className={`${styles.body} share-dialog__body--access`}>
                         <ShareDocumentAuditLog
                             documentId={documentId}
                             refreshKey={activityRefreshKey}
@@ -679,10 +726,10 @@ export function ShareDocumentDialog({
                 )}
 
                 {/* ── Footer ── */}
-                <div className="share-dialog__footer">
-                    <p className="share-dialog__footer-note">{footerNote}</p>
+                <div className={styles.footer}>
+                    <p className={styles.footerNote}>{footerNote}</p>
                     <button
-                        className="share-dialog__done-btn"
+                        className={styles.doneBtn}
                         onClick={isSendMode ? handleSendInvitation : onClose}
                         disabled={shareLoading}
                     >
