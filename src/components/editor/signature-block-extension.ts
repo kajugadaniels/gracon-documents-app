@@ -52,6 +52,29 @@ function isDirectImageUrl(value: string | null): value is string {
     return Boolean(value && /^(https?:|data:|blob:|\/)/i.test(value));
 }
 
+function getCanvasSafeSignatureImageUrl(value: string) {
+    if (/^(data:|blob:|\/)/i.test(value)) {
+        return value;
+    }
+
+    try {
+        const url = new URL(value);
+        const isS3PresignedUrl =
+            url.protocol === 'https:' &&
+            (url.hostname.endsWith('.amazonaws.com') || url.hostname.endsWith('.amazonaws.com.cn')) &&
+            url.pathname.includes('/signature-images/') &&
+            url.searchParams.has('X-Amz-Signature');
+
+        if (isS3PresignedUrl) {
+            return `/api/v1/signature/image/render?url=${encodeURIComponent(value)}`;
+        }
+    } catch {
+        return value;
+    }
+
+    return value;
+}
+
 function formatSignedDate(signedAt: string) {
     return new Date(signedAt).toLocaleDateString(undefined, {
         month: 'short',
@@ -83,19 +106,25 @@ function SignatureMark({
     const [currentSignatureUrl, setCurrentSignatureUrl] = useState<string | null>(null);
     const [cleanSignatureUrl, setCleanSignatureUrl] = useState<string | null>(null);
     const [shouldUseCurrentSignature, setShouldUseCurrentSignature] = useState(false);
+    const [shouldBypassImageProxy, setShouldBypassImageProxy] = useState(false);
     const normalizedImageUrl = imageUrl?.trim() || null;
     const isCurrentSigner = Boolean(signerUserId && currentUserId === signerUserId);
     const shouldResolveCurrentSignature =
         signed &&
         isCurrentSigner &&
         (!isDirectImageUrl(normalizedImageUrl) || shouldUseCurrentSignature);
+    const fallbackImageUrl = useMemo(() => (
+        shouldResolveCurrentSignature && currentSignatureUrl
+            ? currentSignatureUrl
+            : isDirectImageUrl(normalizedImageUrl)
+                ? normalizedImageUrl
+                : null
+    ), [currentSignatureUrl, normalizedImageUrl, shouldResolveCurrentSignature]);
     const displayImageUrl = useMemo(() => {
-        if (shouldResolveCurrentSignature && currentSignatureUrl) {
-            return currentSignatureUrl;
-        }
-
-        return isDirectImageUrl(normalizedImageUrl) ? normalizedImageUrl : null;
-    }, [currentSignatureUrl, normalizedImageUrl, shouldResolveCurrentSignature]);
+        if (!fallbackImageUrl) return null;
+        if (shouldBypassImageProxy) return fallbackImageUrl;
+        return getCanvasSafeSignatureImageUrl(fallbackImageUrl);
+    }, [fallbackImageUrl, shouldBypassImageProxy]);
 
     useEffect(() => {
         let cancelled = false;
@@ -141,10 +170,14 @@ function SignatureMark({
     }, [shouldResolveCurrentSignature]);
 
     useEffect(() => {
+        setShouldBypassImageProxy(false);
+    }, [fallbackImageUrl]);
+
+    useEffect(() => {
         let cancelled = false;
 
         setCleanSignatureUrl(null);
-        if (!displayImageUrl) return undefined;
+        if (!displayImageUrl || shouldBypassImageProxy) return undefined;
 
         const image = new Image();
         image.crossOrigin = 'anonymous';
@@ -188,7 +221,7 @@ function SignatureMark({
         return () => {
             cancelled = true;
         };
-    }, [displayImageUrl]);
+    }, [displayImageUrl, shouldBypassImageProxy]);
 
     if (displayImageUrl) {
         return createElement('img', {
@@ -197,6 +230,11 @@ function SignatureMark({
             className: 'document-signature-block__image',
             draggable: false,
             onError: () => {
+                if (fallbackImageUrl && displayImageUrl !== fallbackImageUrl) {
+                    setShouldBypassImageProxy(true);
+                    return;
+                }
+
                 if (isCurrentSigner) {
                     setShouldUseCurrentSignature(true);
                 }
