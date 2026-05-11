@@ -1389,15 +1389,26 @@ body {
   align-items: end;
   gap: 12px;
   padding: 14px 0 12px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
   break-inside: avoid;
   page-break-inside: avoid;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 .tiptap-editor .ProseMirror .document-signature-block--signed {
-  border-color: transparent;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+.tiptap-editor .ProseMirror .document-signature-block.ProseMirror-selectednode,
+.tiptap-editor .ProseMirror [data-type="signature-block"].ProseMirror-selectednode,
+.tiptap-editor .ProseMirror .document-signature-block:focus,
+.tiptap-editor .ProseMirror [data-type="signature-block"]:focus {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
 }
 .tiptap-editor .ProseMirror .document-signature-block__signature-area {
   position: relative;
