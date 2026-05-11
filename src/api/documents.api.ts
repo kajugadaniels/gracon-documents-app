@@ -3,6 +3,16 @@ import { apiClient } from './client';
 export type DocumentType = 'RICH_TEXT' | 'SPREADSHEET';
 export type DocumentStatus = 'DRAFT' | 'FINALISED' | 'SIGNED' | 'LOCKED';
 export type SignatureRequestStatus = 'PENDING' | 'SIGNED' | 'DECLINED';
+export type DocumentSigningReadinessStatus =
+    | 'ready'
+    | 'needs_login'
+    | 'needs_identity_verification'
+    | 'needs_certificate'
+    | 'not_required_signer'
+    | 'already_signed'
+    | 'document_not_finalised'
+    | 'document_locked'
+    | 'document_hash_missing';
 export type DocumentListScope = 'ALL_ACCESSIBLE' | 'OWNED' | 'SHARED_WITH_ME';
 export type CollaboratorInvitationStatus =
     | 'PENDING'
@@ -235,6 +245,20 @@ export interface DocumentDetail extends DocumentSummary {
     pendingSignatureCount?: number;
 }
 
+export interface DocumentSigningReadiness {
+    documentId: string;
+    status: DocumentSigningReadinessStatus;
+    canSign: boolean;
+    message: string;
+    documentStatus: DocumentStatus | null;
+    documentHash: string | null;
+    signatureRequestId: string | null;
+    signedAt: string | null;
+    personalSignedDocumentId: string | null;
+    certificateId: string | null;
+    certificateExpiresAt: string | null;
+}
+
 export interface DocumentVersion {
     id: string;
     versionNumber: number;
@@ -388,6 +412,33 @@ export async function signDocument(
     pendingSignatureCount: number;
 }> {
     const res = await apiClient.post(`/documents/${id}/sign`, { signatureId, documentHash });
+    return res.data;
+}
+
+export async function getDocumentSigningReadiness(
+    id: string,
+): Promise<DocumentSigningReadiness> {
+    const res = await apiClient.get<DocumentSigningReadiness>(
+        `/documents/${id}/signing-readiness`,
+        { validateStatus: (status) => status < 500 },
+    );
+
+    if (res.status === 401) {
+        return {
+            documentId: id,
+            status: 'needs_login',
+            canSign: false,
+            message: 'Sign in with the required account before signing this document.',
+            documentStatus: null,
+            documentHash: null,
+            signatureRequestId: null,
+            signedAt: null,
+            personalSignedDocumentId: null,
+            certificateId: null,
+            certificateExpiresAt: null,
+        };
+    }
+
     return res.data;
 }
 
