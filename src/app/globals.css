@@ -1045,7 +1045,7 @@ body {
 }
 .tiptap-editor.tiptap-editor-paper-signed .ProseMirror {
   min-height: 0;
-  padding-bottom: 24px;
+  padding-bottom: 148px;
 }
 .document-layout-frame--show-marks .tiptap-editor .ProseMirror p:not(:empty)::after {
   content: '¶';
@@ -1315,6 +1315,72 @@ body {
 .document-signature-block {
   break-inside: avoid;
   page-break-inside: avoid;
+}
+.document-signature-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.document-verification-footer {
+  position: absolute;
+  left: var(--paper-margin-left);
+  right: var(--paper-margin-right);
+  bottom: 30px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  max-width: 440px;
+  padding: 12px 14px;
+  border: 1px solid rgba(22,16,58,0.14);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.96);
+  box-shadow: 0 6px 18px rgba(22,16,58,0.08);
+}
+.document-verification-footer__qr {
+  width: 78px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(22,16,58,0.10);
+  border-radius: 6px;
+  background: #fff;
+}
+.document-verification-footer__qr img {
+  display: block;
+  width: 72px;
+  height: 72px;
+}
+.document-verification-footer__qr span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.document-verification-footer__copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.document-verification-footer__copy span {
+  color: var(--color-text-muted);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.document-verification-footer__copy strong {
+  color: var(--color-text-primary);
+  font-size: 12.5px;
+  font-weight: 750;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.document-verification-footer__copy small {
+  color: var(--color-text-secondary);
+  font-size: 10.5px;
+  line-height: 1.45;
 }
 .tiptap-editor .ProseMirror .document-signature-block {
   margin: 16px 0;
