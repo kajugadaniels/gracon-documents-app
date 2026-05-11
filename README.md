@@ -52,6 +52,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Draggable ruler tab-stop markers for repositioning existing tab stops without deleting and recreating them
 - Live editor tab rendering uses ProseMirror decorations so tab characters remain copy/paste-safe while reflecting typed stop widths on canvas
 - DOCX import maps Word paragraph indents, inline tab characters, and paragraph tab-stop positions back into the same schema-backed layout model used by the ruler
+- Text-based PDF import extracts selectable PDF text into editable rich-text paragraphs; scanned PDFs need OCR before import
 - Export parity tests for page margins, paragraph indents, hanging indents, and tab-stop conversion
 - Invitation gate with OTP and identity-proof return flow
 - Signing readiness checks from `api/documents` so the UI can route users to login, identity verification, certificate setup, or signing without extra probing calls
