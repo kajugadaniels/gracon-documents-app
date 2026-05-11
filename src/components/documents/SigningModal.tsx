@@ -1,19 +1,14 @@
 /**
  * Modal that signs a finalised document hash and records the user's signature.
  *
- * It performs its own certificate check as a defensive fallback because header
- * gating is only a UX layer; the signature service remains the source of truth.
+ * The signing submit uses a local BFF route so the browser does not coordinate
+ * separate signature-service and document-service calls.
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from '@/components/ui';
-import { signDocument, type DocumentDetail } from '@/api/documents.api';
-import {
-    getDigitalCertificateStatus,
-    type DigitalCertificateStatus,
-} from '@/api/signature.api';
-import { getDigitalCertificateUrl } from '@/lib/session';
+import { signDocumentInOneStep, type DocumentDetail } from '@/api/documents.api';
 
 interface SigningModalProps {
     document: DocumentDetail;
@@ -25,68 +20,18 @@ type Step = 'review' | 'signing' | 'done';
 
 export function SigningModal({ document: doc, onClose, onSigned }: SigningModalProps) {
     const [step, setStep] = useState<Step>('review');
-    const [certificateStatus, setCertificateStatus] =
-        useState<DigitalCertificateStatus | 'checking'>('checking');
     const [signatureBytes, setSignatureBytes] = useState('');
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    useEffect(() => {
-        if (doc.status !== 'FINALISED') return undefined;
-
-        let ignore = false;
-
-        getDigitalCertificateStatus().then((status) => {
-            if (!ignore) setCertificateStatus(status);
-        });
-
-        return () => { ignore = true; };
-    }, [doc.status]);
-
-    async function hasActiveCertificate() {
-        setCertificateStatus('checking');
-        const status = await getDigitalCertificateStatus();
-        setCertificateStatus(status);
-
-        if (status === 'active') return true;
-
-        toast.warning('Apply for a digital signature before signing this document.');
-        return false;
-    }
-
-    function applyForDigitalSignature() {
-        window.location.href = getDigitalCertificateUrl();
-    }
-
     async function handleSign() {
         if (!doc.contentHash) { toast.error('Document has no content hash. Finalise it first.'); return; }
-        if (!(await hasActiveCertificate())) return;
 
         setStep('signing');
         setLoading(true);
         try {
-            // Sign via the local proxy so the browser never calls api/signature cross-origin.
-            const res = await fetch('/api/v1/signature/signing/sign', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    documentHash: doc.contentHash,
-                    documentName: doc.title,
-                }),
-            });
-
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err?.message ?? 'Signing failed');
-            }
-
-            const data: { signatureId: string; signatureBytes: string } = await res.json();
-            setSignatureBytes(data.signatureBytes);
-
-            const signed = await signDocument(doc.id, data.signatureId, doc.contentHash);
+            const signed = await signDocumentInOneStep(doc.id, doc.contentHash, doc.title);
+            setSignatureBytes(signed.signatureBytes ?? '');
             onSigned(signed);
             setStep('done');
         } catch (e: unknown) {
@@ -139,19 +84,9 @@ export function SigningModal({ document: doc, onClose, onSigned }: SigningModalP
                         {doc.status === 'FINALISED' && (
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <button onClick={onClose} className="btn-ghost" style={{ flex: 1 }}>Cancel</button>
-                                {certificateStatus === 'active' ? (
-                                    <button onClick={() => { void handleSign(); }} className="btn-primary" style={{ flex: 2 }} disabled={loading}>
-                                        ✍️ Sign with My Certificate
-                                    </button>
-                                ) : certificateStatus === 'checking' ? (
-                                    <button className="btn-primary" style={{ flex: 2 }} disabled>
-                                        Checking certificate…
-                                    </button>
-                                ) : (
-                                    <button onClick={applyForDigitalSignature} className="btn-primary" style={{ flex: 2 }}>
-                                        Apply for digital signature
-                                    </button>
-                                )}
+                                <button onClick={() => { void handleSign(); }} className="btn-primary" style={{ flex: 2 }} disabled={loading}>
+                                    Sign with My Certificate
+                                </button>
                             </div>
                         )}
 
