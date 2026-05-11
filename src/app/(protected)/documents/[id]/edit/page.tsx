@@ -744,7 +744,11 @@ export default function EditDocumentPage() {
     const signatureBlockEvidence = useMemo(
         () => (
             doc
-                ? buildSignatureBlockInserts(signatureBlockSigners, doc.completedSignatures)
+                ? buildSignatureBlockInserts(
+                    signatureBlockSigners,
+                    doc.completedSignatures,
+                    doc.signatureSnapshot,
+                )
                 : []
         ),
         [doc, signatureBlockSigners],
@@ -1092,6 +1096,7 @@ export default function EditDocumentPage() {
                             const refreshedEvidence = buildSignatureBlockInserts(
                                 refreshedSigners,
                                 refreshed.completedSignatures,
+                                refreshed.signatureSnapshot,
                             );
                             editor?.commands.updateSignatureBlockEvidence(refreshedEvidence);
                         } catch (error: unknown) {
