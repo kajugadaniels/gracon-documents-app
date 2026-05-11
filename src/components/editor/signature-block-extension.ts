@@ -21,6 +21,7 @@ declare module '@tiptap/core' {
     interface Commands<ReturnType> {
         signatureBlock: {
             insertSignatureBlocks: (blocks: SignatureBlockAttrs[]) => ReturnType;
+            syncAssignedSignatureBlocks: (blocks: SignatureBlockAttrs[]) => ReturnType;
             updateSignatureBlockEvidence: (blocks: SignatureBlockAttrs[]) => ReturnType;
         };
     }
@@ -28,6 +29,17 @@ declare module '@tiptap/core' {
 
 function getStringAttr(value: unknown, fallback = '') {
     return typeof value === 'string' ? value : fallback;
+}
+
+function getSignatureBlockKey(attrs: Record<string, unknown>) {
+    const signerUserId = getStringAttr(attrs.signerUserId);
+    const signerAccessId = getStringAttr(attrs.signerAccessId);
+    const blockId = getStringAttr(attrs.blockId);
+
+    if (signerUserId) return `user:${signerUserId}`;
+    if (signerAccessId) return `access:${signerAccessId}`;
+    if (blockId) return `block:${blockId}`;
+    return '';
 }
 
 function getBooleanAttr(value: unknown, fallback = true) {
@@ -392,15 +404,83 @@ export const SignatureBlockExtension = Node.create({
                 dispatch?.(tr.scrollIntoView());
                 return true;
             },
+            syncAssignedSignatureBlocks: (blocks) => ({ state, dispatch }) => {
+                if (blocks.length === 0) return false;
+
+                const signatureType = state.schema.nodes.signatureBlock;
+                if (!signatureType) return false;
+
+                const blocksByKey = new Map(
+                    blocks
+                        .map((block) => [getSignatureBlockKey(block as Record<string, unknown>), block] as const)
+                        .filter(([key]) => key),
+                );
+                if (blocksByKey.size === 0) return false;
+
+                const tr = state.tr;
+                const existingPositions: Array<{ key: string; pos: number; size: number }> = [];
+                const seenKeys = new Set<string>();
+
+                state.doc.descendants((node, pos) => {
+                    if (node.type.name !== 'signatureBlock') return;
+
+                    const key = getSignatureBlockKey(node.attrs);
+                    if (!key || !blocksByKey.has(key) || seenKeys.has(key)) {
+                        existingPositions.push({ key, pos, size: node.nodeSize });
+                        return;
+                    }
+
+                    const nextBlock = blocksByKey.get(key);
+                    if (!nextBlock) return;
+
+                    seenKeys.add(key);
+                    const nextAttrs = { ...node.attrs, ...nextBlock };
+                    const attrsChanged = Object.entries(nextAttrs).some(
+                        ([attrKey, value]) => node.attrs[attrKey] !== value,
+                    );
+
+                    if (attrsChanged) {
+                        tr.setNodeMarkup(pos, undefined, nextAttrs);
+                    }
+                });
+
+                existingPositions.reverse().forEach(({ pos, size }) => {
+                    tr.delete(pos, pos + size);
+                });
+
+                const missingBlocks = blocks.filter((block) => (
+                    !seenKeys.has(getSignatureBlockKey(block as Record<string, unknown>))
+                ));
+
+                if (missingBlocks.length > 0) {
+                    const insertPos = Math.min(
+                        tr.mapping.map(tr.selection.from),
+                        tr.doc.content.size,
+                    );
+                    tr.insert(insertPos, missingBlocks.map((block) => signatureType.create(block)));
+                }
+
+                dispatch?.(tr.scrollIntoView());
+                return true;
+            },
             updateSignatureBlockEvidence: (blocks) => ({ state, dispatch }) => {
                 if (blocks.length === 0) return false;
 
-                const evidenceBySignerId = new Map(
-                    blocks
-                        .filter((block) => block.signerUserId)
-                        .map((block) => [block.signerUserId, block]),
+                const evidenceByKey = new Map(
+                    blocks.flatMap((block) => {
+                        const entries: Array<[string, SignatureBlockAttrs]> = [];
+                        const signerUserId = getStringAttr(block.signerUserId);
+                        const signerAccessId = getStringAttr(block.signerAccessId);
+                        const blockId = getStringAttr(block.blockId);
+
+                        if (signerUserId) entries.push([`user:${signerUserId}`, block]);
+                        if (signerAccessId) entries.push([`access:${signerAccessId}`, block]);
+                        if (blockId) entries.push([`block:${blockId}`, block]);
+
+                        return entries;
+                    }),
                 );
-                if (evidenceBySignerId.size === 0) return false;
+                if (evidenceByKey.size === 0) return false;
 
                 const tr = state.tr;
                 let changed = false;
@@ -408,8 +488,9 @@ export const SignatureBlockExtension = Node.create({
                 state.doc.descendants((node, pos) => {
                     if (node.type.name !== 'signatureBlock') return;
 
-                    const signerUserId = getStringAttr(node.attrs.signerUserId);
-                    const evidence = evidenceBySignerId.get(signerUserId);
+                    const evidence = evidenceByKey.get(getSignatureBlockKey(node.attrs))
+                        ?? evidenceByKey.get(`access:${getStringAttr(node.attrs.signerAccessId)}`)
+                        ?? evidenceByKey.get(`block:${getStringAttr(node.attrs.blockId)}`);
                     if (!evidence) return;
 
                     const nextAttrs = {
