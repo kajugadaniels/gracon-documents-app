@@ -1,5 +1,7 @@
+import { createElement, useEffect, useMemo, useState } from 'react';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec } from '@tiptap/pm/model';
+import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 
 interface SignatureBlockAttrs {
     blockId?: string;
@@ -32,6 +34,162 @@ function getBooleanAttr(value: unknown, fallback = true) {
     if (typeof value === 'boolean') return value;
     if (typeof value === 'string') return value !== 'false';
     return fallback;
+}
+
+function isDirectImageUrl(value: string | null): value is string {
+    return Boolean(value && /^(https?:|data:|blob:|\/)/i.test(value));
+}
+
+function formatSignedDate(signedAt: string) {
+    return new Date(signedAt).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
+async function getCurrentSignatureImageUrl() {
+    const response = await fetch('/api/v1/signature/image', { credentials: 'include' });
+    if (!response.ok) return null;
+
+    const payload = await response.json().catch(() => null);
+    return typeof payload?.url === 'string' ? payload.url : null;
+}
+
+function SignatureMark({
+    imageUrl,
+    signerUserId,
+    signerName,
+    signed,
+}: {
+    imageUrl: string | null;
+    signerUserId: string | null;
+    signerName: string;
+    signed: boolean;
+}) {
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [currentSignatureUrl, setCurrentSignatureUrl] = useState<string | null>(null);
+    const [shouldUseCurrentSignature, setShouldUseCurrentSignature] = useState(false);
+    const normalizedImageUrl = imageUrl?.trim() || null;
+    const isCurrentSigner = Boolean(signerUserId && currentUserId === signerUserId);
+    const shouldResolveCurrentSignature =
+        signed &&
+        isCurrentSigner &&
+        (!isDirectImageUrl(normalizedImageUrl) || shouldUseCurrentSignature);
+    const displayImageUrl = useMemo(() => {
+        if (shouldResolveCurrentSignature && currentSignatureUrl) {
+            return currentSignatureUrl;
+        }
+
+        return isDirectImageUrl(normalizedImageUrl) ? normalizedImageUrl : null;
+    }, [currentSignatureUrl, normalizedImageUrl, shouldResolveCurrentSignature]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!signed || !signerUserId || currentUserId) return undefined;
+
+        void fetch('/api/me', { credentials: 'include' })
+            .then((response) => (response.ok ? response.json() : null))
+            .then((payload) => {
+                if (!cancelled) {
+                    setCurrentUserId(
+                        typeof payload?.userId === 'string'
+                            ? payload.userId
+                            : typeof payload?.id === 'string'
+                                ? payload.id
+                                : null,
+                    );
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setCurrentUserId(null);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [currentUserId, signed, signerUserId]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!shouldResolveCurrentSignature) return undefined;
+
+        void getCurrentSignatureImageUrl().then((imageUrl) => {
+            if (!cancelled) {
+                setCurrentSignatureUrl(imageUrl);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [shouldResolveCurrentSignature]);
+
+    if (displayImageUrl) {
+        return createElement('img', {
+            src: displayImageUrl,
+            alt: `${signerName} signature`,
+            className: 'document-signature-block__image',
+            draggable: false,
+            onError: () => {
+                if (isCurrentSigner) {
+                    setShouldUseCurrentSignature(true);
+                }
+            },
+        });
+    }
+
+    if (!signed) return null;
+
+    return createElement(
+        'span',
+        { className: 'document-signature-block__signed-text' },
+        'Digitally signed',
+    );
+}
+
+function SignatureBlockNodeView({ node }: NodeViewProps) {
+    const signerName = getStringAttr(node.attrs.signerName)
+        || getStringAttr(node.attrs.label, 'Signature');
+    const signerEmail = getStringAttr(node.attrs.signerEmail);
+    const signerUserId = getStringAttr(node.attrs.signerUserId) || null;
+    const signatureImageUrl = getStringAttr(node.attrs.signatureImageUrl) || null;
+    const signedAt = getStringAttr(node.attrs.signedAt);
+    const signatureId = getStringAttr(node.attrs.signatureId);
+    const signed = Boolean(signatureId || signedAt);
+    const signedDate = signedAt ? formatSignedDate(signedAt) : null;
+
+    return createElement(
+        NodeViewWrapper,
+        {
+            as: 'section',
+            'data-type': 'signature-block',
+            'aria-label': `${getStringAttr(node.attrs.label, signerName)} signature block`,
+            className: `document-signature-block${signed ? ' document-signature-block--signed' : ''}`,
+        },
+        createElement(
+            'div',
+            { className: 'document-signature-block__signature-area' },
+            createElement(SignatureMark, {
+                imageUrl: signatureImageUrl,
+                signerUserId,
+                signerName,
+                signed,
+            }),
+            createElement('span', { className: 'document-signature-block__line' }),
+        ),
+        createElement(
+            'div',
+            { className: 'document-signature-block__meta' },
+            createElement('strong', null, signerName),
+            signerEmail ? createElement('span', null, signerEmail) : null,
+            signedDate
+                ? createElement('span', { className: 'document-signature-block__date' }, `Signed ${signedDate}`)
+                : null,
+        ),
+    );
 }
 
 function renderSignatureBlock(HTMLAttributes: Record<string, unknown>): DOMOutputSpec {
@@ -230,5 +388,9 @@ export const SignatureBlockExtension = Node.create({
                 return true;
             },
         };
+    },
+
+    addNodeView() {
+        return ReactNodeViewRenderer(SignatureBlockNodeView);
     },
 });
