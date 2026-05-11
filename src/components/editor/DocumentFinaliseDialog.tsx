@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 
 interface DocumentFinaliseDialogProps {
     acceptedSignerCount: number;
+    ownerSignaturePrepared: boolean;
     open: boolean;
     onClose: () => void;
     onConfirm: (options: { requireOwnerSignature: boolean }) => Promise<void>;
@@ -18,6 +19,7 @@ interface DocumentFinaliseDialogProps {
 /** Modal used to confirm finalisation and owner-signature requirement. */
 export function DocumentFinaliseDialog({
     acceptedSignerCount,
+    ownerSignaturePrepared,
     open,
     onClose,
     onConfirm,
@@ -27,11 +29,17 @@ export function DocumentFinaliseDialog({
     const canFinalise = requireOwnerSignature || acceptedSignerCount > 0;
 
     useEffect(() => {
+        if (open) {
+            setRequireOwnerSignature(ownerSignaturePrepared);
+            setSubmitting(false);
+            return;
+        }
+
         if (!open) {
             setRequireOwnerSignature(false);
             setSubmitting(false);
         }
-    }, [open]);
+    }, [open, ownerSignaturePrepared]);
 
     if (!open) {
         return null;
@@ -87,12 +95,14 @@ export function DocumentFinaliseDialog({
                         type="checkbox"
                         checked={requireOwnerSignature}
                         onChange={(event) => setRequireOwnerSignature(event.target.checked)}
-                        disabled={submitting}
+                        disabled={submitting || ownerSignaturePrepared}
                     />
                     <span>
                         <strong>Require my signature before completion</strong>
                         <small>
-                            Leave this off if only invited signers should sign and you will only lock later.
+                            {ownerSignaturePrepared
+                                ? 'Turn this off only if you remove your prepared signature block first.'
+                                : 'Leave this off if only invited signers should sign and you will only lock later.'}
                         </small>
                     </span>
                 </label>
