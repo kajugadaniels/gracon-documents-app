@@ -16,6 +16,7 @@ export const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:40
 const SESSION_API_BASE = '/api';
 const DEFAULT_NEXT_PATH = '/documents';
 const DIGITAL_CERTIFICATE_PATH = '/profile/signature';
+const IDENTITY_VERIFICATION_PATH = '/verify-identity';
 
 export type SessionRefreshResult =
     | {
@@ -69,6 +70,14 @@ export function normalizeDocsPath(path: string | null | undefined): string {
  */
 export function getDigitalCertificateUrl(): string {
     return new URL(DIGITAL_CERTIFICATE_PATH, APP_URL).toString();
+}
+
+export function getIdentityVerificationUrl(nextPath?: string): string {
+    const url = new URL(IDENTITY_VERIFICATION_PATH, APP_URL);
+    if (nextPath) {
+        url.searchParams.set('next', new URL(nextPath, DOCS_URL).toString());
+    }
+    return url.toString();
 }
 
 function getUnavailableMessage(payload: unknown, fallback: string): string {
