@@ -1401,7 +1401,7 @@ body {
 }
 .tiptap-editor .ProseMirror .document-signature-block__signature-area {
   position: relative;
-  min-height: 42px;
+  min-height: 58px;
   grid-column: 1;
   grid-row: 1;
   display: flex;
@@ -1416,10 +1416,12 @@ body {
 .tiptap-editor .ProseMirror .document-signature-block__image {
   position: absolute;
   left: 0;
-  bottom: 4px;
-  max-width: 210px;
-  max-height: 54px;
+  bottom: 3px;
+  max-width: 260px;
+  max-height: 74px;
   object-fit: contain;
+  background: transparent;
+  mix-blend-mode: multiply;
   z-index: 1;
 }
 .tiptap-editor .ProseMirror .document-signature-block__signed-text {
