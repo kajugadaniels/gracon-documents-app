@@ -19,6 +19,7 @@ declare module '@tiptap/core' {
     interface Commands<ReturnType> {
         signatureBlock: {
             insertSignatureBlocks: (blocks: SignatureBlockAttrs[]) => ReturnType;
+            updateSignatureBlockEvidence: (blocks: SignatureBlockAttrs[]) => ReturnType;
         };
     }
 }
@@ -36,7 +37,6 @@ function getBooleanAttr(value: unknown, fallback = true) {
 function renderSignatureBlock(HTMLAttributes: Record<string, unknown>): DOMOutputSpec {
     const signerName = getStringAttr(HTMLAttributes.signerName)
         || getStringAttr(HTMLAttributes.label, 'Signature');
-    const signerRole = getStringAttr(HTMLAttributes.signerRole, 'Required signer');
     const signerEmail = getStringAttr(HTMLAttributes.signerEmail);
     const signatureImageUrl = getStringAttr(HTMLAttributes.signatureImageUrl);
     const signedAt = getStringAttr(HTMLAttributes.signedAt);
@@ -76,11 +76,13 @@ function renderSignatureBlock(HTMLAttributes: Record<string, unknown>): DOMOutpu
             'div',
             { class: 'document-signature-block__meta' },
             ['strong', {}, signerName],
-            ['span', {}, signedDate
-                ? `Signed ${signedDate}`
-                : signerEmail ? `${signerRole} - ${signerEmail}` : signerRole],
+            signerEmail
+                ? ['span', {}, signerEmail]
+                : '',
+            signedDate
+                ? ['span', { class: 'document-signature-block__date' }, `Signed ${signedDate}`]
+                : '',
         ],
-        ['em', {}, signed ? 'Signed' : 'Required'],
     ];
 }
 
@@ -179,6 +181,52 @@ export const SignatureBlockExtension = Node.create({
                 tr.insert(insertPos, nodes);
 
                 dispatch?.(tr.scrollIntoView());
+                return true;
+            },
+            updateSignatureBlockEvidence: (blocks) => ({ state, dispatch }) => {
+                if (blocks.length === 0) return false;
+
+                const evidenceBySignerId = new Map(
+                    blocks
+                        .filter((block) => block.signerUserId)
+                        .map((block) => [block.signerUserId, block]),
+                );
+                if (evidenceBySignerId.size === 0) return false;
+
+                const tr = state.tr;
+                let changed = false;
+
+                state.doc.descendants((node, pos) => {
+                    if (node.type.name !== 'signatureBlock') return;
+
+                    const signerUserId = getStringAttr(node.attrs.signerUserId);
+                    const evidence = evidenceBySignerId.get(signerUserId);
+                    if (!evidence) return;
+
+                    const nextAttrs = {
+                        ...node.attrs,
+                        label: evidence.label ?? node.attrs.label,
+                        signerRole: evidence.signerRole ?? node.attrs.signerRole,
+                        signerAccessId: evidence.signerAccessId ?? node.attrs.signerAccessId,
+                        signerName: evidence.signerName ?? node.attrs.signerName,
+                        signerEmail: evidence.signerEmail ?? node.attrs.signerEmail,
+                        signatureId: evidence.signatureId ?? null,
+                        signedAt: evidence.signedAt ?? null,
+                        signatureImageUrl: evidence.signatureImageUrl ?? null,
+                    };
+                    const attrsChanged = Object.entries(nextAttrs).some(
+                        ([key, value]) => node.attrs[key] !== value,
+                    );
+
+                    if (!attrsChanged) return;
+
+                    changed = true;
+                    tr.setNodeMarkup(pos, undefined, nextAttrs);
+                });
+
+                if (!changed) return true;
+
+                dispatch?.(tr);
                 return true;
             },
         };
