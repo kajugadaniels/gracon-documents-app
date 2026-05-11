@@ -35,6 +35,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 
 - Direct browser calls to `api/documents` for document operations
 - Next.js proxy routes for auth refresh/current user and signature operations
+- Server-side single-flight session refresh/upgrade helpers for auth and signature proxy routes
 - Zustand hydration from sessionStorage plus cookie-backed recovery
 - A4-style editor work, autosave, versions, and signing states
 - Persisted document layout model powering paper margins, rulers, PDF, and DOCX export
