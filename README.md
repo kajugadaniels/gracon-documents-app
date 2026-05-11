@@ -20,6 +20,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Premium page setup dialog, persisted margins, and draggable ruler-based margin adjustment
 - Share dialog, permission assignment, invitation review
 - Signature workflow UI and signing progress
+- One-call signing-readiness gating before opening the signing modal
 - Public verify page for authenticity checks
 - Invitation acceptance flow and proof-chain review
 
@@ -51,6 +52,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - DOCX import maps Word paragraph indents, inline tab characters, and paragraph tab-stop positions back into the same schema-backed layout model used by the ruler
 - Export parity tests for page margins, paragraph indents, hanging indents, and tab-stop conversion
 - Invitation gate with OTP and identity-proof return flow
+- Signing readiness checks from `api/documents` so the UI can route users to login, identity verification, certificate setup, or signing without extra probing calls
 - Cross-tab share activity refresh and document metadata merge patterns
 - Typed insert-menu action registry so menu labels, enabled states, and editor command dispatch stay aligned while features are implemented incrementally
 - Quick insert actions for date/time and common special characters using undo-safe TipTap insert commands
