@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, authClient } from './client';
 
 export type DocumentType = 'RICH_TEXT' | 'SPREADSHEET';
 export type DocumentStatus = 'DRAFT' | 'FINALISED' | 'SIGNED' | 'LOCKED';
@@ -412,6 +412,26 @@ export async function signDocument(
     pendingSignatureCount: number;
 }> {
     const res = await apiClient.post(`/documents/${id}/sign`, { signatureId, documentHash });
+    return res.data;
+}
+
+export async function signDocumentInOneStep(
+    id: string,
+    documentHash: string,
+    documentName: string,
+): Promise<DocumentSummary & {
+    signatureId: string;
+    signatureBytes: string | null;
+    message: string;
+    completedSignatures: DocumentCompletedSignature[];
+    signatureSnapshot: DocumentSignatureSnapshot | null;
+    signatureRequests: DocumentSignatureRequestSummary[];
+    pendingSignatureCount: number;
+}> {
+    const res = await authClient.post(`/documents/${id}/sign`, {
+        documentHash,
+        documentName,
+    });
     return res.data;
 }
 
