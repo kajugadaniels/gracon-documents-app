@@ -1080,9 +1080,29 @@ export default function EditDocumentPage() {
                 <SigningModal
                     document={doc}
                     onClose={() => setShowSigning(false)}
-                    onSigned={(updated) => {
+                    onSigned={async (updated) => {
                         setDoc(prev => prev ? { ...prev, ...updated } : prev);
                         setShowSigning(false);
+
+                        try {
+                            const refreshed = await getDocument(id, true);
+                            setDoc((current) => current ? { ...current, ...refreshed } : refreshed);
+
+                            const refreshedSigners = getSignatureBlockSigners(refreshed, user);
+                            const refreshedEvidence = buildSignatureBlockInserts(
+                                refreshedSigners,
+                                refreshed.completedSignatures,
+                            );
+                            editor?.commands.updateSignatureBlockEvidence(refreshedEvidence);
+                        } catch (error: unknown) {
+                            toast.warning(
+                                getErrorMessage(
+                                    error,
+                                    'Signature recorded, but the signed block could not be refreshed yet.',
+                                ),
+                            );
+                        }
+
                         if (updated.status === 'SIGNED') {
                             toast.success('All required signatures are complete. The owner can now lock the document.');
                             return;
