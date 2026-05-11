@@ -1,7 +1,9 @@
-import { createElement, useEffect, useMemo, useState } from 'react';
-import { mergeAttributes, Node } from '@tiptap/core';
+/**
+ * Defines the non-editable signature block node used by the document editor.
+ */
+import { mergeAttributes, Node, type NodeViewRendererProps } from '@tiptap/core';
 import type { DOMOutputSpec } from '@tiptap/pm/model';
-import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
+import type { NodeView } from '@tiptap/pm/view';
 
 interface SignatureBlockAttrs {
     blockId?: string;
@@ -91,206 +93,250 @@ async function getCurrentSignatureImageUrl() {
     return typeof payload?.url === 'string' ? payload.url : null;
 }
 
-function SignatureMark({
-    imageUrl,
-    signerUserId,
-    signerName,
-    signed,
-}: {
-    imageUrl: string | null;
-    signerUserId: string | null;
-    signerName: string;
-    signed: boolean;
-}) {
-    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const [currentSignatureUrl, setCurrentSignatureUrl] = useState<string | null>(null);
-    const [cleanSignatureUrl, setCleanSignatureUrl] = useState<string | null>(null);
-    const [shouldUseCurrentSignature, setShouldUseCurrentSignature] = useState(false);
-    const [shouldBypassImageProxy, setShouldBypassImageProxy] = useState(false);
-    const normalizedImageUrl = imageUrl?.trim() || null;
-    const isCurrentSigner = Boolean(signerUserId && currentUserId === signerUserId);
-    const shouldResolveCurrentSignature =
-        signed &&
-        isCurrentSigner &&
-        (!isDirectImageUrl(normalizedImageUrl) || shouldUseCurrentSignature);
-    const fallbackImageUrl = useMemo(() => (
-        shouldResolveCurrentSignature && currentSignatureUrl
-            ? currentSignatureUrl
-            : isDirectImageUrl(normalizedImageUrl)
-                ? normalizedImageUrl
-                : null
-    ), [currentSignatureUrl, normalizedImageUrl, shouldResolveCurrentSignature]);
-    const displayImageUrl = useMemo(() => {
-        if (!fallbackImageUrl) return null;
-        if (shouldBypassImageProxy) return fallbackImageUrl;
-        return getCanvasSafeSignatureImageUrl(fallbackImageUrl);
-    }, [fallbackImageUrl, shouldBypassImageProxy]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        if (!signed || !signerUserId || currentUserId) return undefined;
-
-        void fetch('/api/me', { credentials: 'include' })
-            .then((response) => (response.ok ? response.json() : null))
-            .then((payload) => {
-                if (!cancelled) {
-                    setCurrentUserId(
-                        typeof payload?.userId === 'string'
-                            ? payload.userId
-                            : typeof payload?.id === 'string'
-                                ? payload.id
-                                : null,
-                    );
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setCurrentUserId(null);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [currentUserId, signed, signerUserId]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        if (!shouldResolveCurrentSignature) return undefined;
-
-        void getCurrentSignatureImageUrl().then((imageUrl) => {
-            if (!cancelled) {
-                setCurrentSignatureUrl(imageUrl);
-            }
-        });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [shouldResolveCurrentSignature]);
-
-    useEffect(() => {
-        setShouldBypassImageProxy(false);
-    }, [fallbackImageUrl]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        setCleanSignatureUrl(null);
-        if (!displayImageUrl || shouldBypassImageProxy) return undefined;
-
-        const image = new Image();
-        image.crossOrigin = 'anonymous';
-        image.onload = () => {
-            if (cancelled) return;
-
-            const canvas = document.createElement('canvas');
-            canvas.width = image.naturalWidth;
-            canvas.height = image.naturalHeight;
-
-            const context = canvas.getContext('2d', { willReadFrequently: true });
-            if (!context) return;
-
-            try {
-                context.drawImage(image, 0, 0);
-                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                const { data } = imageData;
-
-                for (let index = 0; index < data.length; index += 4) {
-                    const red = data[index];
-                    const green = data[index + 1];
-                    const blue = data[index + 2];
-                    const max = Math.max(red, green, blue);
-                    const min = Math.min(red, green, blue);
-                    const isNearWhite = red > 220 && green > 220 && blue > 220;
-                    const isLightNeutral = red > 175 && green > 175 && blue > 175 && max - min < 34;
-
-                    if (isNearWhite || isLightNeutral) {
-                        data[index + 3] = 0;
-                    }
-                }
-
-                context.putImageData(imageData, 0, 0);
-                setCleanSignatureUrl(canvas.toDataURL('image/png'));
-            } catch {
-                setCleanSignatureUrl(null);
-            }
-        };
-        image.src = displayImageUrl;
-
-        return () => {
-            cancelled = true;
-        };
-    }, [displayImageUrl, shouldBypassImageProxy]);
-
-    if (displayImageUrl) {
-        return createElement('img', {
-            src: cleanSignatureUrl ?? displayImageUrl,
-            alt: `${signerName} signature`,
-            className: 'document-signature-block__image',
-            draggable: false,
-            onError: () => {
-                if (fallbackImageUrl && displayImageUrl !== fallbackImageUrl) {
-                    setShouldBypassImageProxy(true);
-                    return;
-                }
-
-                if (isCurrentSigner) {
-                    setShouldUseCurrentSignature(true);
-                }
-            },
-        });
-    }
-
-    if (!signed) return null;
-
-    return createElement(
-        'span',
-        { className: 'document-signature-block__signed-text' },
-        'Digitally signed',
-    );
+interface SignatureBlockDomState {
+    abortController: AbortController | null;
+    renderVersion: number;
 }
 
-function SignatureBlockNodeView({ node }: NodeViewProps) {
-    const signerName = getStringAttr(node.attrs.signerName)
-        || getStringAttr(node.attrs.label, 'Signature');
-    const signerEmail = getStringAttr(node.attrs.signerEmail);
-    const signerUserId = getStringAttr(node.attrs.signerUserId) || null;
-    const signatureImageUrl = getStringAttr(node.attrs.signatureImageUrl) || null;
-    const signedAt = getStringAttr(node.attrs.signedAt);
-    const signatureId = getStringAttr(node.attrs.signatureId);
-    const signed = Boolean(signatureId || signedAt);
-    const signedDate = signedAt ? formatSignedDate(signedAt) : null;
+function clearElement(element: HTMLElement) {
+    element.replaceChildren();
+}
 
-    return createElement(
-        NodeViewWrapper,
-        {
-            as: 'section',
-            'data-type': 'signature-block',
-            'aria-label': `${getStringAttr(node.attrs.label, signerName)} signature block`,
-            className: `document-signature-block${signed ? ' document-signature-block--signed' : ''}`,
+function setOptionalDataAttribute(element: HTMLElement, name: string, value: unknown) {
+    const stringValue = getStringAttr(value);
+
+    if (stringValue) {
+        element.setAttribute(name, stringValue);
+    } else {
+        element.removeAttribute(name);
+    }
+}
+
+function createSignatureText() {
+    const signedText = document.createElement('span');
+    signedText.className = 'document-signature-block__signed-text';
+    signedText.textContent = 'Digitally signed';
+    return signedText;
+}
+
+function removeLightSignaturePixels(image: HTMLImageElement) {
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return null;
+
+    context.drawImage(image, 0, 0);
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const { data } = imageData;
+
+    for (let index = 0; index < data.length; index += 4) {
+        const red = data[index];
+        const green = data[index + 1];
+        const blue = data[index + 2];
+        const max = Math.max(red, green, blue);
+        const min = Math.min(red, green, blue);
+        const isNearWhite = red > 220 && green > 220 && blue > 220;
+        const isLightNeutral = red > 175 && green > 175 && blue > 175 && max - min < 34;
+
+        if (isNearWhite || isLightNeutral) {
+            data[index + 3] = 0;
+        }
+    }
+
+    context.putImageData(imageData, 0, 0);
+    return canvas.toDataURL('image/png');
+}
+
+function createSignatureImage(
+    imageUrl: string,
+    signerName: string,
+    renderVersion: number,
+    state: SignatureBlockDomState,
+) {
+    const image = document.createElement('img');
+    const displayImageUrl = getCanvasSafeSignatureImageUrl(imageUrl);
+
+    image.className = 'document-signature-block__image';
+    image.alt = `${signerName} signature`;
+    image.draggable = false;
+    image.crossOrigin = 'anonymous';
+    image.src = displayImageUrl;
+    image.addEventListener('load', () => {
+        if (state.renderVersion !== renderVersion) return;
+
+        try {
+            const cleanImageUrl = removeLightSignaturePixels(image);
+            if (cleanImageUrl) {
+                image.removeAttribute('crossorigin');
+                image.src = cleanImageUrl;
+            }
+        } catch {
+            // A non-readable image is still a valid signature preview; keep the source visible.
+        }
+    }, { once: true });
+    image.addEventListener('error', () => {
+        if (state.renderVersion !== renderVersion || displayImageUrl === imageUrl) return;
+
+        image.removeAttribute('crossorigin');
+        image.src = imageUrl;
+    }, { once: true });
+
+    return image;
+}
+
+function getUserIdFromPayload(payload: unknown) {
+    if (!payload || typeof payload !== 'object') return null;
+
+    const record = payload as Record<string, unknown>;
+    return getStringAttr(record.userId) || getStringAttr(record.id) || null;
+}
+
+async function resolveCurrentSignerSignatureUrl(
+    signerUserId: string,
+    signal: AbortSignal,
+) {
+    const meResponse = await fetch('/api/me', { credentials: 'include', signal });
+    if (!meResponse.ok) return null;
+
+    const currentUserId = getUserIdFromPayload(await meResponse.json().catch(() => null));
+    if (currentUserId !== signerUserId) return null;
+
+    return getCurrentSignatureImageUrl();
+}
+
+function appendSignatureMark(
+    signatureArea: HTMLElement,
+    attrs: Record<string, unknown>,
+    state: SignatureBlockDomState,
+) {
+    const signerName = getStringAttr(attrs.signerName) || getStringAttr(attrs.label, 'Signature');
+    const signerUserId = getStringAttr(attrs.signerUserId);
+    const signatureImageUrl = getStringAttr(attrs.signatureImageUrl).trim();
+    const signed = Boolean(getStringAttr(attrs.signatureId) || getStringAttr(attrs.signedAt));
+    const renderVersion = state.renderVersion;
+
+    if (isDirectImageUrl(signatureImageUrl)) {
+        signatureArea.append(createSignatureImage(signatureImageUrl, signerName, renderVersion, state));
+        return;
+    }
+
+    if (!signed) return;
+
+    const signedText = createSignatureText();
+    signatureArea.append(signedText);
+
+    if (!signerUserId) return;
+
+    state.abortController?.abort();
+    state.abortController = new AbortController();
+    void resolveCurrentSignerSignatureUrl(signerUserId, state.abortController.signal)
+        .then((currentSignatureUrl) => {
+            if (state.renderVersion !== renderVersion || !isDirectImageUrl(currentSignatureUrl)) return;
+
+            signedText.replaceWith(
+                createSignatureImage(currentSignatureUrl, signerName, renderVersion, state),
+            );
+        })
+        .catch(() => {
+            // Keep the signed text fallback when session or image recovery is unavailable.
+        });
+}
+
+function applySignatureBlockAttributes(dom: HTMLElement, attrs: Record<string, unknown>) {
+    const signerName = getStringAttr(attrs.signerName) || getStringAttr(attrs.label, 'Signature');
+    const signed = Boolean(getStringAttr(attrs.signatureId) || getStringAttr(attrs.signedAt));
+
+    dom.setAttribute('data-type', 'signature-block');
+    dom.setAttribute('aria-label', `${getStringAttr(attrs.label, signerName)} signature block`);
+    dom.setAttribute('data-required', String(getBooleanAttr(attrs.required, true)));
+    dom.className = `document-signature-block${signed ? ' document-signature-block--signed' : ''}`;
+    setOptionalDataAttribute(dom, 'data-block-id', attrs.blockId);
+    setOptionalDataAttribute(dom, 'data-signer-user-id', attrs.signerUserId);
+    setOptionalDataAttribute(dom, 'data-signer-access-id', attrs.signerAccessId);
+    setOptionalDataAttribute(dom, 'data-signer-name', attrs.signerName);
+    setOptionalDataAttribute(dom, 'data-signer-email', attrs.signerEmail);
+    setOptionalDataAttribute(dom, 'data-signature-id', attrs.signatureId);
+    setOptionalDataAttribute(dom, 'data-signed-at', attrs.signedAt);
+    setOptionalDataAttribute(dom, 'data-signature-image-url', attrs.signatureImageUrl);
+}
+
+function renderSignatureBlockNodeView(
+    dom: HTMLElement,
+    attrs: Record<string, unknown>,
+    state: SignatureBlockDomState,
+) {
+    state.renderVersion += 1;
+    state.abortController?.abort();
+    state.abortController = null;
+
+    const signerName = getStringAttr(attrs.signerName) || getStringAttr(attrs.label, 'Signature');
+    const signerEmail = getStringAttr(attrs.signerEmail);
+    const signedAt = getStringAttr(attrs.signedAt);
+    const signedDate = signedAt ? formatSignedDate(signedAt) : null;
+    const signatureArea = document.createElement('div');
+    const signatureLine = document.createElement('span');
+    const meta = document.createElement('div');
+    const signerNameElement = document.createElement('strong');
+
+    applySignatureBlockAttributes(dom, attrs);
+    signatureArea.className = 'document-signature-block__signature-area';
+    signatureLine.className = 'document-signature-block__line';
+    meta.className = 'document-signature-block__meta';
+    signerNameElement.textContent = signerName;
+
+    appendSignatureMark(signatureArea, attrs, state);
+    signatureArea.append(signatureLine);
+    meta.append(signerNameElement);
+
+    if (signerEmail) {
+        const email = document.createElement('span');
+        email.textContent = signerEmail;
+        meta.append(email);
+    }
+
+    if (signedDate) {
+        const date = document.createElement('span');
+        date.className = 'document-signature-block__date';
+        date.textContent = `Signed ${signedDate}`;
+        meta.append(date);
+    }
+
+    clearElement(dom);
+    dom.append(signatureArea, meta);
+}
+
+function createSignatureBlockNodeView({ node }: NodeViewRendererProps): NodeView {
+    const dom = document.createElement('section');
+    const state: SignatureBlockDomState = {
+        abortController: null,
+        renderVersion: 0,
+    };
+
+    renderSignatureBlockNodeView(dom, node.attrs, state);
+
+    return {
+        dom,
+        update(nextNode) {
+            if (nextNode.type.name !== node.type.name) return false;
+
+            renderSignatureBlockNodeView(dom, nextNode.attrs, state);
+            return true;
         },
-        createElement(
-            'div',
-            { className: 'document-signature-block__signature-area' },
-            createElement(SignatureMark, {
-                imageUrl: signatureImageUrl,
-                signerUserId,
-                signerName,
-                signed,
-            }),
-            createElement('span', { className: 'document-signature-block__line' }),
-        ),
-        createElement(
-            'div',
-            { className: 'document-signature-block__meta' },
-            createElement('strong', null, signerName),
-            signerEmail ? createElement('span', null, signerEmail) : null,
-            signedDate
-                ? createElement('span', { className: 'document-signature-block__date' }, `Signed ${signedDate}`)
-                : null,
-        ),
-    );
+        selectNode() {
+            dom.classList.add('ProseMirror-selectednode');
+        },
+        deselectNode() {
+            dom.classList.remove('ProseMirror-selectednode');
+        },
+        destroy() {
+            state.abortController?.abort();
+        },
+        ignoreMutation() {
+            return true;
+        },
+    };
 }
 
 function renderSignatureBlock(HTMLAttributes: Record<string, unknown>): DOMOutputSpec {
@@ -531,6 +577,6 @@ export const SignatureBlockExtension = Node.create({
     },
 
     addNodeView() {
-        return ReactNodeViewRenderer(SignatureBlockNodeView);
+        return createSignatureBlockNodeView;
     },
 });
