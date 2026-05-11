@@ -147,7 +147,7 @@ export function DocEditorHeader({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".docx,.doc"
+                accept=".docx,.doc,.pdf,application/pdf"
                 style={{ display: 'none' }}
                 onChange={e => {
                     const file = e.target.files?.[0];
