@@ -2838,19 +2838,24 @@ body {
 
 /* Sticky horizontal ruler row — sits between the header and canvas, never scrolls away */
 .ded-sticky-ruler {
+  --ded-document-tabs-width: 212px;
+  --ded-ruler-sidebar-width: 38px;
+  --ded-ruler-left-rail-width: calc(var(--ded-document-tabs-width) + var(--ded-ruler-sidebar-width));
   position: sticky;
   top: 0;
   z-index: 20;
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: var(--ded-ruler-left-rail-width) minmax(0, 1fr);
   align-items: flex-end;
   height: 28px;
   background: #e8eaed;
   border-bottom: 1px solid rgba(22,16,58,0.10);
-  padding: 0 clamp(16px, 4vw, 48px);
+  padding: 0;
   pointer-events: none;
 }
 .ded-sticky-ruler__inner {
+  grid-column: 2;
+  justify-self: center;
   position: relative;
   height: 100%;
   pointer-events: auto;
@@ -2970,6 +2975,10 @@ body {
 }
 
 @media (max-width: 1180px) {
+  .ded-sticky-ruler {
+    --ded-ruler-left-rail-width: var(--ded-ruler-sidebar-width);
+  }
+
   .ded-document-tabs {
     display: none;
   }
