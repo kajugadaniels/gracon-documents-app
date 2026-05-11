@@ -1,5 +1,9 @@
 import type { SessionUser } from '@/app/(protected)/layout';
-import type { DocumentCompletedSignature, DocumentDetail } from '@/api/documents.api';
+import type {
+    DocumentCompletedSignature,
+    DocumentDetail,
+    DocumentSignatureSnapshot,
+} from '@/api/documents.api';
 
 export interface SignatureBlockSigner {
     accessId: string;
@@ -33,6 +37,26 @@ function getCompletedSignatureForSigner(
     signerUserId: string,
 ) {
     return completedSignatures.find((signature) => signature.signerId === signerUserId);
+}
+
+function canUseSnapshotForSigner(
+    snapshot: DocumentSignatureSnapshot | null | undefined,
+    signer: SignatureBlockSigner,
+    signature: DocumentCompletedSignature | undefined,
+    signerCount: number,
+) {
+    if (!snapshot?.imageUrl && !snapshot?.signedAt && !snapshot?.signatureId) {
+        return false;
+    }
+
+    if (signerCount === 1) return true;
+    if (signature?.signatureId && signature.signatureId === snapshot.signatureId) return true;
+    if (signature?.isOwner) return true;
+
+    return Boolean(
+        snapshot.signerName &&
+        signer.displayName.trim().toLowerCase() === snapshot.signerName.trim().toLowerCase(),
+    );
 }
 
 /**
@@ -95,9 +119,19 @@ export function getSignatureBlockSigners(
 export function buildSignatureBlockInserts(
     signers: SignatureBlockSigner[],
     completedSignatures: DocumentCompletedSignature[],
+    signatureSnapshot?: DocumentSignatureSnapshot | null,
 ): SignatureBlockInsert[] {
     return signers.map((signer, index) => {
         const signature = getCompletedSignatureForSigner(completedSignatures, signer.userId);
+        const snapshotMatchesSigner = canUseSnapshotForSigner(
+            signatureSnapshot,
+            signer,
+            signature,
+            signers.length,
+        );
+        const snapshotImageUrl = snapshotMatchesSigner ? signatureSnapshot?.imageUrl : null;
+        const snapshotSignedAt = snapshotMatchesSigner ? signatureSnapshot?.signedAt : null;
+        const snapshotSignatureId = snapshotMatchesSigner ? signatureSnapshot?.signatureId : null;
 
         return {
             blockId: `signature-${signer.userId}-${index + 1}`,
@@ -108,9 +142,15 @@ export function buildSignatureBlockInserts(
             signerAccessId: signer.accessId,
             signerName: signer.displayName,
             signerEmail: signer.email,
-            signatureId: signature?.signatureId ?? signer.signatureId ?? undefined,
-            signedAt: signature?.signedAt ?? signer.signedAt ?? undefined,
-            signatureImageUrl: signature?.imageUrl ?? null,
+            signatureId: signature?.signatureId
+                ?? signer.signatureId
+                ?? snapshotSignatureId
+                ?? undefined,
+            signedAt: signature?.signedAt
+                ?? signer.signedAt
+                ?? snapshotSignedAt
+                ?? undefined,
+            signatureImageUrl: signature?.imageUrl ?? snapshotImageUrl ?? null,
         };
     });
 }
