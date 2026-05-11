@@ -6,6 +6,8 @@ export interface SignatureBlockSigner {
     userId: string;
     displayName: string;
     email: string;
+    signatureId?: string | null;
+    signedAt?: string | null;
 }
 
 export interface SignatureBlockInsert {
@@ -56,6 +58,8 @@ export function getSignatureBlockSigners(
                 userId: request.requestedUserId,
                 displayName,
                 email,
+                signatureId: request.personalSignedDocumentId,
+                signedAt: request.signedAt,
             };
         });
     }
@@ -104,8 +108,8 @@ export function buildSignatureBlockInserts(
             signerAccessId: signer.accessId,
             signerName: signer.displayName,
             signerEmail: signer.email,
-            signatureId: signature?.signatureId,
-            signedAt: signature?.signedAt,
+            signatureId: signature?.signatureId ?? signer.signatureId ?? undefined,
+            signedAt: signature?.signedAt ?? signer.signedAt ?? undefined,
             signatureImageUrl: signature?.imageUrl ?? null,
         };
     });
