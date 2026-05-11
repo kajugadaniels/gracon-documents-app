@@ -17,7 +17,7 @@ import { toast } from '@/components/ui';
 import { INSERT_ACTION_IDS } from '@/constants/insert-menu';
 import type { InsertImageDialogValues } from '@/components/editor/InsertImageDialog';
 import type { InsertLinkDialogValues } from '@/components/editor/InsertLinkDialog';
-import { importDocxToTiptap } from '@/lib/import-docx';
+import { importFileToTiptap } from '@/lib/import-docx';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 import { normalizeEditorImageUrl } from '@/lib/editor-image';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
@@ -125,12 +125,12 @@ export function useEditorActions({
     });
     const [imageDialog, setImageDialog] = useState({ open: false });
 
-    /** Converts an uploaded .docx file to TipTap JSON, saves it as a new document. */
+    /** Converts an uploaded document file to TipTap JSON, then saves it as a new document. */
     const handleFileImport = useCallback(async (file: File) => {
         setImporting(true);
         const toastId = toast.loading('Importing document…');
         try {
-            const { content, title: suggestedTitle } = await importDocxToTiptap(file);
+            const { content, title: suggestedTitle } = await importFileToTiptap(file);
             const imported = await createDocument({ type: 'RICH_TEXT', title: suggestedTitle });
             await autosaveDocument(imported.id, content);
             toast.dismiss(toastId);
