@@ -36,7 +36,11 @@ import { DocumentSignatureBlock } from '@/components/documents/DocumentSignature
 import { buildViewMenuItems } from '@/constants/view-menu';
 import { A4_PAPER_HEIGHT_PX, A4_PAPER_WIDTH_PX } from '@/constants';
 import { useStarred } from '@/lib/hooks/useStarred';
-import { getDigitalCertificateUrl, redirectToLogin } from '@/lib/session';
+import {
+    getDigitalCertificateUrl,
+    getIdentityVerificationUrl,
+    redirectToLogin,
+} from '@/lib/session';
 import {
     buildSignatureBlockInserts,
     getSignatureBlockSignerOrder,
@@ -55,7 +59,7 @@ import {
 import { useSessionUser } from '@/app/(protected)/layout';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument, lockDocument,
-    listDocumentComments,
+    getDocumentSigningReadiness, listDocumentComments,
     type CollaboratorPermission, type DocumentComment, type DocumentDetail,
 } from '@/api/documents.api';
 
@@ -564,18 +568,44 @@ export default function EditDocumentPage() {
         }
     }
 
-    function handleSignDocument() {
+    async function handleSignDocument() {
         if (!doc) return;
-        if (hasSignedCurrentRequest) {
-            toast.info('Your signature is already recorded for this document.');
-            return;
-        }
-        if (!currentSignatureRequest) {
-            toast.warning('You are not currently listed as a required signer for this document.');
-            return;
-        }
 
-        setShowSigning(true);
+        try {
+            const readiness = await getDocumentSigningReadiness(doc.id);
+
+            if (readiness.status === 'ready') {
+                setShowSigning(true);
+                return;
+            }
+
+            if (readiness.status === 'needs_login') {
+                redirectToLogin(`${window.location.pathname}${window.location.search}`);
+                return;
+            }
+
+            if (readiness.status === 'needs_identity_verification') {
+                window.location.href = getIdentityVerificationUrl(
+                    `${window.location.pathname}${window.location.search}`,
+                );
+                return;
+            }
+
+            if (readiness.status === 'needs_certificate') {
+                toast.warning(readiness.message);
+                window.location.href = getDigitalCertificateUrl();
+                return;
+            }
+
+            if (readiness.status === 'already_signed') {
+                toast.info(readiness.message);
+                return;
+            }
+
+            toast.warning(readiness.message);
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'Unable to check signing readiness.'));
+        }
     }
 
     async function handleLockDocument() {
