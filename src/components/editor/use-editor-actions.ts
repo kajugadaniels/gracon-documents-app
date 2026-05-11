@@ -62,6 +62,7 @@ interface UseEditorActionsOptions {
     isReadOnly: boolean;
     canPrepareSignatureBlocks?: boolean;
     signatureBlockSigners?: SignatureBlockSigner[];
+    onPrepareSignatureBlocks?: () => void;
     onTitleEditStart: () => void;
     onTitleSave: () => void | Promise<void>;
     /** Called when the Edit → Find menu item is dispatched. */
@@ -106,6 +107,7 @@ export function useEditorActions({
     canPrepareSignatureBlocks = false,
     signatureBlockSigners = [],
     onTitleEditStart, onTitleSave, onFindToggle, onViewAction,
+    onPrepareSignatureBlocks,
 }: UseEditorActionsOptions): UseEditorActionsReturn {
     const router = useRouter();
     const [importing, setImporting] = useState(false);
@@ -408,6 +410,11 @@ export function useEditorActions({
                 return;
             }
 
+            if (onPrepareSignatureBlocks) {
+                onPrepareSignatureBlocks();
+                return;
+            }
+
             const blocks = buildSignatureBlockInserts(
                 signatureBlockSigners,
                 doc.completedSignatures,
@@ -467,7 +474,7 @@ export function useEditorActions({
     }, [
         copying, doc.completedSignatures, doc.id, doc.status, doc.title, doc.wordCount,
         editingTitle, editor, importing, isReadOnly,
-        canPrepareSignatureBlocks, openImageDialog, openLinkDialog,
+        canPrepareSignatureBlocks, onPrepareSignatureBlocks, openImageDialog, openLinkDialog,
         onFindToggle, onTitleEditStart, onTitleSave, onViewAction,
         router, savingAs, signatureBlockSigners, title,
     ]);
