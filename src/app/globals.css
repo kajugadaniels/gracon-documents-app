@@ -1224,6 +1224,45 @@ body {
 .tiptap-editor .ProseMirror [data-resize-container][data-node="image"] [data-resize-handle]:hover {
   background: #1d4ed8;
 }
+
+.tiptap-editor .ProseMirror-dropcursor {
+  border-color: #5b35f5 !important;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(91, 53, 245, 0.12);
+}
+
+.tiptap-editor .ProseMirror div[style*="cursor: pointer"] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.tiptap-editor .ProseMirror div[style*="cursor: pointer"] > img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+
+.tiptap-editor .ProseMirror [data-resize-image-ui="position-controller"] {
+  height: 30px !important;
+  border: 1px solid rgba(91, 53, 245, 0.18) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+}
+
+.tiptap-editor .ProseMirror [data-resize-image-ui="position-controller"] img {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.tiptap-editor .ProseMirror [data-resize-image-ui="resize-handle"] {
+  background: #5b35f5 !important;
+  border: 2px solid #fff !important;
+  box-shadow:
+    0 8px 18px rgba(91, 53, 245, 0.28),
+    0 0 0 1px rgba(91, 53, 245, 0.18) !important;
+}
 .tiptap-editor .ProseMirror pre {
   max-width: 100%;
   margin: 1em 0;
