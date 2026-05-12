@@ -158,6 +158,7 @@ function getParagraphOptions(element: HTMLElement, docx: DocxModule): Omit<IPara
     const paragraphGeometry = createParagraphExportGeometry({
         leftIndent: Number.parseFloat(element.getAttribute('data-left-indent') ?? ''),
         firstLineIndent: Number.parseFloat(element.getAttribute('data-first-line-indent') ?? ''),
+        lineHeight: Number.parseFloat(element.getAttribute('data-line-height') ?? ''),
         tabStops: parseTabStopsAttribute(element.getAttribute('data-tab-stops')),
     });
     const tabStops = paragraphGeometry.docxTabStops.map((tabStop) => ({
@@ -173,6 +174,9 @@ function getParagraphOptions(element: HTMLElement, docx: DocxModule): Omit<IPara
         spacing: {
             before: cssPxToTwip(computed.marginTop),
             after: cssPxToTwip(computed.marginBottom || '8px'),
+            ...(paragraphGeometry.docxLineSpacing
+                ? { line: paragraphGeometry.docxLineSpacing, lineRule: docx.LineRuleType.AUTO }
+                : {}),
         },
         widowControl: true,
     };
