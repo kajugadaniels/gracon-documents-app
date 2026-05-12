@@ -76,8 +76,8 @@ src/app/
   login/                   minimal local login handoff
   verify/                  public authenticity page
 components/
-  editor/                  header, toolbar, sharing, signing, comments
-  documents/               document cards and signature strip
+  editor/                  editor React components only: header, toolbar, sharing, signing, comments
+  documents/               document React components only: document cards and signature strip
   pages/
     auth/login/
     documents/
@@ -101,6 +101,9 @@ lib/
   editor-image.ts          safe editor-image URL normalization helper
   editor-link.ts           safe editor-link URL normalization helper
   import-docx-layout.ts    DOCX paragraph-layout import conversion helpers
+store/
+  editor/                  editor hooks, TipTap extensions, share sync, and other non-React-component editor logic
+  documents/               document-domain helpers that are not React components
 test/
   export/                  pure layout/export conversion regression tests
   import/                  pure DOCX import-layout conversion regression tests
@@ -115,6 +118,7 @@ app/documents/
     app/
     api/
     components/
+    store/
     lib/
     constants/
     types/
@@ -165,4 +169,5 @@ Editor image storage variables belong in `api/documents`, not this frontend app.
 
 - Verify permission behavior before changing document actions
 - Keep editor changes isolated from auth behavior unless the flow truly crosses apps
+- Keep `components/editor` and `components/documents` for `.tsx` UI components; put editor/document `.ts` hooks, extensions, sync helpers, and pure state helpers under `src/store/editor` or `src/store/documents`
 - Test invitation, share, signing, and public verify flows after document-domain changes
