@@ -292,6 +292,8 @@ export function useEditorActions({
                     src: normalized.url,
                     alt: values.alt,
                     title: values.title,
+                    containerStyle: 'width: 420px; height: auto; cursor: pointer; margin: 14px auto;',
+                    wrapperStyle: 'display: flex; margin: 0;',
                 },
             })
             .run();
