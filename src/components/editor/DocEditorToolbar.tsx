@@ -44,6 +44,14 @@ import {
     toggleBulletListStyle,
     toggleOrderedListStyle,
 } from '@/store/editor/list-style-extension';
+import {
+    DEFAULT_TABLE_CELL_BACKGROUND,
+    DEFAULT_TABLE_CELL_BORDER_COLOR,
+    TABLE_BORDER_SIDES,
+    tableBorderColorAttribute,
+    tableBorderWidthAttribute,
+    type TableBorderSide,
+} from '@/store/editor/table-cell-style-extension';
 
 const DEFAULT_LINE_HEIGHT = 1.8;
 const LINE_HEIGHT_OPTIONS = [
@@ -54,6 +62,10 @@ const LINE_HEIGHT_OPTIONS = [
 ] as const;
 const MIN_CUSTOM_LINE_HEIGHT = 0.75;
 const MAX_CUSTOM_LINE_HEIGHT = 3;
+const TABLE_COLOR_PRESETS = [
+    '#ffffff', '#f8fafc', '#f3f4f6', '#e5e7eb', '#fee2e2', '#ffedd5',
+    '#fef3c7', '#dcfce7', '#dbeafe', '#ede9fe', '#111827', '#374151',
+] as const;
 
 // ─── Toolbar primitive ────────────────────────────────────────────────────────
 
@@ -733,6 +745,154 @@ function ListStylePicker({
     );
 }
 
+// ─── Table tools ─────────────────────────────────────────────────────────────
+
+function getActiveTableCellAttributes(editor: Editor) {
+    return editor.isActive('tableHeader')
+        ? editor.getAttributes('tableHeader')
+        : editor.getAttributes('tableCell');
+}
+
+function getActiveTableColor(editor: Editor, attribute: string, fallback: string) {
+    const value = getActiveTableCellAttributes(editor)[attribute];
+    return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+function applyTableCellAttribute(editor: Editor, attribute: string, value: string | number) {
+    editor.chain().focus().setCellAttribute(attribute, value).run();
+}
+
+function applyTableBorderSide(editor: Editor, side: TableBorderSide, color: string) {
+    applyTableCellAttribute(editor, tableBorderColorAttribute(side), color);
+    applyTableCellAttribute(editor, tableBorderWidthAttribute(side), 1);
+}
+
+function clearTableBorderSide(editor: Editor, side: TableBorderSide) {
+    applyTableCellAttribute(editor, tableBorderWidthAttribute(side), 0);
+}
+
+function TableColorSwatches({
+    value,
+    onChange,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+}) {
+    return (
+        <div className="ded-table-tools__swatches">
+            {TABLE_COLOR_PRESETS.map((color) => (
+                <button
+                    key={color}
+                    type="button"
+                    className={`ded-table-tools__swatch${value === color ? ' ded-table-tools__swatch--active' : ''}`}
+                    style={{ backgroundColor: color }}
+                    aria-label={`Use ${color}`}
+                    onMouseDown={preventToolbarFocus}
+                    onClick={() => onChange(color)}
+                />
+            ))}
+            <label className="ded-table-tools__custom-color" title="Custom color">
+                <input
+                    type="color"
+                    value={value.startsWith('#') ? value : DEFAULT_TABLE_CELL_BORDER_COLOR}
+                    onChange={(event) => onChange(event.target.value)}
+                />
+                Custom
+            </label>
+        </div>
+    );
+}
+
+function TableToolsPicker({ editor }: { editor: Editor }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const backgroundColor = getActiveTableColor(editor, 'backgroundColor', DEFAULT_TABLE_CELL_BACKGROUND);
+    const borderColor = getActiveTableColor(editor, 'borderTopColor', DEFAULT_TABLE_CELL_BORDER_COLOR);
+
+    useEffect(() => {
+        const handler = (event: MouseEvent) => {
+            if (!ref.current?.contains(event.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    function applyAllBorders(color: string) {
+        TABLE_BORDER_SIDES.forEach((side) => applyTableBorderSide(editor, side, color));
+    }
+
+    function clearAllBorders() {
+        TABLE_BORDER_SIDES.forEach((side) => clearTableBorderSide(editor, side));
+    }
+
+    return (
+        <div ref={ref} className="ded-table-tools">
+            <button
+                type="button"
+                className={`ded-picker__btn ded-table-tools__trigger${open ? ' ded-picker__btn--active' : ''}`}
+                onMouseDown={preventToolbarFocus}
+                onClick={() => setOpen((value) => !value)}
+                title="Table options"
+                aria-label="Table options"
+                aria-haspopup="menu"
+                aria-expanded={open}
+            >
+                <HugeiconsIcon icon={TableIcon} size={15} />
+                <span>Table</span>
+                <span className="ded-picker__arrow">▾</span>
+            </button>
+
+            {open && (
+                <div className="ded-picker__dropdown ded-table-tools__dropdown" role="menu">
+                    <section className="ded-table-tools__section">
+                        <p className="ded-table-tools__label">Rows and columns</p>
+                        <div className="ded-table-tools__grid">
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => editor.chain().focus().addRowBefore().run()}>Row above</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => editor.chain().focus().addRowAfter().run()}>Row below</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => editor.chain().focus().addColumnBefore().run()}>Column left</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => editor.chain().focus().addColumnAfter().run()}>Column right</button>
+                        </div>
+                    </section>
+
+                    <section className="ded-table-tools__section">
+                        <p className="ded-table-tools__label">Cell background</p>
+                        <TableColorSwatches
+                            value={backgroundColor}
+                            onChange={(color) => applyTableCellAttribute(editor, 'backgroundColor', color)}
+                        />
+                    </section>
+
+                    <section className="ded-table-tools__section">
+                        <p className="ded-table-tools__label">Border color</p>
+                        <TableColorSwatches
+                            value={borderColor}
+                            onChange={(color) => applyAllBorders(color)}
+                        />
+                        <div className="ded-table-tools__border-grid">
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => applyAllBorders(borderColor)}>All</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => applyTableBorderSide(editor, 'top', borderColor)}>Top</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => applyTableBorderSide(editor, 'right', borderColor)}>Right</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => applyTableBorderSide(editor, 'bottom', borderColor)}>Bottom</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => applyTableBorderSide(editor, 'left', borderColor)}>Left</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={clearAllBorders}>No border</button>
+                        </div>
+                    </section>
+
+                    <section className="ded-table-tools__section">
+                        <p className="ded-table-tools__label">Structure</p>
+                        <div className="ded-table-tools__grid">
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => editor.chain().focus().toggleHeaderRow().run()}>Header row</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => editor.chain().focus().toggleHeaderColumn().run()}>Header column</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => editor.chain().focus().mergeOrSplit().run()}>Merge / split</button>
+                            <button type="button" onMouseDown={preventToolbarFocus} onClick={() => editor.chain().focus().deleteTable().run()}>Delete table</button>
+                        </div>
+                    </section>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Main toolbar ─────────────────────────────────────────────────────────────
 
 /** Formatting toolbar — the second row of the sticky editor header. */
@@ -811,6 +971,7 @@ export function DocEditorToolbar({ editor }: { editor: Editor }) {
             {inTable && (
                 <>
                     <TbDivider />
+                    <TableToolsPicker editor={editor} />
                     <TbBtn onClick={() => editor.chain().focus().addRowAfter().run()} title="Add row below">
                         <HugeiconsIcon icon={RowInsertIcon} size={15} />
                     </TbBtn>
