@@ -4,7 +4,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle, FontFamily, FontSize } from '@tiptap/extension-text-style';
+import { TextStyle, FontFamily, FontSize, BackgroundColor } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Underline from '@tiptap/extension-underline';
 import { Table } from '@tiptap/extension-table';
@@ -101,6 +101,7 @@ export function RichTextEditor({
             }),
             TextStyle,
             Color,
+            BackgroundColor,
             FontFamily,
             FontSize,
             Underline,
