@@ -24,16 +24,16 @@ import { removeDocumentBoundariesFromTiptapContent } from '@/lib/remove-document
 import {
     CommentAnchorExtension,
     type CommentAnchorInput,
-} from './comment-anchor-extension';
+} from '@/store/editor/comment-anchor-extension';
 import {
     ListStyleExtension,
     toggleBulletListStyle,
     toggleOrderedListStyle,
-} from './list-style-extension';
-import { ParagraphLayoutExtension } from './paragraph-layout-extension';
-import { SignatureBlockExtension } from './signature-block-extension';
-import { ImportedDocxStyleExtension } from './imported-docx-style-extension';
-import { ResizableImageExtension } from './resizable-image-extension';
+} from '@/store/editor/list-style-extension';
+import { ParagraphLayoutExtension } from '@/store/editor/paragraph-layout-extension';
+import { SignatureBlockExtension } from '@/store/editor/signature-block-extension';
+import { ImportedDocxStyleExtension } from '@/store/editor/imported-docx-style-extension';
+import { ResizableImageExtension } from '@/store/editor/resizable-image-extension';
 
 const SecureClickableLinkExtension = Extension.create({
     name: 'secureClickableLink',
