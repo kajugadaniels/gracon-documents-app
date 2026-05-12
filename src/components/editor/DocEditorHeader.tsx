@@ -36,6 +36,7 @@ import { MenuDropdown } from './MenuDropdown';
 import { EditorUserAvatarMenu } from './EditorUserAvatarMenu';
 import { EditorFindBar } from './EditorFindBar';
 import { useEditorActions } from '@/store/editor/use-editor-actions';
+import { DOCUMENT_IMPORT_ACCEPT } from '@/lib/import-document';
 
 interface DocEditorHeaderProps {
     editor: Editor | null;
@@ -147,7 +148,7 @@ export function DocEditorHeader({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".docx,.doc"
+                accept={DOCUMENT_IMPORT_ACCEPT}
                 style={{ display: 'none' }}
                 onChange={e => {
                     const file = e.target.files?.[0];
