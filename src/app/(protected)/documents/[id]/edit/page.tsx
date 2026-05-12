@@ -22,14 +22,14 @@ import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSignin
 import { DocumentTabsPanel, type DocumentTabItem } from '@/components/editor/DocumentTabsPanel';
 import { SignatureBlockPreparationDialog } from '@/components/editor/SignatureBlockPreparationDialog';
 import { PagedDocumentCanvas } from '@/components/editor/PagedDocumentCanvas';
-import { mergeDocumentShareState } from '@/components/editor/document-share-state';
+import { mergeDocumentShareState } from '@/store/editor/document-share-state';
 import {
     publishDocumentShareSync,
     useDocumentShareSync,
-} from '@/components/editor/document-share-sync';
-import { focusCommentAnchor } from '@/components/editor/comment-anchor-extension';
-import { useDocumentViewState } from '@/components/editor/use-document-view-state';
-import { useActiveParagraphLayout } from '@/components/editor/use-active-paragraph-layout';
+} from '@/store/editor/document-share-sync';
+import { focusCommentAnchor } from '@/store/editor/comment-anchor-extension';
+import { useDocumentViewState } from '@/store/editor/use-document-view-state';
+import { useActiveParagraphLayout } from '@/store/editor/use-active-paragraph-layout';
 import { SigningModal } from '@/components/documents/SigningModal';
 import { DocumentSignatureBlock } from '@/components/documents/DocumentSignatureBlock';
 import type { SigningActionStatus } from '@/components/editor/DocEditorSignatureAction';
