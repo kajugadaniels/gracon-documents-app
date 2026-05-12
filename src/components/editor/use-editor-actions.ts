@@ -17,7 +17,7 @@ import { toast } from '@/components/ui';
 import { INSERT_ACTION_IDS } from '@/constants/insert-menu';
 import type { InsertImageDialogValues } from '@/components/editor/InsertImageDialog';
 import type { InsertLinkDialogValues } from '@/components/editor/InsertLinkDialog';
-import { importFileToTiptap } from '@/lib/import-docx';
+import { importDocumentWithJob, type ImportJobPhase } from '@/lib/import-document-job';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 import { normalizeEditorImageUrl } from '@/lib/editor-image';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
@@ -34,6 +34,13 @@ const INSERT_SPECIAL_CHARACTER_MAP: Partial<Record<string, string>> = {
     [INSERT_ACTION_IDS.trademark]: '™',
     [INSERT_ACTION_IDS.registered]: '®',
     [INSERT_ACTION_IDS.checkmark]: '✓',
+};
+
+const IMPORT_PHASE_LABELS: Record<ImportJobPhase, string> = {
+    queued: 'Preparing import…',
+    background: 'Converting document in the background…',
+    'main-thread': 'Converting document…',
+    saving: 'Saving imported document…',
 };
 
 function createDateTimeInsert(actionId: string) {
@@ -128,9 +135,16 @@ export function useEditorActions({
     /** Converts an uploaded document file to TipTap JSON, then saves it as a new document. */
     const handleFileImport = useCallback(async (file: File) => {
         setImporting(true);
-        const toastId = toast.loading('Importing document…');
+        let toastId = toast.loading('Importing document…');
         try {
-            const { content, title: suggestedTitle } = await importFileToTiptap(file);
+            const { content, title: suggestedTitle } = await importDocumentWithJob(file, {
+                onProgress: (phase) => {
+                    toast.dismiss(toastId);
+                    toastId = toast.loading(IMPORT_PHASE_LABELS[phase]);
+                },
+            });
+            toast.dismiss(toastId);
+            toastId = toast.loading(IMPORT_PHASE_LABELS.saving);
             const imported = await createDocument({ type: 'RICH_TEXT', title: suggestedTitle });
             await autosaveDocument(imported.id, content);
             toast.dismiss(toastId);
