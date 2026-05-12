@@ -14,7 +14,6 @@ import TableHeader from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import Highlight from '@tiptap/extension-highlight';
-import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { useEffect, useMemo, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
@@ -33,6 +32,7 @@ import {
 import { ParagraphLayoutExtension } from './paragraph-layout-extension';
 import { SignatureBlockExtension } from './signature-block-extension';
 import { ImportedDocxStyleExtension } from './imported-docx-style-extension';
+import { ResizableImageExtension } from './resizable-image-extension';
 
 interface RichTextEditorProps {
     initialContent?: Record<string, unknown> | null;
@@ -98,6 +98,10 @@ export function RichTextEditor({
                 heading: { levels: [1, 2, 3, 4, 5, 6] },
                 codeBlock: { languageClassPrefix: 'language-' },
                 link: false,
+                dropcursor: {
+                    color: '#5b35f5',
+                    width: 2,
+                },
             }),
             TextStyle,
             Color,
@@ -111,16 +115,11 @@ export function RichTextEditor({
             TableHeader,
             TableCell,
             Highlight.configure({ multicolor: false }),
-            Image.configure({
+            ResizableImageExtension.configure({
                 allowBase64: false,
                 inline: false,
-                resize: {
-                    enabled: true,
-                    directions: ['bottom-left', 'bottom-right', 'top-left', 'top-right'],
-                    minWidth: 96,
-                    minHeight: 72,
-                    alwaysPreserveAspectRatio: true,
-                },
+                minWidth: 96,
+                maxWidth: 720,
                 HTMLAttributes: {
                     loading: 'lazy',
                     decoding: 'async',
