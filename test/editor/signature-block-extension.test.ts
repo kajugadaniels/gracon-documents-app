@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SignatureBlockExtension } from '../../src/components/editor/signature-block-extension.ts';
+import { SignatureBlockExtension } from '../../src/store/editor/signature-block-extension.ts';
 
 test('SignatureBlockExtension renders an assigned pending signature block', () => {
     const html = SignatureBlockExtension.config.renderHTML?.({
