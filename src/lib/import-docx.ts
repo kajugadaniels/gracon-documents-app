@@ -1,10 +1,8 @@
 /**
  * import-docx.ts
  *
- * Converts imported office files into TipTap JSON.
- *
- * DOCX files use mammoth for DOCX → HTML, then TipTap's generateJSON.
- * PDF files use pdf.js text extraction and become editable paragraphs.
+ * Converts a .docx File into a TipTap JSON document using mammoth for the
+ * DOCX → HTML step and TipTap's generateJSON for the HTML → JSON step.
  *
  * Only the extensions registered in the editor are included here so that the
  * resulting JSON is always valid for the current schema. Unsupported formatting
@@ -15,30 +13,25 @@
 import { generateJSON } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle, FontFamily, FontSize, BackgroundColor } from '@tiptap/extension-text-style';
-import Color from '@tiptap/extension-color';
+import { TextStyle, FontFamily } from '@tiptap/extension-text-style';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
+import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { ListStyleExtension } from '@/components/editor/list-style-extension';
 import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
 import { SignatureBlockExtension } from '@/components/editor/signature-block-extension';
-import { ImportedDocxStyleExtension } from '@/components/editor/imported-docx-style-extension';
-import { ResizableImageExtension } from '@/components/editor/resizable-image-extension';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
     annotateImportedDocxHtml,
     collectImportedParagraphLayouts,
     extractParagraphListStylesFromDocxXml,
-    extractParagraphStylesFromDocxXml,
     extractParagraphTabStopsFromDocumentXml,
-    extractTableCellStylesFromDocxXml,
     mergeParagraphTabStopsIntoLayouts,
 } from '@/lib/import-docx-layout';
-import { importDocxXmlToTiptap } from '@/lib/import-docx-direct';
 
 /**
  * The subset of TipTap extensions used when parsing imported HTML.
@@ -50,27 +43,18 @@ const IMPORT_EXTENSIONS = [
         heading: { levels: [1, 2, 3, 4, 5, 6] },
         codeBlock: { languageClassPrefix: 'language-' },
         link: false,
-        dropcursor: {
-            color: '#5b35f5',
-            width: 2,
-        },
     }),
     TextStyle,
-    Color,
-    BackgroundColor,
     FontFamily,
-    FontSize,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Table.configure({ resizable: true }),
     TableRow,
     TableHeader,
     TableCell,
-    Highlight.configure({ multicolor: true }),
-    ResizableImageExtension.configure({
+    Highlight.configure({ multicolor: false }),
+    Image.configure({
         allowBase64: false,
         inline: false,
-        minWidth: 96,
-        maxWidth: 720,
         HTMLAttributes: {
             loading: 'lazy',
             decoding: 'async',
@@ -88,7 +72,6 @@ const IMPORT_EXTENSIONS = [
     }),
     ListStyleExtension,
     ParagraphLayoutExtension,
-    ImportedDocxStyleExtension,
     SignatureBlockExtension,
 ];
 
@@ -115,52 +98,15 @@ export interface ImportResult {
     title: string;
 }
 
-interface PdfTextItem {
-    str?: string;
-    transform?: number[];
-}
-
-interface PdfLine {
-    y: number;
-    items: Array<{ x: number; text: string }>;
-}
-
-function getImportedDocumentTitle(file: File) {
-    return file.name
-        .replace(/\.(docx?|pdf)$/i, '')
-        .replace(/[_-]+/g, ' ')
-        .trim() || 'Imported Document';
-}
-
-function escapeHtml(value: string) {
-    return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-}
-
-function textLinesToHtml(lines: string[]) {
-    return lines
-        .filter((line) => line.trim().length > 0)
-        .map((line) => `<p>${escapeHtml(line)}</p>`)
-        .join('');
-}
-
 async function readXmlPartsFromDocx(arrayBuffer: ArrayBuffer) {
     const { default: JSZip } = await import('jszip');
     const zip = await JSZip.loadAsync(arrayBuffer);
     const documentXml = zip.file('word/document.xml');
     const numberingXml = zip.file('word/numbering.xml');
-    const relationshipsXml = zip.file('word/_rels/document.xml.rels');
-    const stylesXml = zip.file('word/styles.xml');
 
     return {
         documentXml: documentXml ? await documentXml.async('text') : null,
         numberingXml: numberingXml ? await numberingXml.async('text') : null,
-        relationshipsXml: relationshipsXml ? await relationshipsXml.async('text') : null,
-        stylesXml: stylesXml ? await stylesXml.async('text') : null,
     };
 }
 
@@ -177,37 +123,16 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
         throw new Error('Only .docx files are supported.');
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const { documentXml, numberingXml, relationshipsXml, stylesXml } = await readXmlPartsFromDocx(arrayBuffer);
-    const directContent = importDocxXmlToTiptap({
-        documentXml,
-        numberingXml,
-        relationshipsXml,
-        stylesXml,
-    });
-
-    if (directContent) {
-        return {
-            content: directContent as Record<string, unknown>,
-            title: getImportedDocumentTitle(file),
-        };
-    }
-
-    // Dynamic import keeps mammoth (~500 kB) out of the initial bundle and
-    // only loads it when the direct XML parser cannot handle the DOCX.
+    // Dynamic import keeps mammoth (~500 kB) out of the initial bundle.
     const mammoth = await import('mammoth');
 
+    const arrayBuffer = await file.arrayBuffer();
+    const { documentXml, numberingXml } = await readXmlPartsFromDocx(arrayBuffer);
     const paragraphTabStops = documentXml
         ? extractParagraphTabStopsFromDocumentXml(documentXml)
         : [];
     const paragraphListStyles = documentXml
         ? extractParagraphListStylesFromDocxXml(documentXml, numberingXml)
-        : [];
-    const paragraphStyles = documentXml
-        ? extractParagraphStylesFromDocxXml(documentXml, stylesXml)
-        : [];
-    const tableCellStyles = documentXml
-        ? extractTableCellStylesFromDocxXml(documentXml)
         : [];
 
     let paragraphLayouts = collectImportedParagraphLayouts(null);
@@ -225,13 +150,7 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
             },
         },
     );
-    const html = annotateImportedDocxHtml(
-        rawHtml,
-        paragraphLayouts,
-        paragraphListStyles,
-        paragraphStyles,
-        tableCellStyles,
-    );
+    const html = annotateImportedDocxHtml(rawHtml, paragraphLayouts, paragraphListStyles);
 
     if (!html.trim()) {
         throw new Error('The document appears to be empty or could not be parsed.');
@@ -239,106 +158,12 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
 
     const content = generateJSON(html, IMPORT_EXTENSIONS) as Record<string, unknown>;
 
-    const title = getImportedDocumentTitle(file);
+    // Strip the .docx extension and replace underscores/hyphens with spaces
+    // to produce a clean default title the user can edit after import.
+    const title = file.name
+        .replace(/\.docx?$/i, '')
+        .replace(/[_-]+/g, ' ')
+        .trim() || 'Imported Document';
 
     return { content, title };
-}
-
-function findLine(lines: PdfLine[], y: number) {
-    return lines.find((line) => Math.abs(line.y - y) <= 3);
-}
-
-function collectPageLines(items: PdfTextItem[]) {
-    const lines: PdfLine[] = [];
-
-    for (const item of items) {
-        const text = item.str?.replace(/\s+/g, ' ').trim();
-        const transform = item.transform;
-
-        if (!text || !transform || transform.length < 6) continue;
-
-        const x = transform[4] ?? 0;
-        const y = transform[5] ?? 0;
-        const line = findLine(lines, y);
-
-        if (line) {
-            line.items.push({ x, text });
-        } else {
-            lines.push({ y, items: [{ x, text }] });
-        }
-    }
-
-    return lines
-        .sort((a, b) => b.y - a.y)
-        .map((line) =>
-            line.items
-                .sort((a, b) => a.x - b.x)
-                .map((item) => item.text)
-                .join(' ')
-                .replace(/\s+/g, ' ')
-                .trim(),
-        )
-        .filter(Boolean);
-}
-
-/**
- * Converts a text-based PDF File to editable TipTap paragraphs.
- *
- * This intentionally imports selectable PDF text. Scanned/image-only PDFs do
- * not contain text content, so they need OCR before they can become editable.
- */
-export async function importPdfToTiptap(file: File): Promise<ImportResult> {
-    if (!file.name.match(/\.pdf$/i)) {
-        throw new Error('Only .pdf files are supported.');
-    }
-
-    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/legacy/build/pdf.worker.mjs',
-        import.meta.url,
-    ).toString();
-    const arrayBuffer = await file.arrayBuffer();
-    const documentTask = pdfjs.getDocument({
-        data: new Uint8Array(arrayBuffer),
-        useWorkerFetch: false,
-    });
-    const pdfDocument = await documentTask.promise;
-    const lines: string[] = [];
-
-    for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
-        const page = await pdfDocument.getPage(pageNumber);
-        const textContent = await page.getTextContent();
-        const pageLines = collectPageLines(textContent.items as PdfTextItem[]);
-
-        if (pageLines.length > 0) {
-            if (lines.length > 0) lines.push('');
-            lines.push(...pageLines);
-        }
-    }
-
-    const html = textLinesToHtml(lines);
-
-    if (!html.trim()) {
-        throw new Error('This PDF has no selectable text. Use an OCR version, then import again.');
-    }
-
-    return {
-        content: generateJSON(html, IMPORT_EXTENSIONS) as Record<string, unknown>,
-        title: getImportedDocumentTitle(file),
-    };
-}
-
-/**
- * Imports a supported document file into editable TipTap JSON.
- */
-export async function importFileToTiptap(file: File): Promise<ImportResult> {
-    if (file.name.match(/\.pdf$/i) || file.type === 'application/pdf') {
-        return importPdfToTiptap(file);
-    }
-
-    if (file.name.match(/\.docx?$/i)) {
-        return importDocxToTiptap(file);
-    }
-
-    throw new Error('Only .docx, .doc, and text-based .pdf files are supported.');
 }
