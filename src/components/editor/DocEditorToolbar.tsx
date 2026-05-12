@@ -23,6 +23,7 @@ import {
     TableIcon, EraserIcon, CodeSquareIcon, QuoteUpIcon,
     RowInsertIcon, RowDeleteIcon, ColumnInsertIcon, ColumnDeleteIcon,
     TextFontIcon, HeadingIcon,
+    ParagraphSpacingIcon,
 } from '@hugeicons/core-free-icons';
 import {
     BULLET_LIST_STYLE_OPTIONS,
@@ -43,6 +44,16 @@ import {
     toggleBulletListStyle,
     toggleOrderedListStyle,
 } from './list-style-extension';
+
+const DEFAULT_LINE_HEIGHT = 1.8;
+const LINE_HEIGHT_OPTIONS = [
+    { label: 'Single', value: 1 },
+    { label: '1.15', value: 1.15 },
+    { label: '1.5', value: 1.5 },
+    { label: 'Double', value: 2 },
+] as const;
+const MIN_CUSTOM_LINE_HEIGHT = 0.75;
+const MAX_CUSTOM_LINE_HEIGHT = 3;
 
 // ─── Toolbar primitive ────────────────────────────────────────────────────────
 
@@ -456,6 +467,173 @@ function FontSizePicker({ editor }: { editor: Editor }) {
     );
 }
 
+// ─── Line spacing picker ─────────────────────────────────────────────────────
+
+function normalizeLineHeight(value: unknown) {
+    const parsed = typeof value === 'number'
+        ? value
+        : typeof value === 'string'
+            ? Number.parseFloat(value)
+            : Number.NaN;
+
+    if (!Number.isFinite(parsed)) {
+        return null;
+    }
+
+    return Math.min(MAX_CUSTOM_LINE_HEIGHT, Math.max(MIN_CUSTOM_LINE_HEIGHT, Number(parsed.toFixed(2))));
+}
+
+function formatLineHeight(value: number) {
+    const preset = LINE_HEIGHT_OPTIONS.find(option => option.value === value);
+    return preset ? preset.label : value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function readSelectedLineHeight(editor: Editor) {
+    const values: (number | null)[] = [];
+    const { state } = editor;
+
+    state.doc.nodesBetween(state.selection.from, state.selection.to, (node) => {
+        if (node.type.name !== 'paragraph' && node.type.name !== 'heading') {
+            return;
+        }
+
+        values.push(normalizeLineHeight(node.attrs.lineHeight));
+    });
+
+    if (values.length === 0) {
+        const { $from } = state.selection;
+        for (let depth = $from.depth; depth >= 0; depth -= 1) {
+            const node = $from.node(depth);
+            if (node.type.name === 'paragraph' || node.type.name === 'heading') {
+                values.push(normalizeLineHeight(node.attrs.lineHeight));
+                break;
+            }
+        }
+    }
+
+    const first = values[0] ?? null;
+    return {
+        value: first,
+        mixed: values.some(value => value !== first),
+    };
+}
+
+function LineHeightPicker({ editor }: { editor: Editor }) {
+    const [open, setOpen] = useState(false);
+    const [customValue, setCustomValue] = useState(String(DEFAULT_LINE_HEIGHT));
+    const ref = useRef<HTMLDivElement>(null);
+    const activeLineHeight = readSelectedLineHeight(editor);
+    const currentValue = activeLineHeight.value ?? DEFAULT_LINE_HEIGHT;
+    const currentLabel = activeLineHeight.mixed
+        ? 'Mixed'
+        : activeLineHeight.value === null
+            ? 'Default'
+            : formatLineHeight(currentValue);
+
+    useEffect(() => {
+        const handler = (event: MouseEvent) => {
+            if (!ref.current?.contains(event.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    useEffect(() => {
+        if (!open) {
+            setCustomValue(formatLineHeight(currentValue));
+        }
+    }, [currentValue, open]);
+
+    function applyLineHeight(value: number | null) {
+        editor.chain().focus().setParagraphLineHeight(value).run();
+        setOpen(false);
+    }
+
+    function applyCustomLineHeight() {
+        const parsed = normalizeLineHeight(customValue);
+        if (parsed === null) return;
+        applyLineHeight(parsed);
+    }
+
+    return (
+        <div ref={ref} className="ded-line-height-picker">
+            <button
+                className={`ded-picker__btn ded-line-height-picker__btn${open ? ' ded-picker__btn--active' : ''}`}
+                type="button"
+                onMouseDown={preventToolbarFocus}
+                onClick={() => setOpen(value => !value)}
+                title="Line spacing"
+                aria-label="Line spacing"
+                aria-haspopup="menu"
+                aria-expanded={open}
+            >
+                <HugeiconsIcon icon={ParagraphSpacingIcon} size={15} />
+                <span className="ded-line-height-picker__value">{currentLabel}</span>
+                <span className="ded-picker__arrow">▾</span>
+            </button>
+            {open && (
+                <div className="ded-picker__dropdown ded-line-height-picker__dropdown" role="menu">
+                    <div className="ded-line-height-picker__section">
+                        {LINE_HEIGHT_OPTIONS.map((option) => (
+                            <button
+                                key={option.value}
+                                className={`ded-picker__option ded-line-height-picker__option${!activeLineHeight.mixed && currentValue === option.value ? ' ded-picker__option--active' : ''}`}
+                                type="button"
+                                role="menuitemradio"
+                                aria-checked={!activeLineHeight.mixed && currentValue === option.value}
+                                onMouseDown={preventToolbarFocus}
+                                onClick={() => applyLineHeight(option.value)}
+                            >
+                                <span>{option.label}</span>
+                                <span className="ded-line-height-picker__sample" aria-hidden="true">
+                                    <span />
+                                    <span />
+                                    <span />
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                    <div className="ded-line-height-picker__custom">
+                        <label htmlFor="ded-line-height-custom">Custom spacing</label>
+                        <div className="ded-line-height-picker__custom-row">
+                            <input
+                                id="ded-line-height-custom"
+                                value={customValue}
+                                inputMode="decimal"
+                                onChange={(event) => setCustomValue(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                        event.preventDefault();
+                                        applyCustomLineHeight();
+                                    }
+                                }}
+                                onMouseDown={(event) => event.stopPropagation()}
+                                aria-label="Custom line spacing"
+                            />
+                            <button
+                                type="button"
+                                onMouseDown={preventToolbarFocus}
+                                onClick={applyCustomLineHeight}
+                            >
+                                Apply
+                            </button>
+                        </div>
+                        <p>{MIN_CUSTOM_LINE_HEIGHT} to {MAX_CUSTOM_LINE_HEIGHT}</p>
+                    </div>
+                    <button
+                        className="ded-line-height-picker__reset"
+                        type="button"
+                        onMouseDown={preventToolbarFocus}
+                        onClick={() => applyLineHeight(null)}
+                    >
+                        Reset to document default
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── List style pickers ──────────────────────────────────────────────────────
 
 function ListStylePicker({
@@ -608,6 +786,7 @@ export function DocEditorToolbar({ editor }: { editor: Editor }) {
             <TbBtn onClick={() => editor.chain().focus().setTextAlign('justify').run()} active={editor.isActive({ textAlign: 'justify' })} title="Justify">
                 <HugeiconsIcon icon={TextAlignJustifyLeftIcon} size={15} />
             </TbBtn>
+            <LineHeightPicker editor={editor} />
 
             <TbDivider />
             <ListStylePicker editor={editor} kind="bulletList" />
