@@ -12,6 +12,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { Editor } from '@tiptap/react';
+import { SketchPicker, type ColorResult } from 'react-color';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
     UndoIcon, RedoIcon, PrinterIcon,
@@ -90,7 +91,9 @@ function useEditorRevision(editor: Editor) {
 
 // ─── Text color picker ───────────────────────────────────────────────────────
 
-const TEXT_COLOR_SWATCHES = [
+const DEFAULT_TEXT_COLOR = '#000000';
+const DEFAULT_HIGHLIGHT_COLOR = '#fff2cc';
+const COLOR_PRESETS = [
     '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef', '#f3f3f3', '#ffffff',
     '#980000', '#ff0000', '#ff9900', '#ffff00', '#00ff00', '#00ffff', '#4a86e8', '#0000ff', '#9900ff', '#ff00ff',
     '#e6b8af', '#f4cccc', '#fce5cd', '#fff2cc', '#d9ead3', '#d0e0e3', '#c9daf8', '#cfe2f3', '#d9d2e9', '#ead1dc',
@@ -99,12 +102,16 @@ const TEXT_COLOR_SWATCHES = [
     '#a61c00', '#cc0000', '#e69138', '#f1c232', '#6aa84f', '#45818e', '#3c78d8', '#3d85c6', '#674ea7', '#a64d79',
 ] as const;
 
-function getEditorTextColor(editor: Editor) {
-    return (editor.getAttributes('textStyle').color as string | undefined) ?? '#000000';
+function normalizePickerColor(value: unknown, fallback: string) {
+    return typeof value === 'string' && value.trim() ? value : fallback;
 }
 
-function toColorInputValue(color: string) {
-    return /^#[0-9a-f]{6}$/i.test(color) ? color : '#000000';
+function getEditorTextColor(editor: Editor) {
+    return normalizePickerColor(editor.getAttributes('textStyle').color, DEFAULT_TEXT_COLOR);
+}
+
+function getEditorHighlightColor(editor: Editor) {
+    return normalizePickerColor(editor.getAttributes('highlight').color, DEFAULT_HIGHLIGHT_COLOR);
 }
 
 function TextColorPicker({ editor }: { editor: Editor }) {
@@ -129,15 +136,14 @@ function TextColorPicker({ editor }: { editor: Editor }) {
         };
     }, [editor]);
 
-    function applyColor(color: string) {
-        editor.chain().focus().setColor(color).run();
-        setCurrentColor(color);
-        setOpen(false);
+    function applyColor(color: ColorResult) {
+        editor.chain().focus().setColor(color.hex).run();
+        setCurrentColor(color.hex);
     }
 
     function clearColor() {
         editor.chain().focus().unsetColor().run();
-        setCurrentColor('#000000');
+        setCurrentColor(DEFAULT_TEXT_COLOR);
         setOpen(false);
     }
 
@@ -160,28 +166,80 @@ function TextColorPicker({ editor }: { editor: Editor }) {
                         <span>Text color</span>
                         <button type="button" onClick={clearColor}>Reset</button>
                     </div>
-                    <div className="ded-color-picker__grid">
-                        {TEXT_COLOR_SWATCHES.map((color) => (
-                            <button
-                                key={color}
-                                type="button"
-                                className={`ded-color-picker__swatch${toColorInputValue(currentColor).toLowerCase() === color ? ' ded-color-picker__swatch--active' : ''}`}
-                                style={{ backgroundColor: color }}
-                                onClick={() => applyColor(color)}
-                                title={color}
-                                aria-label={`Apply text color ${color}`}
-                            />
-                        ))}
+                    <SketchPicker
+                        color={currentColor}
+                        disableAlpha
+                        presetColors={[...COLOR_PRESETS]}
+                        width="216px"
+                        onChange={(color) => setCurrentColor(color.hex)}
+                        onChangeComplete={applyColor}
+                    />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function HighlightColorPicker({ editor }: { editor: Editor }) {
+    const [open, setOpen] = useState(false);
+    const [currentColor, setCurrentColor] = useState(() => getEditorHighlightColor(editor));
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    useEffect(() => {
+        const syncColor = () => setCurrentColor(getEditorHighlightColor(editor));
+        syncColor();
+        editor.on('selectionUpdate', syncColor);
+        editor.on('transaction', syncColor);
+        return () => {
+            editor.off('selectionUpdate', syncColor);
+            editor.off('transaction', syncColor);
+        };
+    }, [editor]);
+
+    function applyHighlight(color: ColorResult) {
+        editor.chain().focus().setHighlight({ color: color.hex }).run();
+        setCurrentColor(color.hex);
+    }
+
+    function clearHighlight() {
+        editor.chain().focus().unsetHighlight().run();
+        setCurrentColor(DEFAULT_HIGHLIGHT_COLOR);
+        setOpen(false);
+    }
+
+    return (
+        <div ref={ref} className="ded-picker ded-color-picker">
+            <button
+                className={`ded-tb-btn ded-color-picker__trigger${open || editor.isActive('highlight') ? ' ded-tb-btn--active' : ''}`}
+                onClick={() => setOpen(v => !v)}
+                title="Highlight color"
+                aria-label="Highlight color"
+                aria-expanded={open}
+            >
+                <HugeiconsIcon icon={HighlighterIcon} size={15} />
+                <span className="ded-color-picker__underline" style={{ backgroundColor: currentColor }} />
+            </button>
+
+            {open && (
+                <div className="ded-picker__dropdown ded-picker__dropdown--left ded-color-picker__dropdown">
+                    <div className="ded-color-picker__head">
+                        <span>Highlight</span>
+                        <button type="button" onClick={clearHighlight}>Reset</button>
                     </div>
-                    <label className="ded-color-picker__custom">
-                        <span>Custom</span>
-                        <input
-                            type="color"
-                            value={toColorInputValue(currentColor)}
-                            onChange={e => applyColor(e.target.value)}
-                            title="Custom text color"
-                        />
-                    </label>
+                    <SketchPicker
+                        color={currentColor}
+                        disableAlpha
+                        presetColors={[...COLOR_PRESETS]}
+                        width="216px"
+                        onChange={(color) => setCurrentColor(color.hex)}
+                        onChangeComplete={applyHighlight}
+                    />
                 </div>
             )}
         </div>
@@ -501,9 +559,7 @@ export function DocEditorToolbar({ editor }: { editor: Editor }) {
             <TbBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
                 <HugeiconsIcon icon={TextStrikethroughIcon} size={15} />
             </TbBtn>
-            <TbBtn onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight">
-                <HugeiconsIcon icon={HighlighterIcon} size={15} />
-            </TbBtn>
+            <HighlightColorPicker editor={editor} />
             <TextColorPicker editor={editor} />
 
             <TbDivider />
