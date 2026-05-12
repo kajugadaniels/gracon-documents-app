@@ -6,8 +6,7 @@
  * imported documents behave like native TipTap content instead of lossy HTML.
  */
 import type { JSONContent } from '@tiptap/core';
-import { normalizeBulletListStyle, normalizeOrderedListStyle } from '@/constants';
-import { normalizeEditorLinkUrl } from '@/lib/editor-link';
+import { normalizeEditorLinkUrl } from './editor-link.ts';
 import {
     extractParagraphListStylesFromDocxXml,
     extractParagraphStylesFromDocxXml,
@@ -16,7 +15,7 @@ import {
     twipToPx,
     type ImportedParagraphListStyle,
     type ImportedParagraphTabStop,
-} from '@/lib/import-docx-layout';
+} from './import-docx-layout.ts';
 
 interface DocxXmlParts {
     documentXml: string | null;
@@ -52,6 +51,16 @@ const LINK_MARK_ATTRS = {
     target: '_blank',
     rel: 'noopener noreferrer nofollow',
 };
+const BULLET_LIST_STYLES = new Set(['disc', 'circle', 'square']);
+const ORDERED_LIST_STYLES = new Set(['decimal', 'lower-alpha', 'upper-alpha', 'lower-roman', 'upper-roman']);
+
+function normalizeDirectBulletListStyle(value: string) {
+    return BULLET_LIST_STYLES.has(value) ? value : 'disc';
+}
+
+function normalizeDirectOrderedListStyle(value: string) {
+    return ORDERED_LIST_STYLES.has(value) ? value : 'decimal';
+}
 
 function parseXml(xml: string | null) {
     if (!xml?.trim() || typeof DOMParser === 'undefined') return null;
@@ -75,7 +84,11 @@ function getAttr(element: Element | null, name: string) {
 }
 
 function getChildElements(element: Element, localName?: string) {
-    return Array.from(element.children).filter((child) => (
+    const childElements = element.children
+        ? Array.from(element.children)
+        : Array.from(element.childNodes).filter((node): node is Element => node.nodeType === 1);
+
+    return childElements.filter((child) => (
         !localName || getLocalName(child) === localName
     ));
 }
@@ -86,7 +99,23 @@ function getFirstChild(element: Element | null, localName: string) {
 }
 
 function getDescendants(element: Element, localName: string) {
-    return Array.from(element.getElementsByTagNameNS('*', localName));
+    const namespacedMatches = Array.from(element.getElementsByTagNameNS('*', localName));
+    if (namespacedMatches.length > 0) return namespacedMatches;
+
+    const matches: Element[] = [];
+
+    function visit(node: Element) {
+        getChildElements(node).forEach((child) => {
+            if (getLocalName(child) === localName) {
+                matches.push(child);
+            }
+
+            visit(child);
+        });
+    }
+
+    visit(element);
+    return matches;
 }
 
 function getBooleanProperty(properties: Element | null, localName: string) {
@@ -342,8 +371,8 @@ function createParagraphNode(
 
 function createListNode(accumulator: ListAccumulator): JSONContent {
     const listStyleType = accumulator.kind === 'bulletList'
-        ? normalizeBulletListStyle(accumulator.style)
-        : normalizeOrderedListStyle(accumulator.style);
+        ? normalizeDirectBulletListStyle(accumulator.style)
+        : normalizeDirectOrderedListStyle(accumulator.style);
 
     return {
         type: accumulator.kind,
