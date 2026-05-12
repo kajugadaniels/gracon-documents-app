@@ -3,7 +3,7 @@
 import type { RefObject, ReactNode } from 'react';
 import type { CSSProperties } from 'react';
 import type { Editor } from '@tiptap/react';
-import type { CommentAnchorInput } from './comment-anchor-extension';
+import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension';
 import { RichTextEditor } from './RichTextEditor';
 import { A4_PAPER_WIDTH_PX } from '@/constants/document-paper';
 import type { DocumentHeaderFooter } from '@/lib/document-layout';
