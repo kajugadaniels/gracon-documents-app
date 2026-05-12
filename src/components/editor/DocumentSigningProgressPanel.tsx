@@ -23,7 +23,7 @@ import {
     getReminderCooldownFromSentAt,
     getReminderRetryAt,
     isFutureTimestamp,
-} from './signature-reminder-cooldown';
+} from '@/store/editor/signature-reminder-cooldown';
 
 interface DocumentSigningProgressPanelProps {
     document: DocumentDetail;
