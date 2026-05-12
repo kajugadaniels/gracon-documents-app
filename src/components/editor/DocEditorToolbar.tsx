@@ -43,7 +43,7 @@ import {
     setOrderedListStyle,
     toggleBulletListStyle,
     toggleOrderedListStyle,
-} from './list-style-extension';
+} from '@/store/editor/list-style-extension';
 
 const DEFAULT_LINE_HEIGHT = 1.8;
 const LINE_HEIGHT_OPTIONS = [
