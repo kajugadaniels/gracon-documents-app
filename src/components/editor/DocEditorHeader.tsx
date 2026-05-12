@@ -35,7 +35,7 @@ import { InsertLinkDialog } from './InsertLinkDialog';
 import { MenuDropdown } from './MenuDropdown';
 import { EditorUserAvatarMenu } from './EditorUserAvatarMenu';
 import { EditorFindBar } from './EditorFindBar';
-import { useEditorActions } from './use-editor-actions';
+import { useEditorActions } from '@/store/editor/use-editor-actions';
 
 interface DocEditorHeaderProps {
     editor: Editor | null;
