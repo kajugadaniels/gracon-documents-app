@@ -278,6 +278,32 @@ function getTableCellChildren(cellEl: HTMLElement, docx: DocxModule): TableCellC
     });
 }
 
+function getCellBorder(style: CSSStyleDeclaration, side: 'Top' | 'Right' | 'Bottom' | 'Left', docx: DocxModule) {
+    const width = parseCssPx(style[`border${side}Width` as keyof CSSStyleDeclaration] as string);
+    const color = getHexColor(style[`border${side}Color` as keyof CSSStyleDeclaration] as string) ?? '111827';
+
+    if (width <= 0) {
+        return { style: docx.BorderStyle.NIL, size: 0, color };
+    }
+
+    return {
+        style: docx.BorderStyle.SINGLE,
+        size: Math.max(2, Math.round(width * 6)),
+        color,
+    };
+}
+
+function getTableCellBorders(cellEl: HTMLElement, docx: DocxModule) {
+    const style = window.getComputedStyle(cellEl);
+
+    return {
+        top: getCellBorder(style, 'Top', docx),
+        right: getCellBorder(style, 'Right', docx),
+        bottom: getCellBorder(style, 'Bottom', docx),
+        left: getCellBorder(style, 'Left', docx),
+    };
+}
+
 function convertTable(tableEl: HTMLElement, docx: DocxModule) {
     const rows = Array.from(tableEl.querySelectorAll('tr')).map((rowEl) => {
         const cells = Array.from(rowEl.children).filter((child): child is HTMLElement => {
@@ -286,14 +312,19 @@ function convertTable(tableEl: HTMLElement, docx: DocxModule) {
 
         return new docx.TableRow({
             cantSplit: true,
-            children: cells.map((cellEl) => new docx.TableCell({
-                children: getTableCellChildren(cellEl, docx),
-                shading: cellEl.tagName === 'TH'
-                    ? { type: docx.ShadingType.CLEAR, fill: 'F4F1FF' }
-                    : undefined,
-                margins: { top: 120, right: 140, bottom: 120, left: 140 },
-                width: { size: Math.floor(100 / Math.max(cells.length, 1)), type: docx.WidthType.PERCENTAGE },
-            })),
+            children: cells.map((cellEl) => {
+                const background = getHexColor(window.getComputedStyle(cellEl).backgroundColor);
+
+                return new docx.TableCell({
+                    children: getTableCellChildren(cellEl, docx),
+                    shading: background && background !== 'FFFFFF'
+                        ? { type: docx.ShadingType.CLEAR, fill: background }
+                        : undefined,
+                    borders: getTableCellBorders(cellEl, docx),
+                    margins: { top: 120, right: 140, bottom: 120, left: 140 },
+                    width: { size: Math.floor(100 / Math.max(cells.length, 1)), type: docx.WidthType.PERCENTAGE },
+                });
+            }),
         });
     });
 
