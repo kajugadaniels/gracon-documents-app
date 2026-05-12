@@ -16,14 +16,13 @@ import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle, FontFamily } from '@tiptap/extension-text-style';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { ListStyleExtension } from '@/store/editor/list-style-extension';
 import { ParagraphLayoutExtension } from '@/store/editor/paragraph-layout-extension';
 import { SignatureBlockExtension } from '@/store/editor/signature-block-extension';
+import { StyledTableCell, StyledTableHeader } from '@/store/editor/table-cell-style-extension';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
     annotateImportedDocxHtml,
@@ -49,8 +48,8 @@ const IMPORT_EXTENSIONS = [
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Table.configure({ resizable: true }),
     TableRow,
-    TableHeader,
-    TableCell,
+    StyledTableHeader,
+    StyledTableCell,
     Highlight.configure({ multicolor: false }),
     Image.configure({
         allowBase64: false,
