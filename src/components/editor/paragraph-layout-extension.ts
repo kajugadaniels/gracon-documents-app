@@ -10,6 +10,7 @@
 import { Extension } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Plugin } from '@tiptap/pm/state';
+import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { A4_PAPER_WIDTH_PX } from '@/constants';
 import {
@@ -17,7 +18,10 @@ import {
     normalizeParagraphTabStops,
     type ParagraphTabStop,
 } from '@/lib/document-layout';
-import { createParagraphExportGeometry } from '@/lib/document-layout-export-parity';
+import {
+    createParagraphExportGeometry,
+    normalizeParagraphLineHeight,
+} from '@/lib/document-layout-export-parity';
 
 declare module '@tiptap/core' {
     interface Commands<ReturnType> {
@@ -33,6 +37,10 @@ declare module '@tiptap/core' {
              * Applies paragraph tab stops to selected paragraphs/headings.
              */
             setParagraphTabStops: (tabStops: ParagraphTabStop[]) => ReturnType;
+            /**
+             * Applies paragraph line height to selected paragraphs/headings.
+             */
+            setParagraphLineHeight: (lineHeight: number | null) => ReturnType;
         };
     }
 }
@@ -45,6 +53,16 @@ function parseIndentFromStyle(styleValue: string | null) {
     if (!styleValue) return 0;
     const parsed = Number.parseFloat(styleValue);
     return Number.isFinite(parsed) ? Math.round(parsed) : 0;
+}
+
+function parseLineHeightFromStyle(styleValue: string | null) {
+    if (!styleValue || styleValue === 'normal') return null;
+
+    if (styleValue.endsWith('%')) {
+        return normalizeParagraphLineHeight(Number.parseFloat(styleValue) / 100);
+    }
+
+    return normalizeParagraphLineHeight(styleValue);
 }
 
 function normalizeTabStops(value: unknown) {
@@ -70,6 +88,64 @@ function sameTabStops(left: ParagraphTabStop[], right: ParagraphTabStop[]) {
         value.position === right[index].position &&
         value.align === right[index].align
     ));
+}
+
+function setSelectedParagraphAttrs(
+    state: EditorState,
+    dispatch: ((tr: Transaction) => void) | undefined,
+    buildAttrs: (attrs: Record<string, unknown>) => Record<string, unknown>,
+    shouldSkip: (attrs: Record<string, unknown>) => boolean,
+) {
+    let tr = state.tr;
+    let changed = false;
+    let appliedCount = 0;
+
+    state.doc.nodesBetween(state.selection.from, state.selection.to, (node, pos) => {
+        if (node.type.name !== 'paragraph' && node.type.name !== 'heading') {
+            return;
+        }
+
+        appliedCount += 1;
+
+        if (shouldSkip(node.attrs)) {
+            return;
+        }
+
+        tr = tr.setNodeMarkup(pos, undefined, buildAttrs(node.attrs));
+        changed = true;
+    });
+
+    // Collapsed selections do not always surface through nodesBetween,
+    // so fall back to the closest paragraph-like ancestor.
+    if (appliedCount === 0) {
+        const { $from } = state.selection;
+
+        for (let depth = $from.depth; depth >= 0; depth -= 1) {
+            const node = $from.node(depth);
+
+            if (node.type.name !== 'paragraph' && node.type.name !== 'heading') {
+                continue;
+            }
+
+            if (shouldSkip(node.attrs)) {
+                break;
+            }
+
+            tr = tr.setNodeMarkup($from.before(depth), undefined, buildAttrs(node.attrs));
+            changed = true;
+            break;
+        }
+    }
+
+    if (!changed) {
+        return true;
+    }
+
+    if (dispatch) {
+        dispatch(tr);
+    }
+
+    return true;
 }
 
 const DEFAULT_TAB_INTERVAL_PX = 48;
@@ -309,6 +385,19 @@ export const ParagraphLayoutExtension = Extension.create({
 
                 return true;
             },
+            setParagraphLineHeight: (lineHeight) => ({ state, dispatch }) => {
+                const nextLineHeight = normalizeParagraphLineHeight(lineHeight);
+
+                return setSelectedParagraphAttrs(
+                    state,
+                    dispatch,
+                    (attrs) => ({
+                        ...attrs,
+                        lineHeight: nextLineHeight,
+                    }),
+                    (attrs) => normalizeParagraphLineHeight(attrs.lineHeight) === nextLineHeight,
+                );
+            },
         };
     },
 
@@ -350,15 +439,16 @@ export const ParagraphLayoutExtension = Extension.create({
                             const geometry = createParagraphExportGeometry({
                                 leftIndent: attributes.leftIndent,
                                 firstLineIndent: attributes.firstLineIndent,
+                                lineHeight: attributes.lineHeight,
                                 tabStops: attributes.tabStops,
                             });
 
-                            if (!geometry.leftIndent && !geometry.firstLineIndent) {
+                            if (!geometry.leftIndent && !geometry.firstLineIndent && geometry.lineHeight === null) {
                                 return {};
                             }
 
                             return {
-                                'data-left-indent': geometry.dataAttributes.leftIndent,
+                                ...(geometry.dataAttributes.leftIndent ? { 'data-left-indent': geometry.dataAttributes.leftIndent } : {}),
                                 style: geometry.cssStyle,
                             };
                         },
@@ -400,6 +490,26 @@ export const ParagraphLayoutExtension = Extension.create({
                             }
 
                             return { 'data-tab-stops': JSON.stringify(tabStops) };
+                        },
+                    },
+                    lineHeight: {
+                        default: null,
+                        parseHTML: (element) => {
+                            const attr = element.getAttribute('data-line-height');
+                            if (attr) {
+                                return normalizeParagraphLineHeight(attr);
+                            }
+
+                            return parseLineHeightFromStyle(element.style.lineHeight);
+                        },
+                        renderHTML: (attributes) => {
+                            const lineHeight = normalizeParagraphLineHeight(attributes.lineHeight);
+
+                            if (lineHeight === null) {
+                                return {};
+                            }
+
+                            return { 'data-line-height': String(lineHeight) };
                         },
                     },
                 },
