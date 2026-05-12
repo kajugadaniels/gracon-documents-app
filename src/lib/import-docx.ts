@@ -23,12 +23,12 @@ import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
-import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { ListStyleExtension } from '@/components/editor/list-style-extension';
 import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
 import { SignatureBlockExtension } from '@/components/editor/signature-block-extension';
 import { ImportedDocxStyleExtension } from '@/components/editor/imported-docx-style-extension';
+import { ResizableImageExtension } from '@/components/editor/resizable-image-extension';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
     annotateImportedDocxHtml,
@@ -51,6 +51,10 @@ const IMPORT_EXTENSIONS = [
         heading: { levels: [1, 2, 3, 4, 5, 6] },
         codeBlock: { languageClassPrefix: 'language-' },
         link: false,
+        dropcursor: {
+            color: '#5b35f5',
+            width: 2,
+        },
     }),
     TextStyle,
     Color,
@@ -64,9 +68,11 @@ const IMPORT_EXTENSIONS = [
     TableHeader,
     TableCell,
     Highlight.configure({ multicolor: false }),
-    Image.configure({
+    ResizableImageExtension.configure({
         allowBase64: false,
         inline: false,
+        minWidth: 96,
+        maxWidth: 720,
         HTMLAttributes: {
             loading: 'lazy',
             decoding: 'async',
