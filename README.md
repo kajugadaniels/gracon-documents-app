@@ -15,7 +15,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 
 ## What This App Owns
 
-- Document list, creation, rename, copy, delete, and import UX
+- Document list, creation, rename, copy, delete, and DOCX/PDF import UX
 - Rich-text editing and autosave experience
 - Premium page setup dialog, persisted margins, and draggable ruler-based margin adjustment
 - Share dialog, permission assignment, invitation review
@@ -53,6 +53,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Draggable ruler tab-stop markers for repositioning existing tab stops without deleting and recreating them
 - Live editor tab rendering uses ProseMirror decorations so tab characters remain copy/paste-safe while reflecting typed stop widths on canvas
 - DOCX import uses the Mammoth-based conversion path with recovered paragraph indents, tab stops, and list styles before TipTap parsing
+- PDF import uses PDF.js text extraction to rebuild editable TipTap content with page order, line grouping, indentation, line spacing, font size, and basic bold/italic metadata; scanned image-only PDFs require OCR before import
 - Export parity tests for page margins, paragraph indents, hanging indents, line spacing, and tab-stop conversion
 - Invitation gate with OTP and identity-proof return flow
 - Signing readiness checks from `api/documents` so the UI can route users to login, identity verification, certificate setup, or signing without extra probing calls
@@ -106,7 +107,7 @@ store/
   documents/               document-domain helpers that are not React components
 test/
   export/                  pure layout/export conversion regression tests
-  import/                  pure DOCX import-layout conversion regression tests
+  import/                  pure DOCX/PDF import-layout conversion regression tests
   editor/                  pure editor helper regression tests
 ```
 
