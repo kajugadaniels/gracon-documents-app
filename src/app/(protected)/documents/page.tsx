@@ -21,7 +21,7 @@ import {
     type DocumentListScope, type DocumentSummary, type DocumentStatus,
 } from '@/api/documents.api';
 import { useStarred } from '@/lib/hooks/useStarred';
-import { importDocxToTiptap } from '@/lib/import-docx';
+import { DOCUMENT_IMPORT_ACCEPT, importDocumentToTiptap } from '@/lib/import-document';
 import {
     DocumentCard, DocumentsFilters, DeleteDocumentDialog,
     type StatusFilter, type SortOption,
@@ -174,7 +174,7 @@ export default function DocumentsPage() {
         const importToastId = toast.loading('Importing document…');
 
         try {
-            const { content, title } = await importDocxToTiptap(file);
+            const { content, title } = await importDocumentToTiptap(file);
             const doc = await createDocument({ type: 'RICH_TEXT', title });
             await autosaveDocument(doc.id, content);
             toast.dismiss(importToastId);
@@ -197,7 +197,7 @@ export default function DocumentsPage() {
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".docx,.doc"
+                accept={DOCUMENT_IMPORT_ACCEPT}
                 style={{ display: 'none' }}
                 onChange={(event) => {
                     const file = event.target.files?.[0];
