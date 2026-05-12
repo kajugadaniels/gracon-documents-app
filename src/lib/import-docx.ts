@@ -16,6 +16,9 @@ import { generateJSON } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle, FontFamily } from '@tiptap/extension-text-style';
+import { FontSize } from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import Underline from '@tiptap/extension-underline';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
@@ -26,12 +29,15 @@ import Link from '@tiptap/extension-link';
 import { ListStyleExtension } from '@/components/editor/list-style-extension';
 import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
 import { SignatureBlockExtension } from '@/components/editor/signature-block-extension';
+import { ImportedDocxStyleExtension } from '@/components/editor/imported-docx-style-extension';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
     annotateImportedDocxHtml,
     collectImportedParagraphLayouts,
     extractParagraphListStylesFromDocxXml,
+    extractParagraphStylesFromDocxXml,
     extractParagraphTabStopsFromDocumentXml,
+    extractTableCellStylesFromDocxXml,
     mergeParagraphTabStopsIntoLayouts,
 } from '@/lib/import-docx-layout';
 
@@ -47,7 +53,10 @@ const IMPORT_EXTENSIONS = [
         link: false,
     }),
     TextStyle,
+    Color,
     FontFamily,
+    FontSize,
+    Underline,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Table.configure({ resizable: true }),
     TableRow,
@@ -74,6 +83,7 @@ const IMPORT_EXTENSIONS = [
     }),
     ListStyleExtension,
     ParagraphLayoutExtension,
+    ImportedDocxStyleExtension,
     SignatureBlockExtension,
 ];
 
@@ -138,10 +148,12 @@ async function readXmlPartsFromDocx(arrayBuffer: ArrayBuffer) {
     const zip = await JSZip.loadAsync(arrayBuffer);
     const documentXml = zip.file('word/document.xml');
     const numberingXml = zip.file('word/numbering.xml');
+    const stylesXml = zip.file('word/styles.xml');
 
     return {
         documentXml: documentXml ? await documentXml.async('text') : null,
         numberingXml: numberingXml ? await numberingXml.async('text') : null,
+        stylesXml: stylesXml ? await stylesXml.async('text') : null,
     };
 }
 
@@ -162,12 +174,18 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
     const mammoth = await import('mammoth');
 
     const arrayBuffer = await file.arrayBuffer();
-    const { documentXml, numberingXml } = await readXmlPartsFromDocx(arrayBuffer);
+    const { documentXml, numberingXml, stylesXml } = await readXmlPartsFromDocx(arrayBuffer);
     const paragraphTabStops = documentXml
         ? extractParagraphTabStopsFromDocumentXml(documentXml)
         : [];
     const paragraphListStyles = documentXml
         ? extractParagraphListStylesFromDocxXml(documentXml, numberingXml)
+        : [];
+    const paragraphStyles = documentXml
+        ? extractParagraphStylesFromDocxXml(documentXml, stylesXml)
+        : [];
+    const tableCellStyles = documentXml
+        ? extractTableCellStylesFromDocxXml(documentXml)
         : [];
 
     let paragraphLayouts = collectImportedParagraphLayouts(null);
@@ -185,7 +203,13 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
             },
         },
     );
-    const html = annotateImportedDocxHtml(rawHtml, paragraphLayouts, paragraphListStyles);
+    const html = annotateImportedDocxHtml(
+        rawHtml,
+        paragraphLayouts,
+        paragraphListStyles,
+        paragraphStyles,
+        tableCellStyles,
+    );
 
     if (!html.trim()) {
         throw new Error('The document appears to be empty or could not be parsed.');
