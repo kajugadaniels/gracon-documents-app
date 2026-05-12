@@ -10,8 +10,6 @@ import { TextStyle, FontFamily, FontSize, BackgroundColor } from '@tiptap/extens
 import Color from '@tiptap/extension-color';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import Highlight from '@tiptap/extension-highlight';
@@ -34,6 +32,7 @@ import { ParagraphLayoutExtension } from '@/store/editor/paragraph-layout-extens
 import { SignatureBlockExtension } from '@/store/editor/signature-block-extension';
 import { ImportedDocxStyleExtension } from '@/store/editor/imported-docx-style-extension';
 import { ResizableImageExtension } from '@/store/editor/resizable-image-extension';
+import { StyledTableCell, StyledTableHeader } from '@/store/editor/table-cell-style-extension';
 
 const SecureClickableLinkExtension = Extension.create({
     name: 'secureClickableLink',
@@ -158,8 +157,8 @@ export function RichTextEditor({
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Table.configure({ resizable: true }),
             TableRow,
-            TableHeader,
-            TableCell,
+            StyledTableHeader,
+            StyledTableCell,
             Highlight.configure({ multicolor: true }),
             ResizableImageExtension.configure({
                 allowBase64: false,
