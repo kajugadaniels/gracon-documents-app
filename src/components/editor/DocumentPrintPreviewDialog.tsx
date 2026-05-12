@@ -6,7 +6,7 @@ import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
 import type { DocumentLayout } from '@/lib/document-layout';
 import { buildDocumentLayoutStyle } from '@/lib/document-layout';
 import { PagedDocumentCanvas } from './PagedDocumentCanvas';
-import type { CommentAnchorInput } from './comment-anchor-extension';
+import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension';
 
 interface DocumentPrintPreviewDialogProps {
     documentId: string;
