@@ -51,7 +51,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Ruler tab-stop popover for choosing left, center, right, or decimal tab alignment without memorizing shortcuts
 - Draggable ruler tab-stop markers for repositioning existing tab stops without deleting and recreating them
 - Live editor tab rendering uses ProseMirror decorations so tab characters remain copy/paste-safe while reflecting typed stop widths on canvas
-- DOCX import prefers a direct Word XML-to-TipTap parser for paragraphs, inline marks, hyperlinks, lists, tables, spacing, borders, and table-cell styling, with Mammoth kept as a compatibility fallback
+- DOCX import prefers a background direct Word XML-to-TipTap job for paragraphs, inline marks, hyperlinks, lists, tables, spacing, borders, and table-cell styling, with Mammoth kept as a compatibility fallback
 - Text-based PDF import extracts selectable PDF text into editable rich-text paragraphs; scanned PDFs need OCR before import
 - Export parity tests for page margins, paragraph indents, hanging indents, and tab-stop conversion
 - Invitation gate with OTP and identity-proof return flow
