@@ -15,6 +15,9 @@ export const EXPORT_MIN_PARAGRAPH_CONTENT_WIDTH_PX = 72;
 export const EXPORT_MAX_PARAGRAPH_TAB_STOPS = 12;
 export const EXPORT_TAB_STOP_SNAP_PX = 24;
 export const EXPORT_PARAGRAPH_TAB_STOP_ALIGNS = ['left', 'center', 'right', 'decimal'] as const;
+export const EXPORT_MIN_PARAGRAPH_LINE_HEIGHT = 0.75;
+export const EXPORT_MAX_PARAGRAPH_LINE_HEIGHT = 3;
+export const EXPORT_DOCX_SINGLE_LINE_HEIGHT = 240;
 
 export type ExportParagraphTabStopAlign = typeof EXPORT_PARAGRAPH_TAB_STOP_ALIGNS[number];
 
@@ -60,11 +63,13 @@ export interface PaperExportGeometry {
 export interface ParagraphExportGeometry {
     leftIndent: number;
     firstLineIndent: number;
+    lineHeight: number | null;
     tabStops: ExportParagraphTabStop[];
     cssStyle: string;
     dataAttributes: {
         leftIndent?: string;
         firstLineIndent?: string;
+        lineHeight?: string;
         tabStops?: string;
     };
     docxIndentTwips: {
@@ -76,10 +81,28 @@ export interface ParagraphExportGeometry {
         position: number;
         align: ExportParagraphTabStopAlign;
     }[];
+    docxLineSpacing?: number;
 }
 
 function normalizeNumber(value: unknown) {
     return typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 0;
+}
+
+export function normalizeParagraphLineHeight(value: unknown) {
+    const parsed = typeof value === 'number'
+        ? value
+        : typeof value === 'string'
+            ? Number.parseFloat(value)
+            : Number.NaN;
+
+    if (!Number.isFinite(parsed)) {
+        return null;
+    }
+
+    return Math.min(
+        EXPORT_MAX_PARAGRAPH_LINE_HEIGHT,
+        Math.max(EXPORT_MIN_PARAGRAPH_LINE_HEIGHT, Number(parsed.toFixed(2))),
+    );
 }
 
 function clampMargin(value: unknown, fallback: number) {
@@ -197,6 +220,7 @@ export function createParagraphExportGeometry(
     input: {
         leftIndent?: unknown;
         firstLineIndent?: unknown;
+        lineHeight?: unknown;
         tabStops?: unknown;
     },
     layoutInput?: Partial<DocumentLayout> | null,
@@ -204,6 +228,7 @@ export function createParagraphExportGeometry(
     const layout = normalizeExportLayout(layoutInput);
     const leftIndent = normalizeNumber(input.leftIndent);
     const firstLineIndent = normalizeNumber(input.firstLineIndent);
+    const lineHeight = normalizeParagraphLineHeight(input.lineHeight);
     const tabStops = normalizeExportTabStops(
         EXPORT_A4_PAPER_WIDTH_PX,
         layout.margins,
@@ -219,14 +244,20 @@ export function createParagraphExportGeometry(
         styleParts.push(`text-indent: ${firstLineIndent}px`);
     }
 
+    if (lineHeight !== null) {
+        styleParts.push(`line-height: ${lineHeight}`);
+    }
+
     return {
         leftIndent,
         firstLineIndent,
+        lineHeight,
         tabStops,
         cssStyle: styleParts.join('; '),
         dataAttributes: {
             ...(leftIndent || firstLineIndent ? { leftIndent: String(leftIndent) } : {}),
             ...(firstLineIndent ? { firstLineIndent: String(firstLineIndent) } : {}),
+            ...(lineHeight !== null ? { lineHeight: String(lineHeight) } : {}),
             ...(tabStops.length > 0 ? { tabStops: JSON.stringify(tabStops) } : {}),
         },
         docxIndentTwips: {
@@ -238,6 +269,9 @@ export function createParagraphExportGeometry(
             position: pxToTwip(tabStop.position),
             align: tabStop.align,
         })),
+        docxLineSpacing: lineHeight !== null
+            ? Math.round(lineHeight * EXPORT_DOCX_SINGLE_LINE_HEIGHT)
+            : undefined,
     };
 }
 
