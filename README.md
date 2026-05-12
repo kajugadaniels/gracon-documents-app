@@ -63,6 +63,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Typed insert-menu action registry so menu labels, enabled states, and editor command dispatch stay aligned while features are implemented incrementally
 - Quick insert actions for date/time and common special characters using undo-safe TipTap insert commands
 - Selection-aware link insertion and editing with safe URL normalization before links enter the TipTap document model
+- Schema-backed table cell styling for white/black default tables, editable cell background colors, per-side borders, and DOCX export preservation
 - Secure hosted-image insertion from URL or local upload through `api/documents`, with private S3 storage, preview, accessibility metadata, and base64 image storage blocked
 - Resizable editor images with persisted TipTap width/height attributes, aspect-ratio-safe corner handles, and polished canvas feedback
 
