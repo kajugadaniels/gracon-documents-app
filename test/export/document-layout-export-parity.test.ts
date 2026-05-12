@@ -87,6 +87,18 @@ test('converts typed paragraph tab stops to DOCX tab-stop geometry', () => {
     ]);
 });
 
+test('converts paragraph line height to shared CSS and DOCX spacing', () => {
+    const paragraph = createParagraphExportGeometry({
+        lineHeight: 1.5,
+    });
+
+    assert.equal(paragraph.cssStyle, 'line-height: 1.5');
+    assert.deepEqual(paragraph.dataAttributes, {
+        lineHeight: '1.5',
+    });
+    assert.equal(paragraph.docxLineSpacing, 360);
+});
+
 test('exports hanging first-line indents as DOCX hanging indents', () => {
     const paragraph = createParagraphExportGeometry({
         leftIndent: 72,
