@@ -15,8 +15,7 @@
 import { generateJSON } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle, FontFamily } from '@tiptap/extension-text-style';
-import { FontSize } from '@tiptap/extension-text-style';
+import { TextStyle, FontFamily, FontSize, BackgroundColor } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Underline from '@tiptap/extension-underline';
 import { Table } from '@tiptap/extension-table';
@@ -40,6 +39,7 @@ import {
     extractTableCellStylesFromDocxXml,
     mergeParagraphTabStopsIntoLayouts,
 } from '@/lib/import-docx-layout';
+import { importDocxXmlToTiptap } from '@/lib/import-docx-direct';
 
 /**
  * The subset of TipTap extensions used when parsing imported HTML.
@@ -54,6 +54,7 @@ const IMPORT_EXTENSIONS = [
     }),
     TextStyle,
     Color,
+    BackgroundColor,
     FontFamily,
     FontSize,
     Underline,
@@ -148,11 +149,13 @@ async function readXmlPartsFromDocx(arrayBuffer: ArrayBuffer) {
     const zip = await JSZip.loadAsync(arrayBuffer);
     const documentXml = zip.file('word/document.xml');
     const numberingXml = zip.file('word/numbering.xml');
+    const relationshipsXml = zip.file('word/_rels/document.xml.rels');
     const stylesXml = zip.file('word/styles.xml');
 
     return {
         documentXml: documentXml ? await documentXml.async('text') : null,
         numberingXml: numberingXml ? await numberingXml.async('text') : null,
+        relationshipsXml: relationshipsXml ? await relationshipsXml.async('text') : null,
         stylesXml: stylesXml ? await stylesXml.async('text') : null,
     };
 }
@@ -170,11 +173,26 @@ export async function importDocxToTiptap(file: File): Promise<ImportResult> {
         throw new Error('Only .docx files are supported.');
     }
 
-    // Dynamic import keeps mammoth (~500 kB) out of the initial bundle.
+    const arrayBuffer = await file.arrayBuffer();
+    const { documentXml, numberingXml, relationshipsXml, stylesXml } = await readXmlPartsFromDocx(arrayBuffer);
+    const directContent = importDocxXmlToTiptap({
+        documentXml,
+        numberingXml,
+        relationshipsXml,
+        stylesXml,
+    });
+
+    if (directContent) {
+        return {
+            content: directContent as Record<string, unknown>,
+            title: getImportedDocumentTitle(file),
+        };
+    }
+
+    // Dynamic import keeps mammoth (~500 kB) out of the initial bundle and
+    // only loads it when the direct XML parser cannot handle the DOCX.
     const mammoth = await import('mammoth');
 
-    const arrayBuffer = await file.arrayBuffer();
-    const { documentXml, numberingXml, stylesXml } = await readXmlPartsFromDocx(arrayBuffer);
     const paragraphTabStops = documentXml
         ? extractParagraphTabStopsFromDocumentXml(documentXml)
         : [];
