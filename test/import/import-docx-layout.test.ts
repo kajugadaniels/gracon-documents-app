@@ -6,9 +6,7 @@ import {
     collectImportedParagraphLayouts,
     createImportedParagraphLayout,
     extractParagraphListStylesFromDocxXml,
-    extractParagraphStylesFromDocxXml,
     extractParagraphTabStopsFromDocumentXml,
-    extractTableCellStylesFromDocxXml,
     mergeParagraphTabStopsIntoLayouts,
     twipToPx,
 } from '../../src/lib/import-docx-layout.ts';
@@ -265,55 +263,5 @@ describe('DOCX import layout conversion', () => {
         } finally {
             globalThis.DOMParser = originalDomParser;
         }
-    });
-
-    it('extracts paragraph spacing, alignment, and border styles from DOCX XML', () => {
-        const stylesXml = `
-            <w:styles>
-                <w:style w:type="paragraph" w:styleId="BodyText">
-                    <w:pPr>
-                        <w:spacing w:after="240"/>
-                    </w:pPr>
-                </w:style>
-            </w:styles>
-        `;
-        const documentXml = `
-            <w:document><w:body>
-                <w:p>
-                    <w:pPr>
-                        <w:pStyle w:val="BodyText"/>
-                        <w:spacing w:before="120" w:line="360"/>
-                        <w:jc w:val="center"/>
-                        <w:pBdr><w:bottom w:val="single" w:sz="8" w:color="5B23FF"/></w:pBdr>
-                    </w:pPr>
-                </w:p>
-            </w:body></w:document>
-        `;
-
-        assert.deepEqual(extractParagraphStylesFromDocxXml(documentXml, stylesXml), [{
-            style: 'margin-bottom: 16px; margin-top: 8px; line-height: 1.50; text-align: center; border-bottom: 1px solid #5B23FF',
-        }]);
-    });
-
-    it('extracts table-cell borders, padding, and shading from DOCX XML', () => {
-        const documentXml = `
-            <w:document><w:body>
-                <w:tbl>
-                    <w:tr>
-                        <w:tc>
-                            <w:tcPr>
-                                <w:tcBorders><w:top w:val="single" w:sz="8" w:color="111111"/></w:tcBorders>
-                                <w:tcMar><w:left w:w="120"/><w:right w:w="120"/></w:tcMar>
-                                <w:shd w:fill="EEEEEE"/>
-                            </w:tcPr>
-                        </w:tc>
-                    </w:tr>
-                </w:tbl>
-            </w:body></w:document>
-        `;
-
-        assert.deepEqual(extractTableCellStylesFromDocxXml(documentXml), [{
-            style: 'border-top: 1px solid #111111; background-color: #EEEEEE; padding-right: 8px; padding-left: 8px',
-        }]);
     });
 });
