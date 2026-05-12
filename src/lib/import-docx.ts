@@ -65,7 +65,7 @@ const IMPORT_EXTENSIONS = [
     TableRow,
     TableHeader,
     TableCell,
-    Highlight.configure({ multicolor: false }),
+    Highlight.configure({ multicolor: true }),
     ResizableImageExtension.configure({
         allowBase64: false,
         inline: false,
