@@ -48,11 +48,12 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Draggable paragraph ruler markers that write left-indent and first-line-indent back into editor content
 - Explicit multi-block ruler feedback for mixed paragraph indentation selections
 - Typed paragraph tab stops stored in editor content, shown on the ruler, editable from the ruler, and preserved in DOCX import/export
+- Paragraph line spacing stored in editor content with Google Docs-style toolbar presets and DOCX export parity
 - Ruler tab-stop popover for choosing left, center, right, or decimal tab alignment without memorizing shortcuts
 - Draggable ruler tab-stop markers for repositioning existing tab stops without deleting and recreating them
 - Live editor tab rendering uses ProseMirror decorations so tab characters remain copy/paste-safe while reflecting typed stop widths on canvas
 - DOCX import uses the Mammoth-based conversion path with recovered paragraph indents, tab stops, and list styles before TipTap parsing
-- Export parity tests for page margins, paragraph indents, hanging indents, and tab-stop conversion
+- Export parity tests for page margins, paragraph indents, hanging indents, line spacing, and tab-stop conversion
 - Invitation gate with OTP and identity-proof return flow
 - Signing readiness checks from `api/documents` so the UI can route users to login, identity verification, certificate setup, or signing without extra probing calls
 - Signing modal submits to a local BFF route that calls `api/signature` and then records the result in `api/documents`, reducing partial browser-side failure states
