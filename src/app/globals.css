@@ -1144,7 +1144,17 @@ body {
 .tiptap-editor .ProseMirror strong { font-weight:700; }
 .tiptap-editor .ProseMirror em    { font-style:italic; }
 .tiptap-editor .ProseMirror u     { text-decoration:underline; }
-.tiptap-editor .ProseMirror a     { color:var(--color-primary); text-decoration:underline; }
+.tiptap-editor .ProseMirror a {
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.tiptap-editor .ProseMirror a:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
 .tiptap-editor .ProseMirror img,
 .tiptap-editor .ProseMirror video,
 .tiptap-editor .ProseMirror canvas,
