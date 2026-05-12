@@ -35,10 +35,6 @@ export interface ImportedParagraphLayout {
     tabStops: ImportedParagraphTabStop[];
 }
 
-export interface ImportedDocxStyle {
-    style: string;
-}
-
 const EMPTY_LAYOUT: ImportedParagraphLayout = {
     leftIndent: 0,
     firstLineIndent: 0,
@@ -337,168 +333,12 @@ function mergeStyle(existingStyle: string | null, nextStyle: string) {
     return [trimmedExisting, trimmedNext].filter(Boolean).join('; ');
 }
 
-function getXmlBlocks(xml: string, tagName: string) {
-    const escapedTagName = tagName.replace(':', '\\:');
-    return xml.match(new RegExp(`<${escapedTagName}\\b[\\s\\S]*?<\\/${escapedTagName}>`, 'g')) ?? [];
-}
-
-function getXmlStartTag(xml: string, tagName: string) {
-    const escapedTagName = tagName.replace(':', '\\:');
-    return xml.match(new RegExp(`<${escapedTagName}\\b[^>]*\\/?>`))?.[0] ?? '';
-}
-
-function getXmlChildBlock(xml: string, tagName: string) {
-    const escapedTagName = tagName.replace(':', '\\:');
-    return xml.match(new RegExp(`<${escapedTagName}\\b[\\s\\S]*?<\\/${escapedTagName}>`))?.[0] ?? '';
-}
-
-function getXmlChildTag(xml: string, tagName: string) {
-    const escapedTagName = tagName.replace(':', '\\:');
-    return xml.match(new RegExp(`<${escapedTagName}\\b[^>]*\\/?>`))?.[0] ?? '';
-}
-
-function docxColorToCss(value: string | null) {
-    if (!value || value === 'auto') return 'rgba(22, 16, 58, 0.38)';
-    return /^([0-9a-f]{6})$/i.test(value) ? `#${value}` : 'rgba(22, 16, 58, 0.38)';
-}
-
-function docxBorderToCss(borderXml: string) {
-    const value = getAttributeValue(borderXml, 'val');
-    if (!value || value === 'nil' || value === 'none') return null;
-
-    const size = Math.max(1, Math.round((toNumber(getAttributeValue(borderXml, 'sz')) ?? 6) / 8));
-    const color = docxColorToCss(getAttributeValue(borderXml, 'color'));
-    const style = value.includes('dash') ? 'dashed' : value.includes('dot') ? 'dotted' : 'solid';
-
-    return `${size}px ${style} ${color}`;
-}
-
-function collectParagraphStyleFromProperties(paragraphProperties: string): string[] {
-    const styleParts: string[] = [];
-    const spacingTag = getXmlChildTag(paragraphProperties, 'w:spacing');
-    const alignmentTag = getXmlChildTag(paragraphProperties, 'w:jc');
-    const paragraphBorders = getXmlChildBlock(paragraphProperties, 'w:pBdr');
-
-    if (spacingTag) {
-        const before = twipToPx(getAttributeValue(spacingTag, 'before'));
-        const after = twipToPx(getAttributeValue(spacingTag, 'after'));
-        const line = toNumber(getAttributeValue(spacingTag, 'line'));
-        const lineRule = getAttributeValue(spacingTag, 'lineRule');
-
-        if (before) styleParts.push(`margin-top: ${before}px`);
-        if (after) styleParts.push(`margin-bottom: ${after}px`);
-        if (line) {
-            styleParts.push(lineRule === 'exact'
-                ? `line-height: ${twipToPx(line)}px`
-                : `line-height: ${Math.max(1, line / 240).toFixed(2)}`);
-        }
-    }
-
-    if (alignmentTag) {
-        const alignment = getAttributeValue(alignmentTag, 'val');
-        if (alignment === 'center') styleParts.push('text-align: center');
-        if (alignment === 'right' || alignment === 'end') styleParts.push('text-align: right');
-        if (alignment === 'both' || alignment === 'distribute') styleParts.push('text-align: justify');
-    }
-
-    if (paragraphBorders) {
-        (['top', 'right', 'bottom', 'left'] as const).forEach((side) => {
-            const border = docxBorderToCss(getXmlChildTag(paragraphBorders, `w:${side}`));
-            if (border) styleParts.push(`border-${side}: ${border}`);
-        });
-    }
-
-    return styleParts;
-}
-
-function parseParagraphStyleDefinitions(stylesXml: string | null) {
-    const styles = new Map<string, string[]>();
-    if (!stylesXml?.trim()) return styles;
-
-    getXmlBlocks(stylesXml, 'w:style').forEach((styleXml) => {
-        const startTag = getXmlStartTag(styleXml, 'w:style');
-        if (getAttributeValue(startTag, 'type') !== 'paragraph') return;
-
-        const styleId = getAttributeValue(startTag, 'styleId');
-        const paragraphProperties = getXmlChildBlock(styleXml, 'w:pPr');
-        if (!styleId || !paragraphProperties) return;
-
-        const styleParts = collectParagraphStyleFromProperties(paragraphProperties);
-        if (styleParts.length > 0) styles.set(styleId, styleParts);
-    });
-
-    return styles;
-}
-
-/**
- * Extracts safe paragraph layout styles from DOCX XML in document order.
- */
-export function extractParagraphStylesFromDocxXml(documentXml: string, stylesXml: string | null) {
-    if (!documentXml.trim()) return [];
-
-    const styleDefinitions = parseParagraphStyleDefinitions(stylesXml);
-
-    return getXmlBlocks(documentXml, 'w:p').map((paragraphXml): ImportedDocxStyle | null => {
-        const paragraphProperties = getXmlChildBlock(paragraphXml, 'w:pPr');
-        const paragraphStyleId = getAttributeValue(getXmlChildTag(paragraphProperties, 'w:pStyle'), 'val');
-        const styleParts = [
-            ...(paragraphStyleId ? styleDefinitions.get(paragraphStyleId) ?? [] : []),
-            ...collectParagraphStyleFromProperties(paragraphProperties),
-        ];
-
-        return styleParts.length > 0 ? { style: styleParts.join('; ') } : null;
-    });
-}
-
-function collectTableCellStyleFromProperties(tableCellProperties: string): string[] {
-    const styleParts: string[] = [];
-    const borders = getXmlChildBlock(tableCellProperties, 'w:tcBorders');
-    const shading = getXmlChildTag(tableCellProperties, 'w:shd');
-    const margins = getXmlChildBlock(tableCellProperties, 'w:tcMar');
-
-    if (borders) {
-        (['top', 'right', 'bottom', 'left'] as const).forEach((side) => {
-            const border = docxBorderToCss(getXmlChildTag(borders, `w:${side}`));
-            if (border) styleParts.push(`border-${side}: ${border}`);
-        });
-    }
-
-    if (shading) {
-        const fill = getAttributeValue(shading, 'fill');
-        if (fill && fill !== 'auto') styleParts.push(`background-color: ${docxColorToCss(fill)}`);
-    }
-
-    if (margins) {
-        (['top', 'right', 'bottom', 'left'] as const).forEach((side) => {
-            const marginTag = getXmlChildTag(margins, `w:${side}`);
-            const width = twipToPx(getAttributeValue(marginTag, 'w'));
-            if (width) styleParts.push(`padding-${side}: ${width}px`);
-        });
-    }
-
-    return styleParts;
-}
-
-/**
- * Extracts table-cell borders, padding, and shading from DOCX XML.
- */
-export function extractTableCellStylesFromDocxXml(documentXml: string) {
-    if (!documentXml.trim()) return [];
-
-    return getXmlBlocks(documentXml, 'w:tc').map((tableCellXml): ImportedDocxStyle | null => {
-        const styleParts = collectTableCellStyleFromProperties(getXmlChildBlock(tableCellXml, 'w:tcPr'));
-        return styleParts.length > 0 ? { style: styleParts.join('; ') } : null;
-    });
-}
-
 export function annotateImportedDocxHtml(
     html: string,
     paragraphLayouts: ImportedParagraphLayout[],
     paragraphListStyles: Array<ImportedParagraphListStyle | null> = [],
-    paragraphStyles: Array<ImportedDocxStyle | null> = [],
-    tableCellStyles: Array<ImportedDocxStyle | null> = [],
 ) {
-    if (!html.trim() || typeof DOMParser === 'undefined') {
+    if (!html.trim() || paragraphLayouts.length === 0 || typeof DOMParser === 'undefined') {
         return html;
     }
 
@@ -506,18 +346,12 @@ export function annotateImportedDocxHtml(
     const document = parser.parseFromString(html, 'text/html');
     const paragraphNodes = Array.from(document.body.querySelectorAll('p, h1, h2, h3, h4, h5, h6'));
     const listNodes = Array.from(document.body.querySelectorAll('ul, ol'));
-    const tableCellNodes = Array.from(document.body.querySelectorAll('td, th'));
     let paragraphListStyleIndex = 0;
 
     paragraphNodes.forEach((node, index) => {
         const layout = paragraphLayouts[index];
-        const importedStyle = paragraphStyles[index]?.style;
 
         if (!layout || !hasLayout(layout)) {
-            if (importedStyle) {
-                node.setAttribute('data-imported-docx-style', importedStyle);
-                node.setAttribute('style', mergeStyle(node.getAttribute('style'), importedStyle));
-            }
             return;
         }
 
@@ -535,11 +369,6 @@ export function annotateImportedDocxHtml(
 
         if (layout.tabStops.length > 0) {
             node.setAttribute('data-tab-stops', JSON.stringify(layout.tabStops));
-        }
-
-        if (importedStyle) {
-            node.setAttribute('data-imported-docx-style', importedStyle);
-            styleParts.push(importedStyle);
         }
 
         if (styleParts.length > 0) {
@@ -566,14 +395,6 @@ export function annotateImportedDocxHtml(
 
         node.setAttribute('data-list-style-type', listStyle.style);
         node.setAttribute('style', mergeStyle(node.getAttribute('style'), `list-style-type: ${listStyle.style}`));
-    });
-
-    tableCellNodes.forEach((node, index) => {
-        const importedStyle = tableCellStyles[index]?.style;
-        if (!importedStyle) return;
-
-        node.setAttribute('data-imported-docx-style', importedStyle);
-        node.setAttribute('style', mergeStyle(node.getAttribute('style'), importedStyle));
     });
 
     return document.body.innerHTML;
