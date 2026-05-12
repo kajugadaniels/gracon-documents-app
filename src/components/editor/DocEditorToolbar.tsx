@@ -114,10 +114,24 @@ function getEditorHighlightColor(editor: Editor) {
     return normalizePickerColor(editor.getAttributes('highlight').color, DEFAULT_HIGHLIGHT_COLOR);
 }
 
+function restoreToolbarSelection(editor: Editor, selection: { from: number; to: number } | null) {
+    if (!selection) return editor.chain().focus();
+
+    const maxPosition = editor.state.doc.content.size;
+    return editor
+        .chain()
+        .focus()
+        .setTextSelection({
+            from: Math.min(selection.from, maxPosition),
+            to: Math.min(selection.to, maxPosition),
+        });
+}
+
 function TextColorPicker({ editor }: { editor: Editor }) {
     const [open, setOpen] = useState(false);
     const [currentColor, setCurrentColor] = useState(() => getEditorTextColor(editor));
     const ref = useRef<HTMLDivElement>(null);
+    const selectionRef = useRef<{ from: number; to: number } | null>(null);
 
     useEffect(() => {
         const handler = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
@@ -137,21 +151,30 @@ function TextColorPicker({ editor }: { editor: Editor }) {
     }, [editor]);
 
     function applyColor(color: ColorResult) {
-        editor.chain().focus().setColor(color.hex).run();
+        restoreToolbarSelection(editor, selectionRef.current).setColor(color.hex).run();
         setCurrentColor(color.hex);
     }
 
     function clearColor() {
-        editor.chain().focus().unsetColor().run();
+        restoreToolbarSelection(editor, selectionRef.current).unsetColor().run();
         setCurrentColor(DEFAULT_TEXT_COLOR);
         setOpen(false);
+    }
+
+    function toggleOpen() {
+        selectionRef.current = {
+            from: editor.state.selection.from,
+            to: editor.state.selection.to,
+        };
+        setOpen(v => !v);
     }
 
     return (
         <div ref={ref} className="ded-picker ded-color-picker">
             <button
                 className={`ded-tb-btn ded-color-picker__trigger${open ? ' ded-tb-btn--active' : ''}`}
-                onClick={() => setOpen(v => !v)}
+                onMouseDown={preventToolbarFocus}
+                onClick={toggleOpen}
                 title="Text color"
                 aria-label="Text color"
                 aria-expanded={open}
@@ -170,8 +193,8 @@ function TextColorPicker({ editor }: { editor: Editor }) {
                         color={currentColor}
                         disableAlpha
                         presetColors={[...COLOR_PRESETS]}
-                        width="216px"
-                        onChange={(color) => setCurrentColor(color.hex)}
+                        width="252px"
+                        onChange={applyColor}
                         onChangeComplete={applyColor}
                     />
                 </div>
@@ -184,6 +207,7 @@ function HighlightColorPicker({ editor }: { editor: Editor }) {
     const [open, setOpen] = useState(false);
     const [currentColor, setCurrentColor] = useState(() => getEditorHighlightColor(editor));
     const ref = useRef<HTMLDivElement>(null);
+    const selectionRef = useRef<{ from: number; to: number } | null>(null);
 
     useEffect(() => {
         const handler = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
@@ -203,21 +227,30 @@ function HighlightColorPicker({ editor }: { editor: Editor }) {
     }, [editor]);
 
     function applyHighlight(color: ColorResult) {
-        editor.chain().focus().setHighlight({ color: color.hex }).run();
+        restoreToolbarSelection(editor, selectionRef.current).setHighlight({ color: color.hex }).run();
         setCurrentColor(color.hex);
     }
 
     function clearHighlight() {
-        editor.chain().focus().unsetHighlight().run();
+        restoreToolbarSelection(editor, selectionRef.current).unsetHighlight().run();
         setCurrentColor(DEFAULT_HIGHLIGHT_COLOR);
         setOpen(false);
+    }
+
+    function toggleOpen() {
+        selectionRef.current = {
+            from: editor.state.selection.from,
+            to: editor.state.selection.to,
+        };
+        setOpen(v => !v);
     }
 
     return (
         <div ref={ref} className="ded-picker ded-color-picker">
             <button
                 className={`ded-tb-btn ded-color-picker__trigger${open || editor.isActive('highlight') ? ' ded-tb-btn--active' : ''}`}
-                onClick={() => setOpen(v => !v)}
+                onMouseDown={preventToolbarFocus}
+                onClick={toggleOpen}
                 title="Highlight color"
                 aria-label="Highlight color"
                 aria-expanded={open}
@@ -236,8 +269,8 @@ function HighlightColorPicker({ editor }: { editor: Editor }) {
                         color={currentColor}
                         disableAlpha
                         presetColors={[...COLOR_PRESETS]}
-                        width="216px"
-                        onChange={(color) => setCurrentColor(color.hex)}
+                        width="252px"
+                        onChange={applyHighlight}
                         onChangeComplete={applyHighlight}
                     />
                 </div>
