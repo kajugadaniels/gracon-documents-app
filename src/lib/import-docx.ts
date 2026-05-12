@@ -21,9 +21,9 @@ import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
-import { ListStyleExtension } from '@/components/editor/list-style-extension';
-import { ParagraphLayoutExtension } from '@/components/editor/paragraph-layout-extension';
-import { SignatureBlockExtension } from '@/components/editor/signature-block-extension';
+import { ListStyleExtension } from '@/store/editor/list-style-extension';
+import { ParagraphLayoutExtension } from '@/store/editor/paragraph-layout-extension';
+import { SignatureBlockExtension } from '@/store/editor/signature-block-extension';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import {
     annotateImportedDocxHtml,
