@@ -17,7 +17,6 @@ import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle, FontFamily, FontSize, BackgroundColor } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
-import Underline from '@tiptap/extension-underline';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
@@ -61,7 +60,6 @@ const IMPORT_EXTENSIONS = [
     BackgroundColor,
     FontFamily,
     FontSize,
-    Underline,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Table.configure({ resizable: true }),
     TableRow,
