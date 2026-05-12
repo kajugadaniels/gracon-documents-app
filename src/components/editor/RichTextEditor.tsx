@@ -6,6 +6,7 @@ import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle, FontFamily, FontSize } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
+import Underline from '@tiptap/extension-underline';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
@@ -31,6 +32,7 @@ import {
 } from './list-style-extension';
 import { ParagraphLayoutExtension } from './paragraph-layout-extension';
 import { SignatureBlockExtension } from './signature-block-extension';
+import { ImportedDocxStyleExtension } from './imported-docx-style-extension';
 
 interface RichTextEditorProps {
     initialContent?: Record<string, unknown> | null;
@@ -74,6 +76,7 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
     const onChangeRef = useRef(onContentChange);
     const onEditorReadyRef = useRef(onEditorReady);
+    const appliedInitialContentRef = useRef<Record<string, unknown> | null>(null);
     const sanitizedInitialContent = useMemo(
         () => removeDocumentBoundariesFromTiptapContent(initialContent)
             ?? { type: 'doc', content: [{ type: 'paragraph' }] },
@@ -100,6 +103,7 @@ export function RichTextEditor({
             Color,
             FontFamily,
             FontSize,
+            Underline,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Table.configure({ resizable: true }),
             TableRow,
@@ -136,6 +140,7 @@ export function RichTextEditor({
             CommentAnchorExtension,
             ListStyleExtension,
             ParagraphLayoutExtension,
+            ImportedDocxStyleExtension,
             SignatureBlockExtension,
         ],
         content: sanitizedInitialContent,
@@ -150,13 +155,13 @@ export function RichTextEditor({
         },
     });
 
-    // Update content when initialContent changes (e.g. version restore)
     useEffect(() => {
-        if (editor && sanitizedInitialContent && !readOnly) {
-            const current = JSON.stringify(editor.getJSON());
-            const next = JSON.stringify(sanitizedInitialContent);
-            if (current !== next) editor.commands.setContent(sanitizedInitialContent);
-        }
+        if (!editor || !sanitizedInitialContent || readOnly) return;
+        if (appliedInitialContentRef.current === sanitizedInitialContent) return;
+        if (editor.isFocused) return;
+
+        appliedInitialContentRef.current = sanitizedInitialContent;
+        editor.commands.setContent(sanitizedInitialContent, { emitUpdate: false });
     }, [editor, sanitizedInitialContent, readOnly]);
 
     useEffect(() => {
