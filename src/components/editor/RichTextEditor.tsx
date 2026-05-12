@@ -1,5 +1,7 @@
 'use client';
 
+import { Extension } from '@tiptap/core';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { useEditor, EditorContent } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -32,6 +34,52 @@ import { ParagraphLayoutExtension } from './paragraph-layout-extension';
 import { SignatureBlockExtension } from './signature-block-extension';
 import { ImportedDocxStyleExtension } from './imported-docx-style-extension';
 import { ResizableImageExtension } from './resizable-image-extension';
+
+const SecureClickableLinkExtension = Extension.create({
+    name: 'secureClickableLink',
+
+    addProseMirrorPlugins() {
+        return [
+            new Plugin({
+                key: new PluginKey('secureClickableLink'),
+                props: {
+                    handleClick: (_view, _pos, event) => {
+                        if (event.button !== 0) {
+                            return false;
+                        }
+
+                        const target = event.target;
+                        if (!(target instanceof Element)) {
+                            return false;
+                        }
+
+                        const link = target.closest<HTMLAnchorElement>('a[href]');
+                        if (!link || !this.editor.view.dom.contains(link)) {
+                            return false;
+                        }
+
+                        const normalized = normalizeEditorLinkUrl(link.getAttribute('href') ?? '');
+                        if (!normalized.ok) {
+                            return false;
+                        }
+
+                        this.editor.commands.extendMarkRange('link');
+                        const openedWindow = window.open(
+                            normalized.url,
+                            '_blank',
+                            'noopener,noreferrer',
+                        );
+                        if (openedWindow) {
+                            openedWindow.opener = null;
+                        }
+
+                        return true;
+                    },
+                },
+            }),
+        ];
+    },
+});
 
 interface RichTextEditorProps {
     initialContent?: Record<string, unknown> | null;
@@ -133,6 +181,7 @@ export function RichTextEditor({
                     rel: 'noopener noreferrer nofollow',
                 },
             }),
+            SecureClickableLinkExtension,
             Placeholder.configure({ placeholder }),
             CharacterCount,
             CommentAnchorExtension,
