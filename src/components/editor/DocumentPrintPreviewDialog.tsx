@@ -10,6 +10,7 @@ import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
 import { DEFAULT_DOCUMENT_LAYOUT, type DocumentLayout } from '@/lib/document-layout';
 import { buildDocumentLayoutStyle } from '@/lib/document-layout';
 import { PagedDocumentCanvas } from './PagedDocumentCanvas';
+import { DocumentLoadingState } from './DocumentLoadingState';
 import { PrintPreviewRendererBoundary } from './PrintPreviewRendererBoundary';
 import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension';
 
@@ -139,9 +140,7 @@ function PrintPreviewLoadingCanvas() {
     return (
         <div className="ded-canvas paginated-print-preview">
             <div className="paginated-print-preview__shell">
-                <div className="paginated-print-preview__loading">
-                    Preparing preview...
-                </div>
+                <DocumentLoadingState variant="paper" message="Preparing preview..." />
             </div>
         </div>
     );
