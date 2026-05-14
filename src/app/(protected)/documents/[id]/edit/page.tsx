@@ -759,7 +759,13 @@ export default function EditDocumentPage() {
 
     // ── Loading state ────────────────────────────────────────────────────────
     if (loading) {
-        return <DocumentLoadingState variant="panel" />;
+        return (
+            <DocumentLoadingState
+                variant="panel"
+                message="Opening document..."
+                detail="Restoring content, permissions, and signing state"
+            />
+        );
     }
 
     if (!doc) {
