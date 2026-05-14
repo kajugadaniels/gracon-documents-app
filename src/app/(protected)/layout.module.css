@@ -1,0 +1,70 @@
+.loadingShell,
+.errorShell {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loadingShell {
+    background: #ffffff;
+}
+
+.loadingSpinner {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid rgba(91, 35, 255, 0.20);
+    border-top-color: var(--color-primary);
+    animation: btn-spin 0.7s linear infinite;
+}
+
+.errorShell {
+    padding: 24px;
+}
+
+.errorCard {
+    width: 100%;
+    max-width: 460px;
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    display: grid;
+    gap: 18px;
+    text-align: center;
+}
+
+.errorTitle {
+    margin: 0 0 8px;
+    color: var(--color-text-primary);
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.errorCopy {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.errorActions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.errorAction {
+    min-width: 140px;
+}
+
+.shell {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+}
+
+.main {
+    flex: 1;
+    padding: 20px clamp(18px, 3.4vw, 38px) 42px;
+}
