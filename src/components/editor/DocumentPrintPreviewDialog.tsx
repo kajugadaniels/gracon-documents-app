@@ -1,15 +1,25 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
 import type { DocumentLayout } from '@/lib/document-layout';
 import { buildDocumentLayoutStyle } from '@/lib/document-layout';
 import { PagedDocumentCanvas } from './PagedDocumentCanvas';
-import { PaginatedPrintPreviewCanvas } from './PaginatedPrintPreviewCanvas';
+import { PrintPreviewRendererBoundary } from './PrintPreviewRendererBoundary';
 import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension';
 
 const USE_PAGINATED_PRINT_PREVIEW = true;
+const SAVE_PDF_USES_EXISTING_EXPORT_CANVAS = true;
+
+const PaginatedPrintPreviewCanvas = dynamic(
+    () => import('./PaginatedPrintPreviewCanvas').then((module) => module.PaginatedPrintPreviewCanvas),
+    {
+        ssr: false,
+        loading: () => <PrintPreviewLoadingCanvas />,
+    },
+);
 
 interface DocumentPrintPreviewDialogProps {
     documentId: string;
@@ -30,6 +40,18 @@ function getPreviewZoom() {
     return 0.72;
 }
 
+function PrintPreviewLoadingCanvas() {
+    return (
+        <div className="ded-canvas paginated-print-preview">
+            <div className="paginated-print-preview__shell">
+                <div className="paginated-print-preview__loading">
+                    Preparing preview...
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function DocumentPrintPreviewDialog({
     documentId,
     title,
@@ -45,19 +67,34 @@ export function DocumentPrintPreviewDialog({
     const exportCanvasRef = useRef<HTMLDivElement>(null);
     const [savingPdf, setSavingPdf] = useState(false);
     const [zoom, setZoom] = useState(getPreviewZoom);
+    const [paginatedPreviewFailed, setPaginatedPreviewFailed] = useState(false);
 
     useEffect(() => {
         document.body.classList.add('document-print-preview-active');
-        const onResize = () => setZoom(getPreviewZoom());
+        let resizeFrame: number | null = null;
+        const onResize = () => {
+            if (resizeFrame !== null) {
+                window.cancelAnimationFrame(resizeFrame);
+            }
+            resizeFrame = window.requestAnimationFrame(() => {
+                resizeFrame = null;
+                setZoom(getPreviewZoom());
+            });
+        };
         window.addEventListener('resize', onResize);
         return () => {
             document.body.classList.remove('document-print-preview-active');
             window.removeEventListener('resize', onResize);
+            if (resizeFrame !== null) {
+                window.cancelAnimationFrame(resizeFrame);
+            }
         };
     }, []);
 
     async function handleSavePdf() {
-        const exportHost = USE_PAGINATED_PRINT_PREVIEW ? exportCanvasRef.current : previewCanvasRef.current;
+        const exportHost = SAVE_PDF_USES_EXISTING_EXPORT_CANVAS
+            ? exportCanvasRef.current
+            : previewCanvasRef.current;
         const exportRoot = exportHost?.querySelector(
             '[data-document-export-root="true"]',
         ) as HTMLElement | null;
@@ -72,6 +109,31 @@ export function DocumentPrintPreviewDialog({
     }
 
     const emptyAnchors: CommentAnchorInput[] = [];
+    const shouldUsePaginatedPreview = USE_PAGINATED_PRINT_PREVIEW && !paginatedPreviewFailed;
+    const previewResetKey = `${documentId}:${title}:${status}`;
+    const continuousPreviewCanvas = (
+        <PagedDocumentCanvas
+            canvasRef={previewCanvasRef}
+            documentId={`${documentId}-print-preview`}
+            title={title}
+            status={status}
+            content={content}
+            isReadOnly
+            zoomScale={zoom}
+            pageCount={pageCount}
+            pageHeight={pageHeight}
+            contentHeight={contentHeight}
+            printLayout
+            showFormattingMarks={false}
+            paperStyle={buildDocumentLayoutStyle(layout)}
+            headerFooter={layout.headerFooter}
+            showRepeatedPageChrome
+            pageGap={PAPER_PAGE_GAP_PX}
+            overlayContent={null}
+            commentAnchors={emptyAnchors}
+            onEditorReady={() => undefined}
+        />
+    );
 
     return (
         <div
@@ -110,42 +172,28 @@ export function DocumentPrintPreviewDialog({
                 </div>
             </div>
             <div className="document-print-preview__body">
-                {USE_PAGINATED_PRINT_PREVIEW ? (
-                    <PaginatedPrintPreviewCanvas
-                        canvasRef={previewCanvasRef}
-                        documentId={`${documentId}-paginated-print-preview`}
-                        title={title}
-                        status={status}
-                        content={content}
-                        layout={layout}
-                        zoomScale={zoom}
-                        pageGap={PAPER_PAGE_GAP_PX}
-                    />
+                {shouldUsePaginatedPreview ? (
+                    <PrintPreviewRendererBoundary
+                        resetKey={previewResetKey}
+                        fallback={continuousPreviewCanvas}
+                        onError={() => setPaginatedPreviewFailed(true)}
+                    >
+                        <PaginatedPrintPreviewCanvas
+                            canvasRef={previewCanvasRef}
+                            documentId={`${documentId}-paginated-print-preview`}
+                            title={title}
+                            status={status}
+                            content={content}
+                            layout={layout}
+                            zoomScale={zoom}
+                            pageGap={PAPER_PAGE_GAP_PX}
+                        />
+                    </PrintPreviewRendererBoundary>
                 ) : (
-                    <PagedDocumentCanvas
-                        canvasRef={previewCanvasRef}
-                        documentId={`${documentId}-print-preview`}
-                        title={title}
-                        status={status}
-                        content={content}
-                        isReadOnly
-                        zoomScale={zoom}
-                        pageCount={pageCount}
-                        pageHeight={pageHeight}
-                        contentHeight={contentHeight}
-                        printLayout
-                        showFormattingMarks={false}
-                        paperStyle={buildDocumentLayoutStyle(layout)}
-                        headerFooter={layout.headerFooter}
-                        showRepeatedPageChrome
-                        pageGap={PAPER_PAGE_GAP_PX}
-                        overlayContent={null}
-                        commentAnchors={emptyAnchors}
-                        onEditorReady={() => undefined}
-                    />
+                    continuousPreviewCanvas
                 )}
 
-                {USE_PAGINATED_PRINT_PREVIEW && (
+                {SAVE_PDF_USES_EXISTING_EXPORT_CANVAS && (
                     <div className="document-print-preview__export-fallback" aria-hidden="true">
                         <PagedDocumentCanvas
                             canvasRef={exportCanvasRef}
