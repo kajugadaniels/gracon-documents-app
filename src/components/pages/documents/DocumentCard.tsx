@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { StarIcon, Delete04Icon } from '@hugeicons/core-free-icons';
 import type { DocumentSummary, DocumentStatus } from '@/api/documents.api';
+import styles from './DocumentCard.module.css';
 
 export const STATUS_LABELS: Record<DocumentStatus, string> = {
     DRAFT:     'Draft',
@@ -50,45 +51,44 @@ export function DocumentCard({ doc, starred, onDelete, onToggleStar }: DocumentC
     const sharedBy = doc.access?.sharedBy?.displayName || doc.access?.sharedBy?.email || null;
 
     return (
-        <div className="doc-card doc-card--rich-text">
+        <div className={styles.card}>
             {/* ── Thumbnail ── */}
-            <div className="doc-card__thumb">
-                <div className="doc-card__thumb-accent" />
-                <div className="doc-card__thumb-lines">
-                    <div className="doc-card__line doc-card__line--h1" />
-                    <div className="doc-card__line doc-card__line--full" />
-                    <div className="doc-card__line doc-card__line--long" />
-                    <div className="doc-card__line doc-card__line--full" />
-                    <div className="doc-card__line doc-card__line--med" />
-                    <div className="doc-card__line doc-card__line--full" />
-                    <div className="doc-card__line doc-card__line--short" />
+            <div className={styles.thumb}>
+                <div className={styles.thumbAccent} />
+                <div className={styles.thumbLines}>
+                    <div className={`${styles.line} ${styles.lineHeading}`} />
+                    <div className={`${styles.line} ${styles.lineFull}`} />
+                    <div className={`${styles.line} ${styles.lineLong}`} />
+                    <div className={`${styles.line} ${styles.lineFull}`} />
+                    <div className={`${styles.line} ${styles.lineMedium}`} />
+                    <div className={`${styles.line} ${styles.lineFull}`} />
+                    <div className={`${styles.line} ${styles.lineShort}`} />
                 </div>
 
                 {/* Status badge — top right */}
-                <div className="doc-card__badge-wrap">
+                <div className={styles.badgeWrap}>
                     <span className={`badge badge-${doc.status.toLowerCase()}`}>
                         {STATUS_LABELS[doc.status]}
                     </span>
                 </div>
                 {!isOwner && (
-                    <span className="doc-card__access-badge">
+                    <span className={styles.accessBadge}>
                         Shared
                     </span>
                 )}
 
                 {/* Hover action overlay */}
-                <div className="doc-card__hover-actions">
+                <div className={styles.hoverActions}>
                     <Link
                         href={`/documents/${doc.id}/edit`}
-                        className="btn-primary"
-                        style={{ textDecoration: 'none', padding: '8px 20px', fontSize: 12 }}
+                        className={`btn-primary ${styles.openButton}`}
                     >
                         {doc.status === 'LOCKED' ? 'View' : 'Open'}
                     </Link>
                     {canDelete && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onDelete(doc.id, doc.title); }}
-                            className="doc-card__delete-btn"
+                            className={styles.deleteButton}
                             aria-label={`Delete ${doc.title}`}
                             title="Delete"
                         >
@@ -99,12 +99,12 @@ export function DocumentCard({ doc, starred, onDelete, onToggleStar }: DocumentC
             </div>
 
             {/* ── Card body ── */}
-            <div className="doc-card__body">
-                <div className="doc-card__title-row">
-                    <p className="doc-card__title">{doc.title}</p>
+            <div className={styles.body}>
+                <div className={styles.titleRow}>
+                    <p className={styles.title}>{doc.title}</p>
                     <button
                         onClick={(e) => { e.preventDefault(); onToggleStar(doc.id); }}
-                        className={`doc-card__star${starred ? ' doc-card__star--active' : ''}`}
+                        className={`${styles.star}${starred ? ` ${styles.starActive}` : ''}`}
                         aria-label={starred ? `Unstar ${doc.title}` : `Star ${doc.title}`}
                         title={starred ? 'Remove from starred' : 'Add to starred'}
                     >
@@ -118,26 +118,26 @@ export function DocumentCard({ doc, starred, onDelete, onToggleStar }: DocumentC
                     </button>
                 </div>
 
-                <div className="doc-card__meta">
+                <div className={styles.meta}>
                     <span>{timeAgo(doc.updatedAt)}</span>
                     {doc.wordCount > 0 && (
                         <>
-                            <span className="doc-card__meta-dot" />
+                            <span className={styles.metaDot} />
                             <span>{doc.wordCount.toLocaleString()} words</span>
                         </>
                     )}
                 </div>
 
                 {!isOwner && sharedBy && (
-                    <p className="doc-card__shared-by" title={`Shared by ${sharedBy}`}>
+                    <p className={styles.sharedBy} title={`Shared by ${sharedBy}`}>
                         Shared by {sharedBy}
                     </p>
                 )}
 
                 {doc.tags.length > 0 && (
-                    <div className="doc-card__tags">
+                    <div className={styles.tags}>
                         {doc.tags.slice(0, 3).map((tag) => (
-                            <span key={tag} className="doc-card__tag">{tag}</span>
+                            <span key={tag} className={styles.tag}>{tag}</span>
                         ))}
                     </div>
                 )}
