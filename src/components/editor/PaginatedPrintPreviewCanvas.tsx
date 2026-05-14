@@ -25,7 +25,7 @@ import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import { buildPrintPreviewPaginationConfig } from '@/lib/print-preview-pagination';
 import { removeDocumentBoundariesFromTiptapContent } from '@/lib/remove-document-boundaries';
 
-interface PaginatedPrintPreviewCanvasProps {
+export interface PaginatedPrintPreviewCanvasProps {
     canvasRef: RefObject<HTMLDivElement | null>;
     documentId: string;
     title: string;
@@ -110,6 +110,33 @@ export function PaginatedPrintPreviewCanvas({
         ],
         content: sanitizedContent,
     }, [documentId]);
+
+    useEffect(() => {
+        if (!editor) return;
+
+        editor.commands.updatePageHeight(paginationConfig.pageHeight);
+        editor.commands.updatePageWidth(paginationConfig.pageWidth);
+        editor.commands.updatePageGap(paginationConfig.pageGap);
+        editor.commands.updatePageBreakBackground(paginationConfig.pageBreakBackground);
+        editor.commands.updateMargins({
+            top: paginationConfig.marginTop,
+            right: paginationConfig.marginRight,
+            bottom: paginationConfig.marginBottom,
+            left: paginationConfig.marginLeft,
+        });
+        editor.commands.updateContentMargins({
+            top: paginationConfig.contentMarginTop,
+            bottom: paginationConfig.contentMarginBottom,
+        });
+        editor.commands.updateHeaderContent(
+            paginationConfig.headerLeft,
+            paginationConfig.headerRight,
+        );
+        editor.commands.updateFooterContent(
+            paginationConfig.footerLeft,
+            paginationConfig.footerRight,
+        );
+    }, [editor, paginationConfig]);
 
     useEffect(() => {
         if (!editor) return;
