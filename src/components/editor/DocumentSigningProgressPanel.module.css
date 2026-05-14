@@ -1,5 +1,5 @@
 .rail {
-    position: absolute;
+    position: fixed;
     top: 32px;
     right: clamp(16px, 2.4vw, 32px);
     z-index: 14;
