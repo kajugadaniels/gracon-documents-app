@@ -36,6 +36,7 @@ import type { SigningActionStatus } from '@/components/editor/DocEditorSignature
 import { buildViewMenuItems } from '@/constants/view-menu';
 import { A4_PAPER_HEIGHT_PX, A4_PAPER_WIDTH_PX } from '@/constants';
 import { useStarred } from '@/lib/hooks/useStarred';
+import { useDocumentTitle } from '@/lib/hooks/useDocumentTitle';
 import {
     getDigitalCertificateUrl,
     getIdentityVerificationUrl,
@@ -108,6 +109,8 @@ export default function EditDocumentPage() {
     const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
     const [retryKey, setRetryKey] = useState(0);
     const [shareActivityRefreshKey, setShareActivityRefreshKey] = useState(0);
+
+    useDocumentTitle(title || doc?.title || 'Loading Document');
     const [signingReadiness, setSigningReadiness] = useState<DocumentSigningReadiness | null>(null);
     const [signingReadinessLoading, setSigningReadinessLoading] = useState(false);
     const [editor, setEditor] = useState<Editor | null>(null);
