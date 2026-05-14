@@ -977,15 +977,6 @@ export default function EditDocumentPage() {
                 <DocumentAccessTransitionBanner message={accessTransitionMessage} />
             )}
 
-            <DocumentSigningProgressPanel
-                document={doc}
-                currentUserId={user?.userId ?? null}
-                canManageAccess={canManageAccess}
-                onOpenSigning={() => { void handleSignDocument(); }}
-                onActivityRecorded={handleShareActivityRecorded}
-                onDocumentRefresh={() => setRetryKey(v => v + 1)}
-            />
-
             <DocumentFinaliseDialog
                 acceptedSignerCount={acceptedSignerCount}
                 ownerSignaturePrepared={ownerSignatureBlockPrepared}
@@ -1073,27 +1064,35 @@ export default function EditDocumentPage() {
                     </div>
                 )}
 
-            {/* ── Paper canvas ── */}
-            <PagedDocumentCanvas
-                canvasRef={canvasRef}
-                documentId={doc.id}
-                title={doc.title}
-                status={doc.status}
-                content={doc.content}
-                isReadOnly={isReadOnly}
-                zoomScale={zoomScale}
-                pageCount={continuousDocumentLayout.pageCount}
-                pageHeight={continuousDocumentLayout.pageHeight}
-                contentHeight={continuousDocumentLayout.contentHeight}
-                printLayout={viewState.printLayout}
-                showFormattingMarks={viewState.showFormattingMarks}
-                paperStyle={documentLayoutStyle}
-                headerFooter={documentLayout.headerFooter}
-                overlayContent={signatureStrip}
-                commentAnchors={commentAnchors}
-                onContentChange={handleContentChange}
-                onEditorReady={setEditor}
-            />
+                {/* ── Paper canvas ── */}
+                <PagedDocumentCanvas
+                    canvasRef={canvasRef}
+                    documentId={doc.id}
+                    title={doc.title}
+                    status={doc.status}
+                    content={doc.content}
+                    isReadOnly={isReadOnly}
+                    zoomScale={zoomScale}
+                    pageCount={continuousDocumentLayout.pageCount}
+                    pageHeight={continuousDocumentLayout.pageHeight}
+                    contentHeight={continuousDocumentLayout.contentHeight}
+                    printLayout={viewState.printLayout}
+                    showFormattingMarks={viewState.showFormattingMarks}
+                    paperStyle={documentLayoutStyle}
+                    headerFooter={documentLayout.headerFooter}
+                    overlayContent={signatureStrip}
+                    commentAnchors={commentAnchors}
+                    onContentChange={handleContentChange}
+                    onEditorReady={setEditor}
+                />
+                <DocumentSigningProgressPanel
+                    document={doc}
+                    currentUserId={user?.userId ?? null}
+                    canManageAccess={canManageAccess}
+                    onOpenSigning={() => { void handleSignDocument(); }}
+                    onActivityRecorded={handleShareActivityRecorded}
+                    onDocumentRefresh={() => setRetryKey(v => v + 1)}
+                />
             </div>{/* /.ded-page-body */}
 
             <DocumentCommentsPanel
