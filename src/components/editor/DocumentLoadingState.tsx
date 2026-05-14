@@ -7,6 +7,7 @@ type DocumentLoadingStateVariant = 'fullscreen' | 'panel' | 'paper';
 
 interface DocumentLoadingStateProps {
     message?: string;
+    detail?: string;
     variant?: DocumentLoadingStateVariant;
     size?: number;
     minHeight?: string;
@@ -14,7 +15,8 @@ interface DocumentLoadingStateProps {
 }
 
 export function DocumentLoadingState({
-    message,
+    message = 'Preparing document...',
+    detail = 'Laying out content and secure document state',
     variant = 'panel',
     size = 36,
     minHeight,
@@ -33,8 +35,23 @@ export function DocumentLoadingState({
     return (
         <div className={classNames} style={style} role="status" aria-live="polite">
             <div className={styles.content}>
-                <span className={styles.spinner} aria-hidden="true" />
-                {message ? <p className={styles.message}>{message}</p> : null}
+                <div className={styles.documentPreview} aria-hidden="true">
+                    <div className={styles.sheet}>
+                        <span className={styles.sheetHeader} />
+                        <span className={styles.lineLong} />
+                        <span className={styles.lineMedium} />
+                        <span className={styles.lineShort} />
+                        <span className={styles.lineLong} />
+                    </div>
+                    <span className={styles.statusDot} />
+                </div>
+                <div className={styles.textBlock}>
+                    <p className={styles.message}>{message}</p>
+                    {detail ? <span className={styles.detail}>{detail}</span> : null}
+                </div>
+                <span className={styles.progressTrack} aria-hidden="true">
+                    <span className={styles.progressBar} />
+                </span>
             </div>
         </div>
     );
