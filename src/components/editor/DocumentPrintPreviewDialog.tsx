@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
+import { savePaginatedPreviewAsPdf } from '@/lib/export-paginated-preview';
 import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
 import { DEFAULT_DOCUMENT_LAYOUT, type DocumentLayout } from '@/lib/document-layout';
 import { buildDocumentLayoutStyle } from '@/lib/document-layout';
@@ -261,16 +262,28 @@ export function DocumentPrintPreviewDialog({
     }, []);
 
     async function handleSavePdf() {
-        const exportHost = SAVE_PDF_USES_EXISTING_EXPORT_CANVAS
-            ? exportCanvasRef.current
-            : previewCanvasRef.current;
-        const exportRoot = exportHost?.querySelector(
-            '[data-document-export-root="true"]',
-        ) as HTMLElement | null;
-        if (!exportRoot) return;
-
         setSavingPdf(true);
         try {
+            const paginatedExportRoot = paginatedExportCanvasRef.current;
+
+            if (paginatedExportState === 'ready' && paginatedExportRoot) {
+                try {
+                    await savePaginatedPreviewAsPdf(paginatedExportRoot, title);
+                    return;
+                } catch (error) {
+                    console.warn('Paginated PDF export failed; using legacy export fallback.', error);
+                    setPaginatedExportState('failed');
+                }
+            }
+
+            const exportHost = SAVE_PDF_USES_EXISTING_EXPORT_CANVAS
+                ? exportCanvasRef.current
+                : previewCanvasRef.current;
+            const exportRoot = exportHost?.querySelector(
+                '[data-document-export-root="true"]',
+            ) as HTMLElement | null;
+            if (!exportRoot) return;
+
             await saveRenderedDocumentAs('pdf', title, exportRoot);
         } finally {
             setSavingPdf(false);
@@ -343,10 +356,10 @@ export function DocumentPrintPreviewDialog({
                     <button
                         type="button"
                         className="btn-primary"
-                        disabled={savingPdf}
+                        disabled={savingPdf || paginatedExportState === 'loading'}
                         onClick={() => { void handleSavePdf(); }}
                     >
-                        {savingPdf ? 'Preparing…' : 'Save PDF'}
+                        {savingPdf || paginatedExportState === 'loading' ? 'Preparing…' : 'Save PDF'}
                     </button>
                 </div>
             </div>
