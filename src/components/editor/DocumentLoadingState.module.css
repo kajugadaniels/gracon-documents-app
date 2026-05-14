@@ -7,7 +7,9 @@
 
 .fullscreen {
     min-height: 100dvh;
-    background: #ffffff;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(247, 246, 251, 0.92)),
+        var(--color-bg-base);
 }
 
 .panel {
