@@ -17,7 +17,7 @@
   --color-primary-subtle:    rgba(91, 35, 255, 0.08);
 
   /* ── Backgrounds ── */
-  --color-bg-base:           #ece9ff;
+  --color-bg-base:           #ffffff;
   --color-bg-elevated:       rgba(255, 255, 255, 0.68);
   --color-bg-elevated-hover: rgba(255, 255, 255, 0.88);
   --color-bg-input:          rgba(255, 255, 255, 0.82);
@@ -105,12 +105,7 @@ body {
   font-size:        14px;
   line-height:      1.6;
   min-height:       100dvh;
-  background-image:
-    radial-gradient(ellipse 80% 55% at 15% 8%,  rgba(91,35,255,0.09) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 70% at 88% 92%,  rgba(91,35,255,0.07) 0%, transparent 60%),
-    radial-gradient(circle at 1px 1px, rgba(91,35,255,0.032) 1px, transparent 0);
-  background-size:       100% 100%, 100% 100%, 28px 28px;
-  background-attachment: fixed, fixed, scroll;
+  background-image: none;
 }
 
 /* ── Glass ── */
