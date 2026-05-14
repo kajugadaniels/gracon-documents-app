@@ -41,6 +41,7 @@ import {
     redirectToLogin,
 } from '@/lib/session';
 import {
+    applySignatureBlockEvidenceToContent,
     buildSignatureBlockInserts,
     getSignatureBlockSignerOrder,
     getSignatureBlockSigners,
@@ -834,6 +835,10 @@ export default function EditDocumentPage() {
     const zoomScale = viewState.zoom / 100;
     const currentEditorContent = editor?.getJSON() ?? contentRef.current ?? doc.content;
     const currentSignatureBlockOrder = getSignatureBlockSignerOrder(currentEditorContent);
+    const previewContentWithSignatureEvidence = applySignatureBlockEvidenceToContent(
+        contentRef.current ?? doc.content,
+        signatureBlockEvidence,
+    );
     const ownerSignatureBlockPrepared = hasSignatureBlockForUser(
         currentEditorContent,
         user?.userId,
@@ -1012,7 +1017,7 @@ export default function EditDocumentPage() {
                     documentId={doc.id}
                     title={title.trim() || doc.title}
                     status={doc.status}
-                    content={contentRef.current ?? doc.content}
+                    content={previewContentWithSignatureEvidence}
                     layout={documentLayout}
                     pageCount={continuousDocumentLayout.pageCount}
                     pageHeight={continuousDocumentLayout.pageHeight}
