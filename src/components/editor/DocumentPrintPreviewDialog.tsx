@@ -14,6 +14,7 @@ import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension
 const USE_PAGINATED_PRINT_PREVIEW = true;
 const SAVE_PDF_USES_EXISTING_EXPORT_CANVAS = true;
 const PAGINATED_PREVIEW_READY_TIMEOUT_MS = 8000;
+const PAGINATED_EXPORT_READY_TIMEOUT_MS = 8000;
 const TIPTAP_VIEW_NOT_MOUNTED_ERROR = 'The editor view is not available';
 const PAGINATED_PRINT_PREVIEW_STYLES = `
 .document-print-preview {
@@ -41,6 +42,28 @@ const PAGINATED_PRINT_PREVIEW_STYLES = `
 }
 .document-print-preview .paginated-print-preview__editor .rm-pagination-gap {
     background: #e5e7eb !important;
+}
+.document-print-preview__paginated-export {
+    position: fixed !important;
+    top: 0 !important;
+    left: -14000px !important;
+    width: var(--paper-width) !important;
+    height: auto !important;
+    overflow: visible !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+}
+.document-print-preview__paginated-export .paginated-print-preview,
+.document-print-preview__paginated-export .paginated-print-preview__shell,
+.document-print-preview__paginated-export .paginated-print-preview__frame {
+    width: var(--paper-width) !important;
+    margin: 0 !important;
+    transform: none !important;
+    transform-origin: top left !important;
+}
+.document-print-preview__paginated-export .paginated-print-preview__editor .ProseMirror,
+.document-print-preview__paginated-export .paginated-print-preview__editor .rm-with-pagination {
+    box-shadow: none !important;
 }
 @media print {
     .document-print-preview,
@@ -122,6 +145,8 @@ function PrintPreviewLoadingCanvas() {
 }
 
 type PaginatedPreviewState = 'loading' | 'ready' | 'failed';
+type PaginatedExportState = 'loading' | 'ready' | 'failed';
+type PrintPreviewExportSource = 'paginated-preview' | 'legacy-fallback';
 
 /**
  * Displays the read-only document print preview and keeps PDF export on the stable renderer.
@@ -138,11 +163,14 @@ export function DocumentPrintPreviewDialog({
     onClose,
 }: DocumentPrintPreviewDialogProps) {
     const previewCanvasRef = useRef<HTMLDivElement>(null);
+    const paginatedExportCanvasRef = useRef<HTMLDivElement>(null);
     const exportCanvasRef = useRef<HTMLDivElement>(null);
     const [savingPdf, setSavingPdf] = useState(false);
     const [zoom, setZoom] = useState(getPreviewZoom);
     const [paginatedPreviewState, setPaginatedPreviewState] =
         useState<PaginatedPreviewState>('loading');
+    const [paginatedExportState, setPaginatedExportState] =
+        useState<PaginatedExportState>('loading');
 
     useEffect(() => {
         document.body.classList.add('document-print-preview-active');
@@ -189,6 +217,7 @@ export function DocumentPrintPreviewDialog({
 
     useEffect(() => {
         setPaginatedPreviewState('loading');
+        setPaginatedExportState('loading');
     }, [content, documentId, layout, status, title]);
 
     useEffect(() => {
@@ -203,12 +232,32 @@ export function DocumentPrintPreviewDialog({
         return () => window.clearTimeout(timeoutId);
     }, [content, documentId, layout, paginatedPreviewState, status, title]);
 
+    useEffect(() => {
+        if (!USE_PAGINATED_PRINT_PREVIEW || paginatedExportState !== 'loading') return;
+
+        const timeoutId = window.setTimeout(() => {
+            setPaginatedExportState((currentState) => (
+                currentState === 'loading' ? 'failed' : currentState
+            ));
+        }, PAGINATED_EXPORT_READY_TIMEOUT_MS);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [content, documentId, layout, paginatedExportState, status, title]);
+
     const handlePaginatedPreviewReady = useCallback(() => {
         setPaginatedPreviewState('ready');
     }, []);
 
     const handlePaginatedPreviewFailure = useCallback(() => {
         setPaginatedPreviewState('failed');
+    }, []);
+
+    const handlePaginatedExportReady = useCallback(() => {
+        setPaginatedExportState('ready');
+    }, []);
+
+    const handlePaginatedExportFailure = useCallback(() => {
+        setPaginatedExportState('failed');
     }, []);
 
     async function handleSavePdf() {
@@ -233,7 +282,12 @@ export function DocumentPrintPreviewDialog({
     const previewPaperStyle = buildDocumentLayoutStyle(previewLayout);
     const shouldUsePaginatedPreview =
         USE_PAGINATED_PRINT_PREVIEW && paginatedPreviewState !== 'failed';
+    const shouldRenderPaginatedExport =
+        USE_PAGINATED_PRINT_PREVIEW && paginatedExportState !== 'failed';
+    const preparedPdfExportSource: PrintPreviewExportSource =
+        paginatedExportState === 'ready' ? 'paginated-preview' : 'legacy-fallback';
     const previewResetKey = `${documentId}:${title}:${status}`;
+    const exportResetKey = `${previewResetKey}:export`;
     const continuousPreviewCanvas = (
         <PagedDocumentCanvas
             canvasRef={previewCanvasRef}
@@ -264,6 +318,7 @@ export function DocumentPrintPreviewDialog({
             role="dialog"
             aria-modal="true"
             aria-labelledby="document-print-preview-title"
+            data-prepared-pdf-export-source={preparedPdfExportSource}
         >
             <style>{PAGINATED_PRINT_PREVIEW_STYLES}</style>
             <div className="document-print-preview__toolbar">
@@ -311,12 +366,37 @@ export function DocumentPrintPreviewDialog({
                             layout={previewLayout}
                             zoomScale={zoom}
                             pageGap={PAPER_PAGE_GAP_PX}
+                            renderMode="preview"
                             onReady={handlePaginatedPreviewReady}
                             onPreviewError={handlePaginatedPreviewFailure}
                         />
                     </PrintPreviewRendererBoundary>
                 ) : (
                     continuousPreviewCanvas
+                )}
+
+                {shouldRenderPaginatedExport && (
+                    <div className="document-print-preview__paginated-export" aria-hidden="true">
+                        <PrintPreviewRendererBoundary
+                            resetKey={exportResetKey}
+                            fallback={null}
+                            onError={handlePaginatedExportFailure}
+                        >
+                            <PaginatedPrintPreviewCanvas
+                                canvasRef={paginatedExportCanvasRef}
+                                documentId={`${documentId}-paginated-pdf-export`}
+                                title={title}
+                                status={status}
+                                content={content}
+                                layout={previewLayout}
+                                zoomScale={1}
+                                pageGap={PAPER_PAGE_GAP_PX}
+                                renderMode="export"
+                                onReady={handlePaginatedExportReady}
+                                onPreviewError={handlePaginatedExportFailure}
+                            />
+                        </PrintPreviewRendererBoundary>
+                    </div>
                 )}
 
                 {SAVE_PDF_USES_EXISTING_EXPORT_CANVAS && (
