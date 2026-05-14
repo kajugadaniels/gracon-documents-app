@@ -1832,17 +1832,6 @@ body {
 .paginated-print-preview__editor .rm-pagination-gap {
   box-sizing: border-box;
 }
-.paginated-print-preview__loading {
-  display: grid;
-  place-items: center;
-  width: var(--paper-width);
-  min-height: var(--paper-height);
-  background: #ffffff;
-  box-shadow: var(--paper-shadow);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-}
 .document-print-preview__export-fallback {
   position: fixed;
   top: 0;
