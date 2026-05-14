@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+    applySignatureBlockEvidenceToContent,
     buildSignatureBlockInserts,
     getSignatureBlockSignerOrder,
     getSignatureBlockSigners,
@@ -205,4 +206,45 @@ test('buildSignatureBlockInserts uses locked snapshot image for a single signer 
     assert.equal(blocks[0].signatureId, 'snapshot-signature');
     assert.equal(blocks[0].signedAt, '2026-05-11T01:00:00.000Z');
     assert.equal(blocks[0].signatureImageUrl, 'https://example.com/snapshot-signature.png');
+});
+
+test('applySignatureBlockEvidenceToContent merges signed evidence into preview content', () => {
+    const content = {
+        type: 'doc',
+        content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'Please sign' }] },
+            {
+                type: 'signatureBlock',
+                attrs: {
+                    blockId: 'signature-user-1',
+                    signerUserId: 'user-1',
+                    signerName: 'Jane Doe',
+                    signatureId: null,
+                    signedAt: null,
+                    signatureImageUrl: null,
+                },
+            },
+        ],
+    };
+    const merged = applySignatureBlockEvidenceToContent(content, [{
+        blockId: 'signature-user-1',
+        label: 'Jane Doe',
+        signerRole: 'Signer',
+        required: true,
+        signerUserId: 'user-1',
+        signerAccessId: 'request-1',
+        signerName: 'Jane Doe',
+        signerEmail: 'jane@example.com',
+        signatureId: 'sig-1',
+        signedAt: '2026-05-14T10:00:00.000Z',
+        signatureImageUrl: 'https://example.com/signature.png',
+    }]);
+    const signatureBlock = merged?.content?.[1] as {
+        attrs?: Record<string, unknown>;
+    };
+
+    assert.notEqual(merged, content);
+    assert.equal(signatureBlock.attrs?.signatureId, 'sig-1');
+    assert.equal(signatureBlock.attrs?.signedAt, '2026-05-14T10:00:00.000Z');
+    assert.equal(signatureBlock.attrs?.signatureImageUrl, 'https://example.com/signature.png');
 });
