@@ -8,6 +8,7 @@
  */
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { documentAuthCookiePolicy } from '@/lib/auth/session-cookie-policy';
 
 const AUTH_BASE =
     process.env.NEXT_PUBLIC_AUTH_API_URL ??
@@ -38,8 +39,10 @@ function getRefreshPath(mode: RefreshMode) {
  */
 export function getSessionCookies(request: NextRequest) {
     return {
-        accessToken: request.cookies.get('g360_at')?.value ?? null,
-        refreshToken: request.cookies.get('g360_rt')?.value ?? null,
+        accessToken:
+            request.cookies.get(documentAuthCookiePolicy.accessCookieName)?.value ?? null,
+        refreshToken:
+            request.cookies.get(documentAuthCookiePolicy.refreshCookieName)?.value ?? null,
     };
 }
 
@@ -90,8 +93,16 @@ export function refreshSession(
  * longer recoverable.
  */
 export function clearSessionCookies<T extends NextResponse>(response: T): T {
-    response.cookies.set('g360_at', '', { maxAge: 0, path: '/', sameSite: 'lax' });
-    response.cookies.set('g360_rt', '', { maxAge: 0, path: '/', sameSite: 'lax' });
+    response.cookies.set(documentAuthCookiePolicy.accessCookieName, '', {
+        maxAge: 0,
+        path: '/',
+        sameSite: 'lax',
+    });
+    response.cookies.set(documentAuthCookiePolicy.refreshCookieName, '', {
+        maxAge: 0,
+        path: '/',
+        sameSite: 'lax',
+    });
     return response;
 }
 
@@ -102,12 +113,12 @@ export function applySessionCookies<T extends NextResponse>(
     response: T,
     tokens: RefreshedTokens,
 ): T {
-    response.cookies.set('g360_at', tokens.accessToken, {
+    response.cookies.set(documentAuthCookiePolicy.accessCookieName, tokens.accessToken, {
         maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
         path: '/',
         sameSite: 'lax',
     });
-    response.cookies.set('g360_rt', tokens.refreshToken, {
+    response.cookies.set(documentAuthCookiePolicy.refreshCookieName, tokens.refreshToken, {
         maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
         path: '/',
         sameSite: 'lax',
