@@ -2960,7 +2960,7 @@ body {
 
 /* ── Page layout ── */
 .ded-page {
-  margin: -20px calc(-1 * clamp(18px, 3.4vw, 38px)) 0;
+  margin: -20px calc(-1 * clamp(18px, 3.4vw, 38px)) -42px;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
