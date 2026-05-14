@@ -14,6 +14,46 @@ import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension
 const USE_PAGINATED_PRINT_PREVIEW = true;
 const SAVE_PDF_USES_EXISTING_EXPORT_CANVAS = true;
 const PAGINATED_PREVIEW_READY_TIMEOUT_MS = 8000;
+const TIPTAP_VIEW_NOT_MOUNTED_ERROR = 'The editor view is not available';
+const PAGINATED_PRINT_PREVIEW_STYLES = `
+.document-print-preview {
+    background:
+        radial-gradient(circle at 22% 18%, rgba(93, 58, 222, 0.24), transparent 32%),
+        linear-gradient(135deg, #120d23 0%, #171224 46%, #0e1119 100%) !important;
+}
+.document-print-preview__body {
+    background:
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+        rgba(10, 10, 18, 0.42) !important;
+    background-size: 48px 48px, 48px 48px, auto !important;
+}
+.document-print-preview .paginated-print-preview__editor .ProseMirror,
+.document-print-preview .paginated-print-preview__editor .rm-with-pagination {
+    background: #ffffff !important;
+    color: var(--color-text-primary) !important;
+    box-shadow: var(--paper-shadow) !important;
+}
+.document-print-preview .paginated-print-preview__editor .rm-pages-wrapper,
+.document-print-preview .paginated-print-preview__editor .rm-page-break,
+.document-print-preview .paginated-print-preview__editor .page {
+    background: #ffffff !important;
+}
+.document-print-preview .paginated-print-preview__editor .rm-pagination-gap {
+    background: #e5e7eb !important;
+}
+@media print {
+    .document-print-preview,
+    .document-print-preview__body,
+    .document-print-preview .paginated-print-preview__editor .rm-pagination-gap {
+        background: #ffffff !important;
+    }
+    .document-print-preview .paginated-print-preview__editor .ProseMirror,
+    .document-print-preview .paginated-print-preview__editor .rm-with-pagination {
+        box-shadow: none !important;
+    }
+}
+`;
 
 const PaginatedPrintPreviewCanvas = dynamic(
     () => import('./PaginatedPrintPreviewCanvas').then((module) => module.PaginatedPrintPreviewCanvas),
@@ -103,6 +143,27 @@ export function DocumentPrintPreviewDialog({
     }, []);
 
     useEffect(() => {
+        const handleTiptapMountTimingError = (event: ErrorEvent) => {
+            if (!event.message.includes(TIPTAP_VIEW_NOT_MOUNTED_ERROR)) return;
+            event.preventDefault();
+        };
+        const handleUnhandledTiptapMountTimingError = (event: PromiseRejectionEvent) => {
+            const reason = event.reason;
+            const message = reason instanceof Error ? reason.message : String(reason ?? '');
+            if (!message.includes(TIPTAP_VIEW_NOT_MOUNTED_ERROR)) return;
+            event.preventDefault();
+        };
+
+        window.addEventListener('error', handleTiptapMountTimingError);
+        window.addEventListener('unhandledrejection', handleUnhandledTiptapMountTimingError);
+
+        return () => {
+            window.removeEventListener('error', handleTiptapMountTimingError);
+            window.removeEventListener('unhandledrejection', handleUnhandledTiptapMountTimingError);
+        };
+    }, []);
+
+    useEffect(() => {
         setPaginatedPreviewState('loading');
     }, [content, documentId, layout, status, title]);
 
@@ -178,6 +239,7 @@ export function DocumentPrintPreviewDialog({
             aria-modal="true"
             aria-labelledby="document-print-preview-title"
         >
+            <style>{PAGINATED_PRINT_PREVIEW_STYLES}</style>
             <div className="document-print-preview__toolbar">
                 <div>
                     <p className="document-print-preview__eyebrow">Print preview</p>
