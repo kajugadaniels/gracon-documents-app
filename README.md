@@ -68,6 +68,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Signing actions reuse one readiness state across the header, progress panel, and modal return flow
 - Signing progress belongs in the document body's right-side rail so the top ruler, left ruler, paper canvas, and export geometry are never shifted by workflow UI; the rail is fixed to the visible canvas area and must not move when document content scrolls
 - After a signer completes signing, the editor is made read-only immediately in memory without a page reload
+- Signed, finalised, and locked editor immutability is centralized in `src/lib/document-readonly.ts` with regression coverage so future editor changes cannot accidentally re-enable editing
 - Owner lock is a confirmed action, not an accidental one-click mutation
 - Signed and locked documents render signing evidence in editor and print preview, with QR verification centered at the bottom of the signed page surface
 - Print preview currently isolates paginated rendering from live editing; the long-term production plan is Gracon-owned pagination rather than live-editor ownership by `tiptap-pagination-plus`
@@ -201,3 +202,4 @@ Editor image storage variables belong in `api/documents`, not this frontend app.
 - Keep editor changes isolated from auth behavior unless the flow truly crosses apps
 - Keep `components/editor` and `components/documents` for `.tsx` UI components; put editor/document `.ts` hooks, extensions, sync helpers, and pure state helpers under `src/store/editor` or `src/store/documents`
 - Test invitation, share, signing, and public verify flows after document-domain changes
+- Keep signed/locked read-only tests current whenever document statuses, permissions, or editor view modes change
