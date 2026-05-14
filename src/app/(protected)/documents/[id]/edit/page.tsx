@@ -1104,7 +1104,24 @@ export default function EditDocumentPage() {
                     document={doc}
                     onClose={() => setShowSigning(false)}
                     onSigned={async (updated) => {
+                        const signedCurrentRequest = updated.signatureRequests?.find(
+                            request => request.requestedUserId === user?.userId,
+                        );
+
+                        editor?.setEditable(false, false);
                         setDoc(prev => prev ? { ...prev, ...updated } : prev);
+                        setSigningReadiness((current) => (
+                            current
+                                ? {
+                                    ...current,
+                                    status: 'already_signed',
+                                    canSign: false,
+                                    message: 'Your signature is recorded. This document is now read-only for you.',
+                                    signedAt: signedCurrentRequest?.signedAt ?? current.signedAt,
+                                }
+                                : current
+                        ));
+                        setSigningReadinessLoading(false);
                         setShowSigning(false);
 
                         try {
