@@ -41,6 +41,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Direct browser calls to `api/documents` for document operations
 - Next.js proxy routes for auth refresh/current user and signature operations
 - Server-side single-flight session refresh/upgrade helpers for auth and signature proxy routes
+- Cross-app auth is moving to the shared Gracon session-cookie contract owned by `app/app` and the auth service. `app/documents` should validate server-side cookies through local route handlers and must not depend on JavaScript-readable refresh tokens in production.
 - Zustand hydration from sessionStorage plus cookie-backed recovery
 - A4-style editor work, autosave, versions, and signing states
 - White default workspace background for documents, templates, and protected loading surfaces; the editor canvas owns its own neutral gray paper workspace
@@ -177,9 +178,18 @@ NEXT_PUBLIC_DOCS_URL=http://localhost:4002
 NEXT_PUBLIC_APP_URL=http://localhost:4000
 NEXT_PUBLIC_DOCUMENTS_API_URL=http://localhost:3005/api/v1
 NEXT_PUBLIC_SIGNATURE_API_URL=http://localhost:3002/api/v1
+NEXT_PUBLIC_AUTH_COOKIE_DOMAIN=
+NEXT_PUBLIC_AUTH_COOKIE_SECURE=false
+NEXT_PUBLIC_AUTH_COOKIE_SAME_SITE=lax
+NEXT_PUBLIC_AUTH_ACCESS_TOKEN_TTL=15m
+NEXT_PUBLIC_AUTH_REFRESH_TOKEN_TTL=1d
 ```
 
 Editor image storage variables belong in `api/documents`, not this frontend app. Do not expose storage credentials with `NEXT_PUBLIC_`.
+For production, the auth cookie domain should be the parent domain, for example
+`.gracon360.com`, so `app.gracon360.com` login can be reused by
+`documents.gracon360.com`. Real session credentials should be `HttpOnly` and
+validated server-side; `session_active` is only a non-sensitive hint.
 
 ## Integration Boundaries
 
@@ -191,6 +201,7 @@ Editor image storage variables belong in `api/documents`, not this frontend app.
 ## Important Rules
 
 - Use hard navigation when jumping to `app/app`
+- Do not add new production code that requires reading refresh tokens from `document.cookie`. Shared auth must be validated through server-side route handlers.
 - Keep document permissions and signing state separate in the UI
 - Reflect the backend workflow correctly: finalise, sign, then owner lock
 - Keep page layout data consistent across editor rendering and export
