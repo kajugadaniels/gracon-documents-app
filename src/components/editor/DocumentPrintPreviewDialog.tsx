@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+// Owns the modal print-preview shell while keeping experimental pagination isolated.
+import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
@@ -12,6 +13,7 @@ import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension
 
 const USE_PAGINATED_PRINT_PREVIEW = true;
 const SAVE_PDF_USES_EXISTING_EXPORT_CANVAS = true;
+const PAGINATED_PREVIEW_READY_TIMEOUT_MS = 8000;
 
 const PaginatedPrintPreviewCanvas = dynamic(
     () => import('./PaginatedPrintPreviewCanvas').then((module) => module.PaginatedPrintPreviewCanvas),
@@ -40,6 +42,9 @@ function getPreviewZoom() {
     return 0.72;
 }
 
+/**
+ * Renders the lightweight placeholder used while the optional paginated renderer loads.
+ */
 function PrintPreviewLoadingCanvas() {
     return (
         <div className="ded-canvas paginated-print-preview">
@@ -52,6 +57,11 @@ function PrintPreviewLoadingCanvas() {
     );
 }
 
+type PaginatedPreviewState = 'loading' | 'ready' | 'failed';
+
+/**
+ * Displays the read-only document print preview and keeps PDF export on the stable renderer.
+ */
 export function DocumentPrintPreviewDialog({
     documentId,
     title,
@@ -67,7 +77,8 @@ export function DocumentPrintPreviewDialog({
     const exportCanvasRef = useRef<HTMLDivElement>(null);
     const [savingPdf, setSavingPdf] = useState(false);
     const [zoom, setZoom] = useState(getPreviewZoom);
-    const [paginatedPreviewFailed, setPaginatedPreviewFailed] = useState(false);
+    const [paginatedPreviewState, setPaginatedPreviewState] =
+        useState<PaginatedPreviewState>('loading');
 
     useEffect(() => {
         document.body.classList.add('document-print-preview-active');
@@ -91,6 +102,30 @@ export function DocumentPrintPreviewDialog({
         };
     }, []);
 
+    useEffect(() => {
+        setPaginatedPreviewState('loading');
+    }, [content, documentId, layout, status, title]);
+
+    useEffect(() => {
+        if (!USE_PAGINATED_PRINT_PREVIEW || paginatedPreviewState !== 'loading') return;
+
+        const timeoutId = window.setTimeout(() => {
+            setPaginatedPreviewState((currentState) => (
+                currentState === 'loading' ? 'failed' : currentState
+            ));
+        }, PAGINATED_PREVIEW_READY_TIMEOUT_MS);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [content, documentId, layout, paginatedPreviewState, status, title]);
+
+    const handlePaginatedPreviewReady = useCallback(() => {
+        setPaginatedPreviewState('ready');
+    }, []);
+
+    const handlePaginatedPreviewFailure = useCallback(() => {
+        setPaginatedPreviewState('failed');
+    }, []);
+
     async function handleSavePdf() {
         const exportHost = SAVE_PDF_USES_EXISTING_EXPORT_CANVAS
             ? exportCanvasRef.current
@@ -109,7 +144,8 @@ export function DocumentPrintPreviewDialog({
     }
 
     const emptyAnchors: CommentAnchorInput[] = [];
-    const shouldUsePaginatedPreview = USE_PAGINATED_PRINT_PREVIEW && !paginatedPreviewFailed;
+    const shouldUsePaginatedPreview =
+        USE_PAGINATED_PRINT_PREVIEW && paginatedPreviewState !== 'failed';
     const previewResetKey = `${documentId}:${title}:${status}`;
     const continuousPreviewCanvas = (
         <PagedDocumentCanvas
@@ -176,7 +212,7 @@ export function DocumentPrintPreviewDialog({
                     <PrintPreviewRendererBoundary
                         resetKey={previewResetKey}
                         fallback={continuousPreviewCanvas}
-                        onError={() => setPaginatedPreviewFailed(true)}
+                        onError={handlePaginatedPreviewFailure}
                     >
                         <PaginatedPrintPreviewCanvas
                             canvasRef={previewCanvasRef}
@@ -187,6 +223,8 @@ export function DocumentPrintPreviewDialog({
                             layout={layout}
                             zoomScale={zoom}
                             pageGap={PAPER_PAGE_GAP_PX}
+                            onReady={handlePaginatedPreviewReady}
+                            onPreviewError={handlePaginatedPreviewFailure}
                         />
                     </PrintPreviewRendererBoundary>
                 ) : (
