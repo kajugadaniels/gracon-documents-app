@@ -1,5 +1,6 @@
 'use client';
 
+// Keeps optional print-preview renderers from taking down the whole dialog.
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface PrintPreviewRendererBoundaryProps {
@@ -13,6 +14,9 @@ interface PrintPreviewRendererBoundaryState {
     hasError: boolean;
 }
 
+/**
+ * Catches render-time failures from optional preview renderers and shows a stable fallback.
+ */
 export class PrintPreviewRendererBoundary extends Component<
     PrintPreviewRendererBoundaryProps,
     PrintPreviewRendererBoundaryState
