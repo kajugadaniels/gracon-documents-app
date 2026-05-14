@@ -98,7 +98,7 @@ function createPaginatedExportClone(sourceRootEl: HTMLElement) {
     };
 }
 
-function getCaptureTarget(rootEl: HTMLElement) {
+function getPaginationMeasurementTarget(rootEl: HTMLElement) {
     const editorEl = rootEl.querySelector('.rm-with-pagination');
     if (editorEl instanceof HTMLElement) return editorEl;
 
@@ -106,6 +106,13 @@ function getCaptureTarget(rootEl: HTMLElement) {
     if (prosemirrorEl instanceof HTMLElement) return prosemirrorEl;
 
     throw new Error('Could not find the paginated preview content to export.');
+}
+
+function getCaptureTarget(rootEl: HTMLElement) {
+    const frameEl = rootEl.querySelector('.paginated-print-preview__frame');
+    if (frameEl instanceof HTMLElement) return frameEl;
+
+    return getPaginationMeasurementTarget(rootEl);
 }
 
 function getVisiblePageGaps(targetEl: HTMLElement) {
@@ -211,18 +218,19 @@ export async function savePaginatedPreviewAsPdf(sourceEl: HTMLElement, title: st
 
     try {
         await waitForRenderableAssets(exportClone.rootEl);
-        const targetEl = getCaptureTarget(exportClone.rootEl);
-        const pageStartOffsets = getPageStartOffsets(targetEl);
+        const measurementTargetEl = getPaginationMeasurementTarget(exportClone.rootEl);
+        const captureTargetEl = getCaptureTarget(exportClone.rootEl);
+        const pageStartOffsets = getPageStartOffsets(measurementTargetEl);
 
         if (pageStartOffsets.length === 0) {
             throw new Error('The paginated preview did not render any exportable pages.');
         }
 
-        const snapshotCanvas = await renderPaginatedPreviewSnapshot(targetEl);
+        const snapshotCanvas = await renderPaginatedPreviewSnapshot(captureTargetEl);
         const pages = slicePaginatedSnapshotIntoPages(
             snapshotCanvas,
             pageStartOffsets,
-            Math.max(targetEl.scrollHeight, A4_PAPER_HEIGHT_PX),
+            Math.max(captureTargetEl.scrollHeight, A4_PAPER_HEIGHT_PX),
         );
 
         await saveCanvasPagesAsPdf(pages, title);
