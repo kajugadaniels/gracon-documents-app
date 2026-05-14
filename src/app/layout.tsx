@@ -11,7 +11,10 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-    title: 'Gracon 360 — Documents',
+    title: {
+        default: 'Documents | Gracon 360',
+        template: '%s | Gracon 360',
+    },
     description: 'Create, edit, sign, and manage your official documents.',
 };
 
