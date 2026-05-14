@@ -12,6 +12,10 @@ import {
     A4_PAPER_WIDTH_PX,
 } from '@/constants/document-paper';
 import { saveCanvasPagesAsPdf } from './export-document';
+import {
+    createPaginatedPageStartOffsets,
+    getPaginatedSnapshotPageHeightPixels,
+} from './export-paginated-preview-geometry';
 
 const PAGINATED_EXPORT_ROOT_SELECTOR = '[data-paginated-print-export-root="true"]';
 const EXECUTABLE_EXPORT_SELECTOR = [
@@ -115,17 +119,14 @@ function getVisiblePageGaps(targetEl: HTMLElement) {
 
 function getPageStartOffsets(targetEl: HTMLElement) {
     const visibleGaps = getVisiblePageGaps(targetEl);
-    const starts = [
-        0,
-        ...visibleGaps.map((gapEl) => (
+    const gapEndOffsets = visibleGaps.map((gapEl) => (
             Math.round(gapEl.offsetTop + gapEl.offsetHeight)
-        )),
-    ];
-    const maxScrollableTop = Math.max(targetEl.scrollHeight - A4_PAPER_HEIGHT_PX, 0);
+        ));
 
-    return starts
-        .map((start) => Math.min(Math.max(start, 0), maxScrollableTop))
-        .filter((start, index, source) => index === 0 || start > source[index - 1]);
+    return createPaginatedPageStartOffsets({
+        scrollHeight: targetEl.scrollHeight,
+        gapEndOffsets,
+    });
 }
 
 async function renderPaginatedPreviewSnapshot(targetEl: HTMLElement) {
@@ -168,7 +169,10 @@ function slicePaginatedSnapshotIntoPages(
     cssSnapshotHeight: number,
 ) {
     const pixelsPerCssPixel = snapshotCanvas.height / cssSnapshotHeight;
-    const pageHeightPixels = Math.max(Math.round(A4_PAPER_HEIGHT_PX * pixelsPerCssPixel), 1);
+    const pageHeightPixels = getPaginatedSnapshotPageHeightPixels({
+        snapshotHeight: snapshotCanvas.height,
+        cssSnapshotHeight,
+    });
 
     return pageStartOffsets.map((pageStartOffset) => {
         const pageCanvas = document.createElement('canvas');
