@@ -1087,6 +1087,7 @@ export default function EditDocumentPage() {
                 />
                 <DocumentSigningProgressPanel
                     document={doc}
+                    anchorRef={canvasRef}
                     currentUserId={user?.userId ?? null}
                     canManageAccess={canManageAccess}
                     onOpenSigning={() => { void handleSignDocument(); }}
