@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { toast } from '@/components/ui';
 import { signDocumentInOneStep, type DocumentDetail } from '@/api/documents.api';
+import { DocumentLoadingState } from '@/components/editor/DocumentLoadingState';
 
 interface SigningModalProps {
     document: DocumentDetail;
@@ -98,7 +99,7 @@ export function SigningModal({ document: doc, onClose, onSigned }: SigningModalP
 
                 {step === 'signing' && (
                     <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                        <div style={{ width: 56, height: 56, borderRadius: '50%', border: '4px solid rgba(91,35,255,0.2)', borderTopColor: 'var(--color-primary)', animation: 'btn-spin 0.7s linear infinite', margin: '0 auto 20px' }} />
+                        <DocumentLoadingState variant="panel" size={56} minHeight="76px" />
                         <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 6px' }}>Signing in progress…</p>
                         <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>Your private key is being used to sign the document hash. Do not close this window.</p>
                     </div>
