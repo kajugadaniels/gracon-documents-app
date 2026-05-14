@@ -6,6 +6,7 @@
  */
 'use client';
 
+import type { CSSProperties, RefObject } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import {
     resendDocumentInvitation,
@@ -28,6 +29,7 @@ import styles from './DocumentSigningProgressPanel.module.css';
 
 interface DocumentSigningProgressPanelProps {
     document: DocumentDetail;
+    anchorRef?: RefObject<HTMLDivElement | null>;
     currentUserId: string | null;
     canManageAccess: boolean;
     onOpenSigning: () => void;
@@ -83,6 +85,7 @@ function getSignerProfile(
 /** Renders signing progress and reminder actions for access managers. */
 export function DocumentSigningProgressPanel({
     document,
+    anchorRef,
     currentUserId,
     canManageAccess,
     onOpenSigning,
@@ -91,6 +94,7 @@ export function DocumentSigningProgressPanel({
 }: DocumentSigningProgressPanelProps) {
     const [busyId, setBusyId] = useState<string | null>(null);
     const [now, setNow] = useState(() => Date.now());
+    const [railStyle, setRailStyle] = useState<CSSProperties>({});
     const [reminderCooldowns, setReminderCooldowns] = useState<Record<string, string>>({});
     const collaboratorByUserId = useMemo(
         () => new Map(document.collaborators.map((access) => [access.userId, access])),
@@ -126,6 +130,53 @@ export function DocumentSigningProgressPanel({
 
         return () => window.clearInterval(intervalId);
     }, [reminderCooldowns]);
+
+    useEffect(() => {
+        if (!anchorRef) {
+            return;
+        }
+
+        let frameId = 0;
+
+        const updateRailPosition = () => {
+            window.cancelAnimationFrame(frameId);
+            frameId = window.requestAnimationFrame(() => {
+                if (window.matchMedia('(max-width: 1500px)').matches) {
+                    setRailStyle({});
+                    return;
+                }
+
+                const canvas = anchorRef.current;
+                const frame = canvas?.querySelector<HTMLElement>('[data-document-export-root="true"]');
+
+                if (!frame) {
+                    setRailStyle({});
+                    return;
+                }
+
+                const top = Math.max(16, Math.round(frame.getBoundingClientRect().top));
+
+                setRailStyle({
+                    top,
+                    maxHeight: `calc(100dvh - ${top + 24}px)`,
+                });
+            });
+        };
+
+        updateRailPosition();
+
+        const canvas = anchorRef.current;
+        window.addEventListener('resize', updateRailPosition);
+        window.addEventListener('scroll', updateRailPosition, { passive: true });
+        canvas?.addEventListener('scroll', updateRailPosition, { passive: true });
+
+        return () => {
+            window.cancelAnimationFrame(frameId);
+            window.removeEventListener('resize', updateRailPosition);
+            window.removeEventListener('scroll', updateRailPosition);
+            canvas?.removeEventListener('scroll', updateRailPosition);
+        };
+    }, [anchorRef]);
 
     if (
         !canManageAccess ||
@@ -205,7 +256,7 @@ export function DocumentSigningProgressPanel({
     }
 
     return (
-        <aside className={styles.rail} aria-label="Document signing progress rail">
+        <aside className={styles.rail} style={railStyle} aria-label="Document signing progress rail">
             <section className={styles.panel} aria-label="Document signing progress">
                 <div className={styles.summary}>
                     <div>
