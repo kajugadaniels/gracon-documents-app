@@ -148,7 +148,7 @@ app/documents/
 
 ## Recent Production Notes
 
-- The default app workspace background is intentionally white. Do not reintroduce the old purple radial/grid page background on documents, templates, or protected loading screens.
+- The default app workspace background is intentionally a soft off-white to reduce glare. Do not reintroduce the old purple radial/grid page background on documents, templates, login, or protected loading screens. Actual document paper and export/print surfaces should remain white for fidelity.
 - Keep route titles explicit. Documents list should be `Documents | Gracon 360`, templates should be `Templates | Gracon 360`, and the editor should use the loaded document title.
 - Prefer `DocumentLoadingState` for editor/document loading surfaces instead of creating new ad hoc spinners. Give each usage clear context-specific `message` and `detail` text.
 - Keep risky renderers behind surface-level error boundaries. The live editor and print preview must recover independently and should remount only the failed surface.
