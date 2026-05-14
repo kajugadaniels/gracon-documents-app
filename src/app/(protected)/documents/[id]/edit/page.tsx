@@ -20,6 +20,7 @@ import { DocumentRulerOverlay, DocumentPageRulerSidebar } from '@/components/edi
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
+import { DocumentLoadingState } from '@/components/editor/DocumentLoadingState';
 import { SignatureBlockPreparationDialog } from '@/components/editor/SignatureBlockPreparationDialog';
 import { PagedDocumentCanvas } from '@/components/editor/PagedDocumentCanvas';
 import { mergeDocumentShareState } from '@/store/editor/document-share-state';
@@ -754,11 +755,7 @@ export default function EditDocumentPage() {
 
     // ── Loading state ────────────────────────────────────────────────────────
     if (loading) {
-        return (
-            <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid rgba(91,35,255,0.2)', borderTopColor: 'var(--color-primary)', animation: 'btn-spin 0.7s linear infinite' }} />
-            </div>
-        );
+        return <DocumentLoadingState variant="panel" />;
     }
 
     if (!doc) {
