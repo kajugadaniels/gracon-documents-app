@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui';
 import { listTemplates, createDocument, type Template } from '@/api/documents.api';
+import { useDocumentTitle } from '@/lib/hooks/useDocumentTitle';
 
 const CATEGORY_LABELS: Record<string, string> = {
     CONTRACT: 'Contracts',
@@ -15,6 +16,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function TemplatesPage() {
+    useDocumentTitle('Templates');
+
     const router = useRouter();
     const [templates, setTemplates] = useState<Template[]>([]);
     const [loading, setLoading] = useState(true);
