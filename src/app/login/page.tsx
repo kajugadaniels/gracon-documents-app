@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { LoginForm } from '@/components/pages/auth/login';
 
 export const metadata: Metadata = {
-    title: 'Sign In — Gracon 360 Documents',
+    title: 'Sign In',
     description: 'Sign in to access your documents workspace.',
 };
 
