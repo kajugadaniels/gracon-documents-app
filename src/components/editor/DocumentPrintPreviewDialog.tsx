@@ -2,7 +2,7 @@
 
 // Owns the modal print-preview shell while keeping experimental pagination isolated.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import dynamic from 'next/dynamic';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 import { savePaginatedPreviewAsPdf } from '@/lib/export-paginated-preview';
@@ -19,6 +19,7 @@ const SAVE_PDF_USES_EXISTING_EXPORT_CANVAS = true;
 const PAGINATED_PREVIEW_READY_TIMEOUT_MS = 8000;
 const PAGINATED_EXPORT_READY_TIMEOUT_MS = 8000;
 const TIPTAP_VIEW_NOT_MOUNTED_ERROR = 'The editor view is not available';
+const PAGINATED_EXPORT_HOST_SELECTOR = '[data-paginated-export-host="true"]';
 const PAGINATED_PRINT_PREVIEW_STYLES = `
 .document-print-preview {
     background:
@@ -150,6 +151,36 @@ type PaginatedPreviewState = 'loading' | 'ready' | 'failed';
 type PaginatedExportState = 'loading' | 'ready' | 'failed';
 type PrintPreviewExportSource = 'paginated-preview' | 'legacy-fallback';
 
+function removeDetachedPaginatedExportHosts() {
+    document
+        .querySelectorAll(PAGINATED_EXPORT_HOST_SELECTOR)
+        .forEach((element) => element.remove());
+}
+
+function auditPrintPreviewCleanup() {
+    if (process.env.NODE_ENV === 'production') return;
+
+    const leakedExportHosts = document.querySelectorAll(PAGINATED_EXPORT_HOST_SELECTOR).length;
+    const leakedHiddenEditors = document.querySelectorAll(
+        '.document-print-preview__paginated-export [data-paginated-print-export-root="true"]',
+    ).length;
+
+    if (leakedExportHosts > 0 || leakedHiddenEditors > 0) {
+        console.warn('Print preview cleanup audit found stale hidden preview DOM.', {
+            leakedExportHosts,
+            leakedHiddenEditors,
+        });
+    }
+}
+
+function clearPreviewElementRefs(
+    ...refs: Array<RefObject<HTMLDivElement | null>>
+) {
+    refs.forEach((ref) => {
+        ref.current = null;
+    });
+}
+
 /**
  * Displays the read-only document print preview and keeps PDF export on the stable renderer.
  */
@@ -168,6 +199,9 @@ export function DocumentPrintPreviewDialog({
     const previewCanvasRef = useRef<HTMLDivElement>(null);
     const paginatedExportCanvasRef = useRef<HTMLDivElement>(null);
     const exportCanvasRef = useRef<HTMLDivElement>(null);
+    const isMountedRef = useRef(false);
+    const previewReadyTimeoutRef = useRef<number | null>(null);
+    const exportReadyTimeoutRef = useRef<number | null>(null);
     const [savingPdf, setSavingPdf] = useState(false);
     const [zoom, setZoom] = useState(getPreviewZoom);
     const [paginatedPreviewState, setPaginatedPreviewState] =
@@ -176,6 +210,7 @@ export function DocumentPrintPreviewDialog({
         useState<PaginatedExportState>('loading');
 
     useEffect(() => {
+        isMountedRef.current = true;
         document.body.classList.add('document-print-preview-active');
         let resizeFrame: number | null = null;
         const onResize = () => {
@@ -189,11 +224,23 @@ export function DocumentPrintPreviewDialog({
         };
         window.addEventListener('resize', onResize);
         return () => {
+            isMountedRef.current = false;
             document.body.classList.remove('document-print-preview-active');
             window.removeEventListener('resize', onResize);
             if (resizeFrame !== null) {
                 window.cancelAnimationFrame(resizeFrame);
             }
+            if (previewReadyTimeoutRef.current !== null) {
+                window.clearTimeout(previewReadyTimeoutRef.current);
+                previewReadyTimeoutRef.current = null;
+            }
+            if (exportReadyTimeoutRef.current !== null) {
+                window.clearTimeout(exportReadyTimeoutRef.current);
+                exportReadyTimeoutRef.current = null;
+            }
+            removeDetachedPaginatedExportHosts();
+            clearPreviewElementRefs(previewCanvasRef, paginatedExportCanvasRef, exportCanvasRef);
+            auditPrintPreviewCleanup();
         };
     }, []);
 
@@ -226,40 +273,64 @@ export function DocumentPrintPreviewDialog({
     useEffect(() => {
         if (!USE_PAGINATED_PRINT_PREVIEW || paginatedPreviewState !== 'loading') return;
 
-        const timeoutId = window.setTimeout(() => {
+        if (previewReadyTimeoutRef.current !== null) {
+            window.clearTimeout(previewReadyTimeoutRef.current);
+        }
+        previewReadyTimeoutRef.current = window.setTimeout(() => {
+            previewReadyTimeoutRef.current = null;
+            if (!isMountedRef.current) return;
             setPaginatedPreviewState((currentState) => (
                 currentState === 'loading' ? 'failed' : currentState
             ));
         }, PAGINATED_PREVIEW_READY_TIMEOUT_MS);
 
-        return () => window.clearTimeout(timeoutId);
+        return () => {
+            if (previewReadyTimeoutRef.current !== null) {
+                window.clearTimeout(previewReadyTimeoutRef.current);
+                previewReadyTimeoutRef.current = null;
+            }
+        };
     }, [content, documentId, layout, paginatedPreviewState, status, title]);
 
     useEffect(() => {
         if (!USE_PAGINATED_PRINT_PREVIEW || paginatedExportState !== 'loading') return;
 
-        const timeoutId = window.setTimeout(() => {
+        if (exportReadyTimeoutRef.current !== null) {
+            window.clearTimeout(exportReadyTimeoutRef.current);
+        }
+        exportReadyTimeoutRef.current = window.setTimeout(() => {
+            exportReadyTimeoutRef.current = null;
+            if (!isMountedRef.current) return;
             setPaginatedExportState((currentState) => (
                 currentState === 'loading' ? 'failed' : currentState
             ));
         }, PAGINATED_EXPORT_READY_TIMEOUT_MS);
 
-        return () => window.clearTimeout(timeoutId);
+        return () => {
+            if (exportReadyTimeoutRef.current !== null) {
+                window.clearTimeout(exportReadyTimeoutRef.current);
+                exportReadyTimeoutRef.current = null;
+            }
+        };
     }, [content, documentId, layout, paginatedExportState, status, title]);
 
     const handlePaginatedPreviewReady = useCallback(() => {
+        if (!isMountedRef.current) return;
         setPaginatedPreviewState('ready');
     }, []);
 
     const handlePaginatedPreviewFailure = useCallback(() => {
+        if (!isMountedRef.current) return;
         setPaginatedPreviewState('failed');
     }, []);
 
     const handlePaginatedExportReady = useCallback(() => {
+        if (!isMountedRef.current) return;
         setPaginatedExportState('ready');
     }, []);
 
     const handlePaginatedExportFailure = useCallback(() => {
+        if (!isMountedRef.current) return;
         setPaginatedExportState('failed');
     }, []);
 
@@ -274,7 +345,9 @@ export function DocumentPrintPreviewDialog({
                     return;
                 } catch (error) {
                     console.warn('Paginated PDF export failed; using legacy export fallback.', error);
-                    setPaginatedExportState('failed');
+                    if (isMountedRef.current) {
+                        setPaginatedExportState('failed');
+                    }
                 }
             }
 
@@ -288,7 +361,11 @@ export function DocumentPrintPreviewDialog({
 
             await saveRenderedDocumentAs('pdf', title, exportRoot);
         } finally {
-            setSavingPdf(false);
+            removeDetachedPaginatedExportHosts();
+            auditPrintPreviewCleanup();
+            if (isMountedRef.current) {
+                setSavingPdf(false);
+            }
         }
     }
 
