@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
-import type { DocumentLayout } from '@/lib/document-layout';
+import { DEFAULT_DOCUMENT_LAYOUT, type DocumentLayout } from '@/lib/document-layout';
 import { buildDocumentLayoutStyle } from '@/lib/document-layout';
 import { PagedDocumentCanvas } from './PagedDocumentCanvas';
 import { PrintPreviewRendererBoundary } from './PrintPreviewRendererBoundary';
@@ -80,6 +80,30 @@ function getPreviewZoom() {
     if (window.innerWidth < 720) return 0.46;
     if (window.innerWidth < 1100) return 0.58;
     return 0.72;
+}
+
+function usesDefaultHeaderFooterChrome(layout: DocumentLayout) {
+    const defaults = DEFAULT_DOCUMENT_LAYOUT.headerFooter;
+
+    return layout.headerFooter.headerEnabled === defaults.headerEnabled &&
+        layout.headerFooter.footerEnabled === defaults.footerEnabled &&
+        layout.headerFooter.pageNumbersEnabled === defaults.pageNumbersEnabled &&
+        layout.headerFooter.headerText.trim() === defaults.headerText &&
+        layout.headerFooter.footerText.trim() === defaults.footerText;
+}
+
+function getPreviewLayout(layout: DocumentLayout): DocumentLayout {
+    if (!usesDefaultHeaderFooterChrome(layout)) return layout;
+
+    return {
+        ...layout,
+        headerFooter: {
+            ...layout.headerFooter,
+            headerEnabled: false,
+            footerEnabled: false,
+            pageNumbersEnabled: false,
+        },
+    };
 }
 
 /**
@@ -205,6 +229,8 @@ export function DocumentPrintPreviewDialog({
     }
 
     const emptyAnchors: CommentAnchorInput[] = [];
+    const previewLayout = getPreviewLayout(layout);
+    const previewPaperStyle = buildDocumentLayoutStyle(previewLayout);
     const shouldUsePaginatedPreview =
         USE_PAGINATED_PRINT_PREVIEW && paginatedPreviewState !== 'failed';
     const previewResetKey = `${documentId}:${title}:${status}`;
@@ -222,8 +248,8 @@ export function DocumentPrintPreviewDialog({
             contentHeight={contentHeight}
             printLayout
             showFormattingMarks={false}
-            paperStyle={buildDocumentLayoutStyle(layout)}
-            headerFooter={layout.headerFooter}
+            paperStyle={previewPaperStyle}
+            headerFooter={previewLayout.headerFooter}
             showRepeatedPageChrome
             pageGap={PAPER_PAGE_GAP_PX}
             overlayContent={null}
@@ -282,7 +308,7 @@ export function DocumentPrintPreviewDialog({
                             title={title}
                             status={status}
                             content={content}
-                            layout={layout}
+                            layout={previewLayout}
                             zoomScale={zoom}
                             pageGap={PAPER_PAGE_GAP_PX}
                             onReady={handlePaginatedPreviewReady}
@@ -308,8 +334,8 @@ export function DocumentPrintPreviewDialog({
                             contentHeight={contentHeight}
                             printLayout
                             showFormattingMarks={false}
-                            paperStyle={buildDocumentLayoutStyle(layout)}
-                            headerFooter={layout.headerFooter}
+                            paperStyle={previewPaperStyle}
+                            headerFooter={previewLayout.headerFooter}
                             showRepeatedPageChrome
                             pageGap={PAPER_PAGE_GAP_PX}
                             overlayContent={null}
