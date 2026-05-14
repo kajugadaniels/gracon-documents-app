@@ -27,6 +27,7 @@ import {
     DocumentCard, DocumentsFilters, DeleteDocumentDialog,
     type StatusFilter, type SortOption,
 } from '@/components/pages/documents';
+import styles from './documents-page.module.css';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -201,7 +202,7 @@ export default function DocumentsPage() {
                 ref={fileInputRef}
                 type="file"
                 accept={DOCUMENT_IMPORT_ACCEPT}
-                style={{ display: 'none' }}
+                className={styles.hiddenInput}
                 onChange={(event) => {
                     const file = event.target.files?.[0];
                     if (file) void handleImport(file);
@@ -216,10 +217,10 @@ export default function DocumentsPage() {
                         <div className="docs-create-item__thumb">
                             <div className="docs-create-item__accent docs-create-item__accent--doc" />
                             <div className="docs-create-item__line docs-create-item__line--h" />
-                            <div className="docs-create-item__line" style={{ width: '100%' }} />
-                            <div className="docs-create-item__line" style={{ width: '85%' }} />
-                            <div className="docs-create-item__line" style={{ width: '92%' }} />
-                            <div className="docs-create-item__line" style={{ width: '60%' }} />
+                            <div className={`docs-create-item__line ${styles.lineFull}`} />
+                            <div className={`docs-create-item__line ${styles.lineMedium}`} />
+                            <div className={`docs-create-item__line ${styles.lineWide}`} />
+                            <div className={`docs-create-item__line ${styles.lineShort}`} />
                         </div>
                         <span className="docs-create-item__label">Blank document</span>
                     </Link>
@@ -233,29 +234,13 @@ export default function DocumentsPage() {
                     >
                         <div className="docs-create-item__thumb">
                             <div className="docs-create-item__accent docs-create-item__accent--import" />
-                            <div
-                                style={{
-                                    width: 34,
-                                    height: 34,
-                                    borderRadius: '50%',
-                                    border: '1px solid rgba(5,150,105,0.22)',
-                                    background: 'rgba(5,150,105,0.08)',
-                                    color: 'var(--color-success)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    margin: '10px auto 8px',
-                                    fontSize: 18,
-                                    fontWeight: 700,
-                                }}
-                                aria-hidden="true"
-                            >
+                            <div className={styles.importIcon} aria-hidden="true">
                                 {importing ? '…' : '↓'}
                             </div>
-                            <div className="docs-create-item__line docs-create-item__line--h" style={{ width: '72%' }} />
-                            <div className="docs-create-item__line" style={{ width: '100%' }} />
-                            <div className="docs-create-item__line" style={{ width: '84%' }} />
-                            <div className="docs-create-item__line" style={{ width: '68%' }} />
+                            <div className={`docs-create-item__line docs-create-item__line--h ${styles.lineImportHeading}`} />
+                            <div className={`docs-create-item__line ${styles.lineFull}`} />
+                            <div className={`docs-create-item__line ${styles.lineImportWide}`} />
+                            <div className={`docs-create-item__line ${styles.lineImportShort}`} />
                         </div>
                         <span className="docs-create-item__label">
                             {importing ? 'Importing…' : 'Import document'}
@@ -288,16 +273,20 @@ export default function DocumentsPage() {
                     ))}
                 </div>
             ) : loadError ? (
-                <div className="glass" style={{ borderRadius: 'var(--radius-xl)', padding: '28px 24px', textAlign: 'center', display: 'grid', gap: 14 }}>
+                <div className={`glass ${styles.errorCard}`}>
                     <div>
-                        <p style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                        <p className={styles.errorTitle}>
                             Unable to load your documents
                         </p>
-                        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>{loadError}</p>
+                        <p className={styles.errorCopy}>{loadError}</p>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <button onClick={() => void load()} className="btn-primary" style={{ fontSize: 12 }}>Try again</button>
-                        <Link href="/documents/new" className="btn-ghost" style={{ textDecoration: 'none', fontSize: 12 }}>Create a document</Link>
+                    <div className={styles.errorActions}>
+                        <button onClick={() => void load()} className={`btn-primary ${styles.smallButton}`}>
+                            Try again
+                        </button>
+                        <Link href="/documents/new" className={`btn-ghost ${styles.smallButton} ${styles.createLink}`}>
+                            Create a document
+                        </Link>
                     </div>
                 </div>
             ) : visibleItems.length === 0 ? (
@@ -305,9 +294,9 @@ export default function DocumentsPage() {
                     <div className="docs-empty__icon">
                         <div className="docs-empty__icon-stripe" />
                         <div className="docs-empty__icon-line docs-empty__icon-line--h" />
-                        <div className="docs-empty__icon-line" style={{ width: '100%' }} />
-                        <div className="docs-empty__icon-line" style={{ width: '82%' }} />
-                        <div className="docs-empty__icon-line" style={{ width: '90%' }} />
+                        <div className={`docs-empty__icon-line ${styles.lineFull}`} />
+                        <div className={`docs-empty__icon-line ${styles.lineMedium}`} />
+                        <div className={`docs-empty__icon-line ${styles.lineWide}`} />
                     </div>
                     <p className="docs-empty__heading">
                         {starredOnly
@@ -332,7 +321,7 @@ export default function DocumentsPage() {
                                     : 'Create your first document to get started.'}
                     </p>
                     {!search && !statusFilter && !starredOnly && (
-                        <Link href="/documents/new" className="btn-primary" style={{ textDecoration: 'none' }}>
+                        <Link href="/documents/new" className={`btn-primary ${styles.emptyCreateLink}`}>
                             Create document
                         </Link>
                     )}
@@ -354,9 +343,21 @@ export default function DocumentsPage() {
             {/* ── Pagination ── */}
             {!starredOnly && totalPages > 1 && (
                 <div className="docs-pagination">
-                    <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="btn-ghost" style={{ padding: '8px 16px', fontSize: 12 }}>← Prev</button>
+                    <button
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className={`btn-ghost ${styles.paginationButton}`}
+                    >
+                        ← Prev
+                    </button>
                     <span className="docs-pagination__label">Page {page} of {totalPages}</span>
-                    <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-ghost" style={{ padding: '8px 16px', fontSize: 12 }}>Next →</button>
+                    <button
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className={`btn-ghost ${styles.paginationButton}`}
+                    >
+                        Next →
+                    </button>
                 </div>
             )}
 
