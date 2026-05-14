@@ -78,8 +78,6 @@ export function DocumentSignatureBlock({
                 </div>
                 <div className="document-verification-footer__copy">
                     <span>Scan to verify</span>
-                    <strong>{documentTitle}</strong>
-                    <small>Confirm this signed document is authentic and unmodified.</small>
                 </div>
             </aside>
         </div>
