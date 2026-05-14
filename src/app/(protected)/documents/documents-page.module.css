@@ -1,0 +1,88 @@
+.hiddenInput {
+    display: none;
+}
+
+.lineFull {
+    width: 100%;
+}
+
+.lineWide {
+    width: 92%;
+}
+
+.lineMedium {
+    width: 85%;
+}
+
+.lineShort {
+    width: 60%;
+}
+
+.lineImportHeading {
+    width: 72%;
+}
+
+.lineImportWide {
+    width: 84%;
+}
+
+.lineImportShort {
+    width: 68%;
+}
+
+.importIcon {
+    width: 34px;
+    height: 34px;
+    margin: 10px auto 8px;
+    border: 1px solid rgba(5, 150, 105, 0.22);
+    border-radius: 50%;
+    background: rgba(5, 150, 105, 0.08);
+    color: var(--color-success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.errorCard {
+    border-radius: var(--radius-xl);
+    padding: 28px 24px;
+    text-align: center;
+    display: grid;
+    gap: 14px;
+}
+
+.errorTitle {
+    margin: 0 0 6px;
+    color: var(--color-text-primary);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.errorCopy {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+}
+
+.errorActions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.smallButton {
+    font-size: 12px;
+}
+
+.createLink,
+.emptyCreateLink {
+    text-decoration: none;
+}
+
+.paginationButton {
+    padding: 8px 16px;
+    font-size: 12px;
+}
