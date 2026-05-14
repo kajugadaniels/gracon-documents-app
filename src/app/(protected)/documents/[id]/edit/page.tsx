@@ -40,6 +40,11 @@ import { A4_PAPER_HEIGHT_PX, A4_PAPER_WIDTH_PX } from '@/constants';
 import { useStarred } from '@/lib/hooks/useStarred';
 import { useDocumentTitle } from '@/lib/hooks/useDocumentTitle';
 import {
+    hasDocumentPermission,
+    isDocumentBaseReadOnly,
+    isDocumentEditorReadOnly,
+} from '@/lib/document-readonly';
+import {
     getDigitalCertificateUrl,
     getIdentityVerificationUrl,
     redirectToLogin,
@@ -64,7 +69,7 @@ import { useSessionUser } from '@/app/(protected)/layout';
 import {
     getDocument, autosaveDocument, updateDocumentMeta, finaliseDocument, lockDocument,
     getDocumentSigningReadiness, listDocumentComments,
-    type CollaboratorPermission, type DocumentComment, type DocumentDetail,
+    type DocumentComment, type DocumentDetail,
     type DocumentSigningReadiness,
 } from '@/api/documents.api';
 
@@ -74,13 +79,6 @@ function getErrorMessage(error: unknown, fallback: string) {
     const message = (error as { response?: { data?: { message?: string } } })
         ?.response?.data?.message;
     return typeof message === 'string' && message.trim() ? message : fallback;
-}
-
-function hasDocumentPermission(doc: DocumentDetail | null, permission: CollaboratorPermission) {
-    if (!doc) return false;
-    if (!doc.access) return true;
-    if (doc.access?.isOwner) return true;
-    return doc.access?.permissions.includes(permission) ?? false;
 }
 
 export default function EditDocumentPage() {
@@ -591,7 +589,10 @@ export default function EditDocumentPage() {
     }
 
     const canEdit = hasDocumentPermission(doc, 'EDIT');
-    const baseIsReadOnly = doc?.status !== 'DRAFT' || !canEdit;
+    const baseIsReadOnly = isDocumentBaseReadOnly({
+        status: doc?.status,
+        access: doc?.access,
+    });
     const { viewState, handleViewAction } = useDocumentViewState({
         canToggleMode: !baseIsReadOnly,
         fullscreenTargetRef: pageRootRef,
@@ -800,7 +801,11 @@ export default function EditDocumentPage() {
     const canManageAccess = hasDocumentPermission(doc, 'MANAGE_ACCESS');
     const isOwner = doc.access?.isOwner ?? true;
     const isViewingMode = !baseIsReadOnly && viewState.viewMode === 'viewing';
-    const isReadOnly = baseIsReadOnly || isViewingMode;
+    const isReadOnly = isDocumentEditorReadOnly({
+        status: doc.status,
+        access: doc.access,
+        viewMode: viewState.viewMode,
+    });
     const isLocked = doc.status === 'LOCKED';
     const pendingSignatureCount = signatureRequests.filter(
         request => request.status !== 'SIGNED',
