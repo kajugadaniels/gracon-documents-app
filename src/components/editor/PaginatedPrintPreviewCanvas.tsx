@@ -2,6 +2,7 @@
 
 // Isolated read-only TipTap renderer for paginated print preview experiments.
 import { useEffect, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
@@ -38,6 +39,7 @@ export interface PaginatedPrintPreviewCanvasProps {
     zoomScale: number;
     pageGap: number;
     renderMode?: PaginatedPrintPreviewRenderMode;
+    bottomOverlay?: ReactNode;
     onReady?: () => void;
     onPreviewError?: (error: Error) => void;
 }
@@ -55,6 +57,7 @@ export function PaginatedPrintPreviewCanvas({
     zoomScale,
     pageGap,
     renderMode = 'preview',
+    bottomOverlay,
     onReady,
     onPreviewError,
 }: PaginatedPrintPreviewCanvasProps) {
@@ -185,6 +188,7 @@ export function PaginatedPrintPreviewCanvas({
                         width: A4_PAPER_WIDTH_PX,
                         transform: `scale(${zoomScale})`,
                         transformOrigin: 'top center',
+                        position: 'relative',
                     }}
                 >
                     <div className="tiptap-editor tiptap-editor-paper paginated-print-preview__editor">
@@ -196,6 +200,7 @@ export function PaginatedPrintPreviewCanvas({
                             </div>
                         )}
                     </div>
+                    {bottomOverlay}
                 </div>
             </div>
         </div>
