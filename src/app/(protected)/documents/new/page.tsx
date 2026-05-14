@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui';
+import { useDocumentTitle } from '@/lib/hooks/useDocumentTitle';
 import {
     createDocument,
     listTemplates,
@@ -15,6 +16,8 @@ import {
 } from '@/api/documents.api';
 
 export default function NewDocumentPage() {
+    useDocumentTitle('New Document');
+
     const router = useRouter();
     const [templates, setTemplates] = useState<Template[]>([]);
     const [loading, setLoading] = useState(false);
