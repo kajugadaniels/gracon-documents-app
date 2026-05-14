@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { fetchCurrentUser, redirectToLogin } from '@/lib/session';
 import { DocsHeader } from '@/components/layout/DocsHeader';
+import styles from './layout.module.css';
 
 // The user profile type — matches what app/app's /api/me returns
 export interface SessionUser {
@@ -152,87 +153,29 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     if (loading) {
         return (
-            <div
-                style={{
-                    minHeight: '100dvh',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#ffffff',
-                }}
-            >
-                <div
-                    style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: '50%',
-                        border: '3px solid rgba(91,35,255,0.2)',
-                        borderTopColor: 'var(--color-primary)',
-                        animation: 'btn-spin 0.7s linear infinite',
-                    }}
-                />
+            <div className={styles.loadingShell}>
+                <div className={styles.loadingSpinner} />
             </div>
         );
     }
 
     if (sessionError) {
         return (
-            <div
-                style={{
-                    minHeight: '100dvh',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '24px',
-                }}
-            >
-                <div
-                    className="glass-strong animate-scale-in"
-                    style={{
-                        width: '100%',
-                        maxWidth: 460,
-                        borderRadius: 'var(--radius-xl)',
-                        padding: 32,
-                        display: 'grid',
-                        gap: 18,
-                        textAlign: 'center',
-                    }}
-                >
+            <div className={styles.errorShell}>
+                <div className={`glass-strong animate-scale-in ${styles.errorCard}`}>
                     <div>
-                        <p
-                            style={{
-                                margin: '0 0 8px',
-                                fontSize: 20,
-                                fontWeight: 700,
-                                color: 'var(--color-text-primary)',
-                            }}
-                        >
+                        <p className={styles.errorTitle}>
                             Unable to restore your session
                         </p>
-                        <p
-                            style={{
-                                margin: 0,
-                                fontSize: 13,
-                                color: 'var(--color-text-secondary)',
-                                lineHeight: 1.6,
-                            }}
-                        >
+                        <p className={styles.errorCopy}>
                             {sessionError}
                         </p>
                     </div>
 
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            gap: 10,
-                            flexWrap: 'wrap',
-                        }}
-                    >
+                    <div className={styles.errorActions}>
                         <button
                             onClick={() => setRetryKey((value) => value + 1)}
-                            className="btn-primary"
-                            style={{ minWidth: 140 }}
+                            className={`btn-primary ${styles.errorAction}`}
                         >
                             Try again
                         </button>
@@ -242,8 +185,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                                     `${window.location.pathname}${window.location.search}${window.location.hash}`;
                                 redirectToLogin(intendedPath);
                             }}
-                            className="btn-ghost"
-                            style={{ minWidth: 140 }}
+                            className={`btn-ghost ${styles.errorAction}`}
                         >
                             Sign in again
                         </button>
@@ -259,9 +201,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     return (
         <UserContext.Provider value={user}>
-            <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+            <div className={styles.shell}>
                 {showHeader && <DocsHeader user={user} />}
-                <main style={{ flex: 1, padding: '20px clamp(18px, 3.4vw, 38px) 42px' }}>
+                <main className={styles.main}>
                     {children}
                 </main>
             </div>
