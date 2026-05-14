@@ -22,6 +22,7 @@ import {
 } from '@/api/documents.api';
 import { useStarred } from '@/lib/hooks/useStarred';
 import { DOCUMENT_IMPORT_ACCEPT, importDocumentToTiptap } from '@/lib/import-document';
+import { useDocumentTitle } from '@/lib/hooks/useDocumentTitle';
 import {
     DocumentCard, DocumentsFilters, DeleteDocumentDialog,
     type StatusFilter, type SortOption,
@@ -61,6 +62,8 @@ function parseAccessScope(value: string | null): DocumentListScope {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DocumentsPage() {
+    useDocumentTitle('Documents');
+
     const router = useRouter();
     const searchParams = useSearchParams();
     const search       = searchParams.get('search') ?? '';
