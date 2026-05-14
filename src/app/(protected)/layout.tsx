@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { fetchCurrentUser, redirectToLogin } from '@/lib/session';
 import { DocsHeader } from '@/components/layout/DocsHeader';
+import { DocumentLoadingState } from '@/components/editor/DocumentLoadingState';
 import styles from './layout.module.css';
 
 // The user profile type — matches what app/app's /api/me returns
@@ -152,11 +153,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     }, [retryKey]);
 
     if (loading) {
-        return (
-            <div className={styles.loadingShell}>
-                <div className={styles.loadingSpinner} />
-            </div>
-        );
+        return <DocumentLoadingState variant="fullscreen" />;
     }
 
     if (sessionError) {
