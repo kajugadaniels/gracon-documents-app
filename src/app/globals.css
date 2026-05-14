@@ -1817,6 +1817,7 @@ body {
 }
 .paginated-print-preview__shell {
   position: relative;
+  width: var(--paper-width);
   min-height: 100%;
 }
 .paginated-print-preview__frame {
@@ -1862,8 +1863,8 @@ body {
   top: 0;
   left: -12000px;
   width: var(--paper-width);
-  height: var(--paper-height);
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
   pointer-events: none;
   opacity: 0;
 }
