@@ -1,5 +1,6 @@
 'use client';
 
+// Isolated read-only TipTap renderer for paginated print preview experiments.
 import { useEffect, useMemo } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -34,6 +35,8 @@ export interface PaginatedPrintPreviewCanvasProps {
     layout: DocumentLayout;
     zoomScale: number;
     pageGap: number;
+    onReady?: () => void;
+    onPreviewError?: (error: Error) => void;
 }
 
 /**
@@ -48,6 +51,8 @@ export function PaginatedPrintPreviewCanvas({
     layout,
     zoomScale,
     pageGap,
+    onReady,
+    onPreviewError,
 }: PaginatedPrintPreviewCanvasProps) {
     const sanitizedContent = useMemo(
         () => removeDocumentBoundariesFromTiptapContent(content)
@@ -114,34 +119,51 @@ export function PaginatedPrintPreviewCanvas({
     useEffect(() => {
         if (!editor) return;
 
-        editor.commands.updatePageHeight(paginationConfig.pageHeight);
-        editor.commands.updatePageWidth(paginationConfig.pageWidth);
-        editor.commands.updatePageGap(paginationConfig.pageGap);
-        editor.commands.updatePageBreakBackground(paginationConfig.pageBreakBackground);
-        editor.commands.updateMargins({
-            top: paginationConfig.marginTop,
-            right: paginationConfig.marginRight,
-            bottom: paginationConfig.marginBottom,
-            left: paginationConfig.marginLeft,
-        });
-        editor.commands.updateContentMargins({
-            top: paginationConfig.contentMarginTop,
-            bottom: paginationConfig.contentMarginBottom,
-        });
-        editor.commands.updateHeaderContent(
-            paginationConfig.headerLeft,
-            paginationConfig.headerRight,
-        );
-        editor.commands.updateFooterContent(
-            paginationConfig.footerLeft,
-            paginationConfig.footerRight,
-        );
-    }, [editor, paginationConfig]);
+        try {
+            editor.commands.updatePageHeight(paginationConfig.pageHeight);
+            editor.commands.updatePageWidth(paginationConfig.pageWidth);
+            editor.commands.updatePageGap(paginationConfig.pageGap);
+            editor.commands.updatePageBreakBackground(paginationConfig.pageBreakBackground);
+            editor.commands.updateMargins({
+                top: paginationConfig.marginTop,
+                right: paginationConfig.marginRight,
+                bottom: paginationConfig.marginBottom,
+                left: paginationConfig.marginLeft,
+            });
+            editor.commands.updateContentMargins({
+                top: paginationConfig.contentMarginTop,
+                bottom: paginationConfig.contentMarginBottom,
+            });
+            editor.commands.updateHeaderContent(
+                paginationConfig.headerLeft,
+                paginationConfig.headerRight,
+            );
+            editor.commands.updateFooterContent(
+                paginationConfig.footerLeft,
+                paginationConfig.footerRight,
+            );
+        } catch (error) {
+            onPreviewError?.(
+                error instanceof Error
+                    ? error
+                    : new Error('Failed to update paginated print preview layout.'),
+            );
+        }
+    }, [editor, onPreviewError, paginationConfig]);
 
     useEffect(() => {
         if (!editor) return;
-        editor.commands.setContent(sanitizedContent, { emitUpdate: false });
-    }, [editor, sanitizedContent]);
+        try {
+            editor.commands.setContent(sanitizedContent, { emitUpdate: false });
+            onReady?.();
+        } catch (error) {
+            onPreviewError?.(
+                error instanceof Error
+                    ? error
+                    : new Error('Failed to render paginated print preview content.'),
+            );
+        }
+    }, [editor, onPreviewError, onReady, sanitizedContent]);
 
     return (
         <div ref={canvasRef} className="ded-canvas paginated-print-preview">
