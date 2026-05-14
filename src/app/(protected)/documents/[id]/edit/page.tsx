@@ -19,7 +19,6 @@ import { DocumentRulerOverlay, DocumentPageRulerSidebar } from '@/components/edi
 import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
-import { DocumentTabsPanel, type DocumentTabItem } from '@/components/editor/DocumentTabsPanel';
 import { SignatureBlockPreparationDialog } from '@/components/editor/SignatureBlockPreparationDialog';
 import { PagedDocumentCanvas } from '@/components/editor/PagedDocumentCanvas';
 import { mergeDocumentShareState } from '@/store/editor/document-share-state';
@@ -109,8 +108,6 @@ export default function EditDocumentPage() {
     const [signingReadinessLoading, setSigningReadinessLoading] = useState(false);
     const [editor, setEditor] = useState<Editor | null>(null);
     const [leftRulerPages, setLeftRulerPages] = useState([{ pageNumber: 1, top: 0 }]);
-    const [documentTabs, setDocumentTabs] = useState<DocumentTabItem[]>([]);
-    const [activeDocumentTabId, setActiveDocumentTabId] = useState<string | null>(null);
     const continuousDocumentLayout = useMemo(() => ({
         pageCount: 1,
         activePage: 1,
@@ -156,98 +153,6 @@ export default function EditDocumentPage() {
     const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const rulerCommitLayoutRef = useRef<DocumentLayout | null>(null);
     const saveInFlightRef = useRef<Promise<boolean> | null>(null);
-    const documentTabsMeasureFrameRef = useRef<number | null>(null);
-    const documentTabsScrollFrameRef = useRef<number | null>(null);
-    const updateActiveDocumentTab = useCallback(() => {
-        const canvasEl = canvasRef.current;
-        const editorEl = canvasEl?.querySelector<HTMLElement>('.ProseMirror');
-
-        if (!canvasEl || !editorEl) return;
-
-        const canvasTop = canvasEl.getBoundingClientRect().top;
-        const headings = Array.from(editorEl.querySelectorAll<HTMLElement>('h1, h2, h3'));
-        const currentHeading = headings.reduce<HTMLElement | null>((activeHeading, heading) => {
-            const top = heading.getBoundingClientRect().top - canvasTop;
-
-            if (top <= 42) {
-                return heading;
-            }
-
-            return activeHeading;
-        }, null);
-
-        if (currentHeading?.id) {
-            setActiveDocumentTabId((current) => (
-                current === currentHeading.id ? current : currentHeading.id
-            ));
-        }
-    }, []);
-    const measureDocumentTabs = useCallback(() => {
-        const editorEl = canvasRef.current?.querySelector<HTMLElement>('.ProseMirror');
-        if (!editorEl) return;
-
-        const editorRect = editorEl.getBoundingClientRect();
-        const headings = Array.from(editorEl.querySelectorAll<HTMLElement>('h1, h2, h3'));
-        const nextTabs = headings
-            .map((heading, index) => {
-                const label = heading.textContent?.replace(/\s+/g, ' ').trim();
-
-                if (!label) {
-                    return null;
-                }
-
-                if (!heading.id) {
-                    heading.id = `document-heading-tab-${index + 1}`;
-                }
-
-                const headingRect = heading.getBoundingClientRect();
-                const top = Math.max(0, headingRect.top - editorRect.top + editorEl.scrollTop);
-                const level = Number.parseInt(heading.tagName.replace('H', ''), 10);
-
-                return {
-                    id: heading.id,
-                    label,
-                    pageNumber: Math.max(1, Math.floor(top / A4_PAPER_HEIGHT_PX) + 1),
-                    level: Number.isFinite(level) ? level : 1,
-                };
-            })
-            .filter((tab): tab is DocumentTabItem => Boolean(tab));
-
-        setDocumentTabs((current) => {
-            const unchanged = current.length === nextTabs.length
-                && current.every((tab, index) => {
-                    const nextTab = nextTabs[index];
-
-                    return tab.id === nextTab.id
-                        && tab.label === nextTab.label
-                        && tab.pageNumber === nextTab.pageNumber
-                        && tab.level === nextTab.level;
-                });
-
-            return unchanged ? current : nextTabs;
-        });
-        updateActiveDocumentTab();
-    }, [updateActiveDocumentTab]);
-    const scheduleDocumentTabsMeasure = useCallback(() => {
-        if (documentTabsMeasureFrameRef.current !== null) {
-            return;
-        }
-
-        documentTabsMeasureFrameRef.current = window.requestAnimationFrame(() => {
-            documentTabsMeasureFrameRef.current = null;
-            measureDocumentTabs();
-        });
-    }, [measureDocumentTabs]);
-    const scheduleActiveDocumentTabUpdate = useCallback(() => {
-        if (documentTabsScrollFrameRef.current !== null) {
-            return;
-        }
-
-        documentTabsScrollFrameRef.current = window.requestAnimationFrame(() => {
-            documentTabsScrollFrameRef.current = null;
-            updateActiveDocumentTab();
-        });
-    }, [updateActiveDocumentTab]);
     const measureLeftRulerPages = useCallback(() => {
         const editorEl = canvasRef.current?.querySelector<HTMLElement>('.ProseMirror');
         if (!editorEl) return;
@@ -265,8 +170,7 @@ export default function EditDocumentPage() {
                 top: index * A4_PAPER_HEIGHT_PX,
             }));
         });
-        scheduleDocumentTabsMeasure();
-    }, [scheduleDocumentTabsMeasure]);
+    }, []);
     const beginAccessTransition = useCallback((message: string) => {
         setAccessTransitionMessage((current) => current ?? message);
 
@@ -316,53 +220,29 @@ export default function EditDocumentPage() {
 
     useEffect(() => {
         const editorEl = canvasRef.current?.querySelector<HTMLElement>('.ProseMirror');
-        const canvasEl = canvasRef.current;
         if (!editorEl) return;
 
         const animationFrame = window.requestAnimationFrame(measureLeftRulerPages);
         const resizeObserver = new ResizeObserver(measureLeftRulerPages);
-        const mutationObserver = new MutationObserver(scheduleDocumentTabsMeasure);
         resizeObserver.observe(editorEl);
-        mutationObserver.observe(editorEl, {
-            childList: true,
-            characterData: true,
-            subtree: true,
-        });
-        canvasEl?.addEventListener('scroll', scheduleActiveDocumentTabUpdate, { passive: true });
         window.addEventListener('resize', measureLeftRulerPages);
 
         return () => {
             window.cancelAnimationFrame(animationFrame);
             resizeObserver.disconnect();
-            mutationObserver.disconnect();
-            canvasEl?.removeEventListener('scroll', scheduleActiveDocumentTabUpdate);
             window.removeEventListener('resize', measureLeftRulerPages);
         };
     }, [
         doc?.id,
         editor,
         measureLeftRulerPages,
-        scheduleActiveDocumentTabUpdate,
-        scheduleDocumentTabsMeasure,
     ]);
-
-    useEffect(() => () => {
-        if (documentTabsMeasureFrameRef.current !== null) {
-            window.cancelAnimationFrame(documentTabsMeasureFrameRef.current);
-        }
-
-        if (documentTabsScrollFrameRef.current !== null) {
-            window.cancelAnimationFrame(documentTabsScrollFrameRef.current);
-        }
-    }, []);
 
     // Load document
     useEffect(() => {
         let ignore = false;
         setLoading(true);
         setLoadError(null);
-        setDocumentTabs([]);
-        setActiveDocumentTabId(null);
         getDocument(id, true)
             .then(d => {
                 if (ignore) return;
@@ -556,11 +436,10 @@ export default function EditDocumentPage() {
         setSaveStatus('idle');
         window.requestAnimationFrame(() => {
             measureLeftRulerPages();
-            scheduleDocumentTabsMeasure();
         });
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => { void save(); }, 3000);
-    }, [measureLeftRulerPages, save, scheduleDocumentTabsMeasure]);
+    }, [measureLeftRulerPages, save]);
 
     const handleManualSave = useCallback(async () => {
         if (saveTimerRef.current) {
@@ -580,30 +459,6 @@ export default function EditDocumentPage() {
             toast.error('Document could not be saved. Your changes remain queued.');
         }
     }, [doc, save]);
-    const handleSelectDocumentTab = useCallback((tab: DocumentTabItem) => {
-        const canvasEl = canvasRef.current;
-        const editorEl = canvasEl?.querySelector<HTMLElement>('.ProseMirror');
-        if (!canvasEl || !editorEl) return;
-
-        const safeId = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-            ? CSS.escape(tab.id)
-            : tab.id.replace(/"/g, '\\"');
-        const heading = editorEl.querySelector<HTMLElement>(`#${safeId}`);
-        if (!heading) return;
-
-        setActiveDocumentTabId(tab.id);
-
-        const canvasRect = canvasEl.getBoundingClientRect();
-        const headingRect = heading.getBoundingClientRect();
-        const targetScrollTop = canvasEl.scrollTop + headingRect.top - canvasRect.top - 24;
-
-        canvasEl.scrollTo({
-            top: Math.max(0, targetScrollTop),
-            behavior: 'smooth',
-        });
-        editor?.commands.focus();
-    }, [editor]);
-
     async function handleTitleSave() {
         setEditingTitle(false);
         if (title.trim() === doc?.title) return;
@@ -1190,12 +1045,6 @@ export default function EditDocumentPage() {
 
             {/* ── Page body: fixed ruler sidebar + scrollable document canvas ── */}
             <div className="ded-page-body">
-                <DocumentTabsPanel
-                    tabs={documentTabs}
-                    activeTabId={activeDocumentTabId}
-                    onSelectTab={handleSelectDocumentTab}
-                />
-
                 {/* Vertical ruler sidebar — scroll is driven by canvas, not the user */}
                 {viewState.showRuler && (
                     <div className="ded-ruler-sidebar">
