@@ -1,25 +1,11 @@
-.loadingShell,
 .errorShell {
-    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.loadingShell {
-    background: #ffffff;
-}
-
-.loadingSpinner {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 3px solid rgba(91, 35, 255, 0.20);
-    border-top-color: var(--color-primary);
-    animation: btn-spin 0.7s linear infinite;
-}
-
 .errorShell {
+    min-height: 100dvh;
     padding: 24px;
 }
 
