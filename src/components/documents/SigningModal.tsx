@@ -99,8 +99,13 @@ export function SigningModal({ document: doc, onClose, onSigned }: SigningModalP
 
                 {step === 'signing' && (
                     <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                        <DocumentLoadingState variant="panel" size={56} minHeight="76px" />
-                        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 6px' }}>Signing in progress…</p>
+                        <DocumentLoadingState
+                            variant="panel"
+                            size={56}
+                            minHeight="120px"
+                            message="Signing document..."
+                            detail="Do not close this window"
+                        />
                         <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>Your private key is being used to sign the document hash. Do not close this window.</p>
                     </div>
                 )}
