@@ -24,6 +24,7 @@ import {
     getReminderRetryAt,
     isFutureTimestamp,
 } from '@/store/editor/signature-reminder-cooldown';
+import styles from './DocumentSigningProgressPanel.module.css';
 
 interface DocumentSigningProgressPanelProps {
     document: DocumentDetail;
@@ -204,107 +205,109 @@ export function DocumentSigningProgressPanel({
     }
 
     return (
-        <section className="signing-progress" aria-label="Document signing progress">
-            <div className="signing-progress__summary">
-                <div>
-                    <p className="signing-progress__eyebrow">Signing progress</p>
-                    <h2 className="signing-progress__title">
-                        {pendingCount === 0
-                            ? 'All required signatures are complete'
-                            : `${pendingCount} signer${pendingCount === 1 ? '' : 's'} remaining`}
-                    </h2>
-                </div>
-                <div className="signing-progress__meter" aria-label={`${progress}% complete`}>
-                    <span>{signedCount}/{totalCount}</span>
-                    <div className="signing-progress__track">
-                        <div style={{ width: `${progress}%` }} />
+        <aside className={styles.rail} aria-label="Document signing progress rail">
+            <section className={styles.panel} aria-label="Document signing progress">
+                <div className={styles.summary}>
+                    <div>
+                        <p className={styles.eyebrow}>Signing progress</p>
+                        <h2 className={styles.title}>
+                            {pendingCount === 0
+                                ? 'All required signatures are complete'
+                                : `${pendingCount} signer${pendingCount === 1 ? '' : 's'} remaining`}
+                        </h2>
+                    </div>
+                    <div className={styles.meter} aria-label={`${progress}% complete`}>
+                        <span>{signedCount}/{totalCount}</span>
+                        <div className={styles.track}>
+                            <div style={{ width: `${progress}%` }} />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {pendingCount === 0 ? (
-                <p className="signing-progress__hint signing-progress__hint--summary">
-                    {document.status === 'LOCKED'
-                        ? 'This document is locked and immutable.'
-                        : isOwner
-                            ? 'All required signatures are complete. You can lock the document now.'
-                            : 'All required signatures are complete. Waiting for the owner to lock the document.'}
-                </p>
-            ) : null}
+                {pendingCount === 0 ? (
+                    <p className={`${styles.hint} ${styles.summaryHint}`}>
+                        {document.status === 'LOCKED'
+                            ? 'This document is locked and immutable.'
+                            : isOwner
+                                ? 'All required signatures are complete. You can lock the document now.'
+                                : 'All required signatures are complete. Waiting for the owner to lock the document.'}
+                    </p>
+                ) : null}
 
-            <div className="signing-progress__list">
-                {document.signatureRequests.map((request) => {
-                    const collaborator = collaboratorByUserId.get(request.requestedUserId) ?? null;
-                    const signer = getSignerProfile(request, collaborator, currentUserId);
-                    const isCurrentUser = request.requestedUserId === currentUserId;
-                    const isSigned = request.status === 'SIGNED';
-                    const canResendInvite = Boolean(
-                        collaborator && !isAcceptedCollaborator(collaborator) && !isSigned,
-                    );
-                    const reminderCooldownUntil =
-                        reminderCooldowns[request.id] ?? request.nextReminderAvailableAt ?? null;
-                    const isReminderCoolingDown = isFutureTimestamp(reminderCooldownUntil, now);
+                <div className={styles.list}>
+                    {document.signatureRequests.map((request) => {
+                        const collaborator = collaboratorByUserId.get(request.requestedUserId) ?? null;
+                        const signer = getSignerProfile(request, collaborator, currentUserId);
+                        const isCurrentUser = request.requestedUserId === currentUserId;
+                        const isSigned = request.status === 'SIGNED';
+                        const canResendInvite = Boolean(
+                            collaborator && !isAcceptedCollaborator(collaborator) && !isSigned,
+                        );
+                        const reminderCooldownUntil =
+                            reminderCooldowns[request.id] ?? request.nextReminderAvailableAt ?? null;
+                        const isReminderCoolingDown = isFutureTimestamp(reminderCooldownUntil, now);
 
-                    return (
-                        <article key={request.id} className="signing-progress__row">
-                            <div className="signing-progress__avatar" aria-hidden="true">
-                                <span>{getInitials(signer.displayName, signer.email)}</span>
-                            </div>
-                            <div className="signing-progress__person">
-                                <p>{signer.displayName}</p>
-                                <span>{signer.email}</span>
-                            </div>
-                            <div className={`signing-progress__status signing-progress__status--${isSigned ? 'signed' : 'pending'}`}>
-                                {isSigned ? `Signed ${formatDate(request.signedAt)}` : 'Pending signature'}
-                            </div>
-                            <div className="signing-progress__action">
-                                {isSigned ? (
-                                    <span className="signing-progress__complete">Complete</span>
-                                ) : isCurrentUser ? (
-                                    <button type="button" onClick={onOpenSigning}>
-                                        Sign now
-                                    </button>
-                                ) : canResendInvite && collaborator ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => void handleResendInvite(collaborator)}
-                                        disabled={busyId === `${collaborator.id}:invite`}
-                                    >
-                                        {busyId === `${collaborator.id}:invite` ? 'Sending...' : 'Resend invite'}
-                                    </button>
-                                ) : (
-                                    <>
+                        return (
+                            <article key={request.id} className={styles.row}>
+                                <div className={styles.avatar} aria-hidden="true">
+                                    <span>{getInitials(signer.displayName, signer.email)}</span>
+                                </div>
+                                <div className={styles.person}>
+                                    <p>{signer.displayName}</p>
+                                    <span>{signer.email}</span>
+                                </div>
+                                <div className={`${styles.status} ${isSigned ? styles.statusSigned : styles.statusPending}`}>
+                                    {isSigned ? `Signed ${formatDate(request.signedAt)}` : 'Pending signature'}
+                                </div>
+                                <div className={styles.action}>
+                                    {isSigned ? (
+                                        <span className={styles.complete}>Complete</span>
+                                    ) : isCurrentUser ? (
+                                        <button type="button" onClick={onOpenSigning}>
+                                            Sign now
+                                        </button>
+                                    ) : canResendInvite && collaborator ? (
                                         <button
                                             type="button"
-                                            onClick={() => void handleReminder(request)}
-                                            disabled={
-                                                isReminderCoolingDown ||
-                                                busyId === `${request.id}:remind`
-                                            }
-                                            title={
-                                                isReminderCoolingDown && reminderCooldownUntil
-                                                    ? `Try again after ${formatReminderTime(reminderCooldownUntil)}`
-                                                    : undefined
-                                            }
+                                            onClick={() => void handleResendInvite(collaborator)}
+                                            disabled={busyId === `${collaborator.id}:invite`}
                                         >
-                                            {busyId === `${request.id}:remind`
-                                                ? 'Sending...'
-                                                : isReminderCoolingDown && reminderCooldownUntil
-                                                    ? `Try in ${formatRemainingTime(reminderCooldownUntil, now)}`
-                                                    : 'Send reminder'}
+                                            {busyId === `${collaborator.id}:invite` ? 'Sending...' : 'Resend invite'}
                                         </button>
-                                        {isReminderCoolingDown && reminderCooldownUntil ? (
-                                            <span className="signing-progress__hint">
-                                                Available {formatReminderTime(reminderCooldownUntil)}
-                                            </span>
-                                        ) : null}
-                                    </>
-                                )}
-                            </div>
-                        </article>
-                    );
-                })}
-            </div>
-        </section>
+                                    ) : (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleReminder(request)}
+                                                disabled={
+                                                    isReminderCoolingDown ||
+                                                    busyId === `${request.id}:remind`
+                                                }
+                                                title={
+                                                    isReminderCoolingDown && reminderCooldownUntil
+                                                        ? `Try again after ${formatReminderTime(reminderCooldownUntil)}`
+                                                        : undefined
+                                                }
+                                            >
+                                                {busyId === `${request.id}:remind`
+                                                    ? 'Sending...'
+                                                    : isReminderCoolingDown && reminderCooldownUntil
+                                                        ? `Try in ${formatRemainingTime(reminderCooldownUntil, now)}`
+                                                        : 'Send reminder'}
+                                            </button>
+                                            {isReminderCoolingDown && reminderCooldownUntil ? (
+                                                <span className={styles.hint}>
+                                                    Available {formatReminderTime(reminderCooldownUntil)}
+                                                </span>
+                                            ) : null}
+                                        </>
+                                    )}
+                                </div>
+                            </article>
+                        );
+                    })}
+                </div>
+            </section>
+        </aside>
     );
 }
