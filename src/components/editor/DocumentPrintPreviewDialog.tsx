@@ -6,7 +6,10 @@ import { PAPER_PAGE_GAP_PX } from '@/constants/document-paper';
 import type { DocumentLayout } from '@/lib/document-layout';
 import { buildDocumentLayoutStyle } from '@/lib/document-layout';
 import { PagedDocumentCanvas } from './PagedDocumentCanvas';
+import { PaginatedPrintPreviewCanvas } from './PaginatedPrintPreviewCanvas';
 import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension';
+
+const USE_PAGINATED_PRINT_PREVIEW = true;
 
 interface DocumentPrintPreviewDialogProps {
     documentId: string;
@@ -38,7 +41,8 @@ export function DocumentPrintPreviewDialog({
     contentHeight,
     onClose,
 }: DocumentPrintPreviewDialogProps) {
-    const canvasRef = useRef<HTMLDivElement>(null);
+    const previewCanvasRef = useRef<HTMLDivElement>(null);
+    const exportCanvasRef = useRef<HTMLDivElement>(null);
     const [savingPdf, setSavingPdf] = useState(false);
     const [zoom, setZoom] = useState(getPreviewZoom);
 
@@ -53,7 +57,8 @@ export function DocumentPrintPreviewDialog({
     }, []);
 
     async function handleSavePdf() {
-        const exportRoot = canvasRef.current?.querySelector(
+        const exportHost = USE_PAGINATED_PRINT_PREVIEW ? exportCanvasRef.current : previewCanvasRef.current;
+        const exportRoot = exportHost?.querySelector(
             '[data-document-export-root="true"]',
         ) as HTMLElement | null;
         if (!exportRoot) return;
@@ -105,27 +110,66 @@ export function DocumentPrintPreviewDialog({
                 </div>
             </div>
             <div className="document-print-preview__body">
-                <PagedDocumentCanvas
-                    canvasRef={canvasRef}
-                    documentId={`${documentId}-print-preview`}
-                    title={title}
-                    status={status}
-                    content={content}
-                    isReadOnly
-                    zoomScale={zoom}
-                    pageCount={pageCount}
-                    pageHeight={pageHeight}
-                    contentHeight={contentHeight}
-                    printLayout
-                    showFormattingMarks={false}
-                    paperStyle={buildDocumentLayoutStyle(layout)}
-                    headerFooter={layout.headerFooter}
-                    showRepeatedPageChrome
-                    pageGap={PAPER_PAGE_GAP_PX}
-                    overlayContent={null}
-                    commentAnchors={emptyAnchors}
-                    onEditorReady={() => undefined}
-                />
+                {USE_PAGINATED_PRINT_PREVIEW ? (
+                    <PaginatedPrintPreviewCanvas
+                        canvasRef={previewCanvasRef}
+                        documentId={`${documentId}-paginated-print-preview`}
+                        title={title}
+                        status={status}
+                        content={content}
+                        layout={layout}
+                        zoomScale={zoom}
+                        pageGap={PAPER_PAGE_GAP_PX}
+                    />
+                ) : (
+                    <PagedDocumentCanvas
+                        canvasRef={previewCanvasRef}
+                        documentId={`${documentId}-print-preview`}
+                        title={title}
+                        status={status}
+                        content={content}
+                        isReadOnly
+                        zoomScale={zoom}
+                        pageCount={pageCount}
+                        pageHeight={pageHeight}
+                        contentHeight={contentHeight}
+                        printLayout
+                        showFormattingMarks={false}
+                        paperStyle={buildDocumentLayoutStyle(layout)}
+                        headerFooter={layout.headerFooter}
+                        showRepeatedPageChrome
+                        pageGap={PAPER_PAGE_GAP_PX}
+                        overlayContent={null}
+                        commentAnchors={emptyAnchors}
+                        onEditorReady={() => undefined}
+                    />
+                )}
+
+                {USE_PAGINATED_PRINT_PREVIEW && (
+                    <div className="document-print-preview__export-fallback" aria-hidden="true">
+                        <PagedDocumentCanvas
+                            canvasRef={exportCanvasRef}
+                            documentId={`${documentId}-print-export-fallback`}
+                            title={title}
+                            status={status}
+                            content={content}
+                            isReadOnly
+                            zoomScale={1}
+                            pageCount={pageCount}
+                            pageHeight={pageHeight}
+                            contentHeight={contentHeight}
+                            printLayout
+                            showFormattingMarks={false}
+                            paperStyle={buildDocumentLayoutStyle(layout)}
+                            headerFooter={layout.headerFooter}
+                            showRepeatedPageChrome
+                            pageGap={PAPER_PAGE_GAP_PX}
+                            overlayContent={null}
+                            commentAnchors={emptyAnchors}
+                            onEditorReady={() => undefined}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );
