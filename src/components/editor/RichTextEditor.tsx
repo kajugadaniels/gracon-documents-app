@@ -212,6 +212,11 @@ export function RichTextEditor({
 
     useEffect(() => {
         if (!editor) return;
+        editor.setEditable(!readOnly, false);
+    }, [editor, readOnly]);
+
+    useEffect(() => {
+        if (!editor) return;
         editor.commands.setCommentAnchors(commentAnchors);
     }, [editor, commentAnchors]);
 
