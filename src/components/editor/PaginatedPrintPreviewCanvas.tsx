@@ -26,6 +26,8 @@ import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import { buildPrintPreviewPaginationConfig } from '@/lib/print-preview-pagination';
 import { removeDocumentBoundariesFromTiptapContent } from '@/lib/remove-document-boundaries';
 
+export type PaginatedPrintPreviewRenderMode = 'preview' | 'export';
+
 export interface PaginatedPrintPreviewCanvasProps {
     canvasRef: RefObject<HTMLDivElement | null>;
     documentId: string;
@@ -35,6 +37,7 @@ export interface PaginatedPrintPreviewCanvasProps {
     layout: DocumentLayout;
     zoomScale: number;
     pageGap: number;
+    renderMode?: PaginatedPrintPreviewRenderMode;
     onReady?: () => void;
     onPreviewError?: (error: Error) => void;
 }
@@ -51,6 +54,7 @@ export function PaginatedPrintPreviewCanvas({
     layout,
     zoomScale,
     pageGap,
+    renderMode = 'preview',
     onReady,
     onPreviewError,
 }: PaginatedPrintPreviewCanvasProps) {
@@ -166,7 +170,11 @@ export function PaginatedPrintPreviewCanvas({
     }, [editor, onPreviewError, onReady, sanitizedContent]);
 
     return (
-        <div ref={canvasRef} className="ded-canvas paginated-print-preview">
+        <div
+            ref={canvasRef}
+            className={`ded-canvas paginated-print-preview paginated-print-preview--${renderMode}`}
+            data-paginated-print-export-root={renderMode === 'export' ? 'true' : undefined}
+        >
             <div
                 className="paginated-print-preview__shell"
                 style={{ width: scaledFrameWidth }}
