@@ -58,7 +58,10 @@ function toPlainArrayBuffer(bytes: Uint8Array<ArrayBufferLike>) {
     return copy.buffer;
 }
 
-async function exportPdf(pages: HTMLCanvasElement[], title: string) {
+/**
+ * Saves already-rendered A4 page canvases into a downloadable PDF.
+ */
+export async function saveCanvasPagesAsPdf(pages: HTMLCanvasElement[], title: string) {
     const { PDFDocument } = await import('pdf-lib');
     const pdf = await PDFDocument.create();
 
@@ -93,7 +96,7 @@ export async function saveRenderedDocumentAs(
 ) {
     if (format === 'pdf') {
         const pages = await captureRenderedDocumentPages(exportRootEl);
-        await exportPdf(pages, title);
+        await saveCanvasPagesAsPdf(pages, title);
         return;
     }
 
