@@ -59,6 +59,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Signing readiness checks from `api/documents` so the UI can route users to login, identity verification, certificate setup, or signing without extra probing calls
 - Signing modal submits to a local BFF route that calls `api/signature` and then records the result in `api/documents`, reducing partial browser-side failure states
 - Signing actions reuse one readiness state across the header, progress panel, and modal return flow
+- Signing progress belongs in the document body's right-side rail so the top ruler, left ruler, paper canvas, and export geometry are never shifted by workflow UI
 - Cross-tab share activity refresh and document metadata merge patterns
 - Typed insert-menu action registry so menu labels, enabled states, and editor command dispatch stay aligned while features are implemented incrementally
 - Quick insert actions for date/time and common special characters using undo-safe TipTap insert commands
