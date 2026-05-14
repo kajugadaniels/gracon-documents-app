@@ -46,6 +46,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - White default workspace background for documents, templates, and protected loading surfaces; the editor canvas owns its own neutral gray paper workspace
 - Client-owned protected pages use `useDocumentTitle` for route titles because most document data is loaded through session-aware client state
 - Reusable `DocumentLoadingState` keeps protected loading, editor loading, print-preview loading, and signing progress loading visually consistent
+- Editor and print-preview rendering are protected by scoped recovery boundaries so malformed imported content, images, tables, or extension failures do not crash the whole documents app
 - High-risk UI surfaces are being moved out of `globals.css` into scoped CSS modules; signing progress, protected shell, templates page, document list helpers, and document cards now own their styles locally
 - Persisted document layout model powering paper margins, rulers, PDF, and DOCX export
 - Preset-driven page setup with live printable-area preview for margin tuning
@@ -149,6 +150,7 @@ app/documents/
 - The default app workspace background is intentionally white. Do not reintroduce the old purple radial/grid page background on documents, templates, or protected loading screens.
 - Keep route titles explicit. Documents list should be `Documents | Gracon 360`, templates should be `Templates | Gracon 360`, and the editor should use the loaded document title.
 - Prefer `DocumentLoadingState` for editor/document loading surfaces instead of creating new ad hoc spinners.
+- Keep risky renderers behind surface-level error boundaries. The live editor and print preview must recover independently and should remount only the failed surface.
 - Prefer scoped CSS modules for route/component-specific styling. `globals.css` should be reserved for design tokens, shared primitives, app shell rules, editor document geometry, and truly global utilities.
 - Document cards are styled through `DocumentCard.module.css`; do not add new `doc-card` globals.
 - Signing progress is styled through `DocumentSigningProgressPanel.module.css`; keep it independent from document canvas geometry.
