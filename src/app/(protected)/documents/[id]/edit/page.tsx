@@ -12,6 +12,7 @@ import { useParams, useRouter } from 'next/navigation';
 import type { Editor } from '@tiptap/react';
 import { toast } from '@/components/ui';
 import { DocumentFinaliseDialog } from '@/components/editor/DocumentFinaliseDialog';
+import { DocumentLockConfirmDialog } from '@/components/editor/DocumentLockConfirmDialog';
 import { DocumentPageSetupDialog } from '@/components/editor/DocumentPageSetupDialog';
 import { DocumentPrintPreviewDialog } from '@/components/editor/DocumentPrintPreviewDialog';
 import { DocumentAccessTransitionBanner } from '@/components/editor/DocumentAccessTransitionBanner';
@@ -93,6 +94,8 @@ export default function EditDocumentPage() {
     const [editingTitle, setEditingTitle] = useState(false);
     const [title, setTitle] = useState('');
     const [showFinaliseDialog, setShowFinaliseDialog] = useState(false);
+    const [showLockDialog, setShowLockDialog] = useState(false);
+    const [lockingDocument, setLockingDocument] = useState(false);
     const [showSignatureBlockDialog, setShowSignatureBlockDialog] = useState(false);
     const [showPageSetupDialog, setShowPageSetupDialog] = useState(false);
     const [showPrintPreview, setShowPrintPreview] = useState(false);
@@ -555,24 +558,20 @@ export default function EditDocumentPage() {
     }
 
     async function handleLockDocument() {
-        if (!doc || !canLockDocument) {
+        if (!doc || !canLockDocument || lockingDocument) {
             return;
         }
 
-        const shouldLock = window.confirm(
-            'Lock this document now? After locking, the document becomes permanently immutable.',
-        );
-
-        if (!shouldLock) {
-            return;
-        }
-
+        setLockingDocument(true);
         try {
             const locked = await lockDocument(id);
             setDoc(prev => prev ? { ...prev, ...locked, status: 'LOCKED' } : prev);
+            setShowLockDialog(false);
             toast.success('Document locked. It is now permanently immutable.');
         } catch (error: unknown) {
             toast.error(getErrorMessage(error, 'Failed to lock document.'));
+        } finally {
+            setLockingDocument(false);
         }
     }
 
@@ -945,7 +944,7 @@ export default function EditDocumentPage() {
                 canShare={canManageAccess}
                 canComment={canComment}
                 canFinalise={canFinaliseDocument}
-                canLock={canLockDocument}
+                canLock={canLockDocument && !lockingDocument}
                 canSign={canSignDocument}
                 canViewSignature={canViewSignature}
                 canPrepareSignatureBlocks={isOwner && doc.status === 'DRAFT'}
@@ -961,7 +960,7 @@ export default function EditDocumentPage() {
                 onApplyForDigitalSignature={handleApplyForDigitalSignature}
                 onCompleteIdentityVerification={handleCompleteIdentityVerification}
                 onFinalise={handleFinalise}
-                onLock={handleLockDocument}
+                onLock={() => setShowLockDialog(true)}
                 onSign={handleSignDocument}
                 onViewSignature={() => setShowSigning(true)}
                 onViewAction={handleHeaderViewAction}
@@ -995,6 +994,15 @@ export default function EditDocumentPage() {
                 onConfirm={submitFinalise}
             />
 
+            <DocumentLockConfirmDialog
+                open={showLockDialog}
+                submitting={lockingDocument}
+                onCancel={() => {
+                    if (!lockingDocument) setShowLockDialog(false);
+                }}
+                onConfirm={() => { void handleLockDocument(); }}
+            />
+
             <SignatureBlockPreparationDialog
                 open={showSignatureBlockDialog}
                 signers={signatureBlockSigners}
@@ -1022,6 +1030,7 @@ export default function EditDocumentPage() {
                     pageCount={continuousDocumentLayout.pageCount}
                     pageHeight={continuousDocumentLayout.pageHeight}
                     contentHeight={continuousDocumentLayout.contentHeight}
+                    overlayContent={signatureStrip}
                     onClose={() => setShowPrintPreview(false)}
                 />
             )}
