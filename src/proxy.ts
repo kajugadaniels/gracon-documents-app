@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-
-// The shared cookies written by app/app on login.
-const ACCESS_TOKEN_COOKIE = 'g360_at';
-const REFRESH_TOKEN_COOKIE = 'g360_rt';
+import { documentAuthCookiePolicy } from '@/lib/auth/session-cookie-policy';
 
 // Public routes in app/documents that do not require authentication.
 const PUBLIC_PATHS = ['/verify', '/login'];
@@ -23,7 +20,9 @@ export function proxy(req: NextRequest) {
 
     const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
     const hasSessionCookie =
-        req.cookies.has(ACCESS_TOKEN_COOKIE) || req.cookies.has(REFRESH_TOKEN_COOKIE);
+        req.cookies.has(documentAuthCookiePolicy.sessionHintCookieName) ||
+        req.cookies.has(documentAuthCookiePolicy.accessCookieName) ||
+        req.cookies.has(documentAuthCookiePolicy.refreshCookieName);
 
     if (pathname === '/login' && hasSessionCookie) {
         return NextResponse.redirect(new URL('/documents', req.url));
