@@ -153,7 +153,13 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     }, [retryKey]);
 
     if (loading) {
-        return <DocumentLoadingState variant="fullscreen" />;
+        return (
+            <DocumentLoadingState
+                variant="fullscreen"
+                message="Opening documents workspace..."
+                detail="Checking your secure session"
+            />
+        );
     }
 
     if (sessionError) {
