@@ -2,6 +2,7 @@
 
 // Owns the modal print-preview shell while keeping experimental pagination isolated.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { saveRenderedDocumentAs } from '@/lib/export-document';
 import { savePaginatedPreviewAsPdf } from '@/lib/export-paginated-preview';
@@ -96,6 +97,7 @@ interface DocumentPrintPreviewDialogProps {
     pageCount: number;
     pageHeight: number;
     contentHeight: number;
+    overlayContent?: ReactNode;
     onClose: () => void;
 }
 
@@ -161,6 +163,7 @@ export function DocumentPrintPreviewDialog({
     pageCount,
     pageHeight,
     contentHeight,
+    overlayContent,
     onClose,
 }: DocumentPrintPreviewDialogProps) {
     const previewCanvasRef = useRef<HTMLDivElement>(null);
@@ -380,6 +383,7 @@ export function DocumentPrintPreviewDialog({
                             zoomScale={zoom}
                             pageGap={PAPER_PAGE_GAP_PX}
                             renderMode="preview"
+                            bottomOverlay={overlayContent}
                             onReady={handlePaginatedPreviewReady}
                             onPreviewError={handlePaginatedPreviewFailure}
                         />
@@ -405,6 +409,7 @@ export function DocumentPrintPreviewDialog({
                                 zoomScale={1}
                                 pageGap={PAPER_PAGE_GAP_PX}
                                 renderMode="export"
+                                bottomOverlay={overlayContent}
                                 onReady={handlePaginatedExportReady}
                                 onPreviewError={handlePaginatedExportFailure}
                             />
@@ -431,7 +436,7 @@ export function DocumentPrintPreviewDialog({
                             headerFooter={previewLayout.headerFooter}
                             showRepeatedPageChrome
                             pageGap={PAPER_PAGE_GAP_PX}
-                            overlayContent={null}
+                            overlayContent={overlayContent}
                             commentAnchors={emptyAnchors}
                             onEditorReady={() => undefined}
                         />
