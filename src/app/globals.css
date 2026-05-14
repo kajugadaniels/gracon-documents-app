@@ -2979,9 +2979,8 @@ body {
 
 /* Sticky horizontal ruler row — sits between the header and canvas, never scrolls away */
 .ded-sticky-ruler {
-  --ded-document-tabs-width: 212px;
   --ded-ruler-sidebar-width: 38px;
-  --ded-ruler-left-rail-width: calc(var(--ded-document-tabs-width) + var(--ded-ruler-sidebar-width));
+  --ded-ruler-left-rail-width: var(--ded-ruler-sidebar-width);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -3009,120 +3008,6 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: row;
-}
-
-.ded-document-tabs {
-  flex: 0 0 212px;
-  width: 212px;
-  background: #f6f7fb;
-  border-right: 1px solid rgba(22,16,58,0.10);
-  padding: 14px 10px 18px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.ded-document-tabs__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-  padding: 0 4px;
-}
-
-.ded-document-tabs__header span {
-  color: #25223d;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.ded-document-tabs__header em {
-  min-width: 22px;
-  height: 20px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(91,35,255,0.10);
-  color: var(--color-primary);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 700;
-}
-
-.ded-document-tabs__list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.ded-document-tabs__item {
-  --tab-indent: 0px;
-  appearance: none;
-  width: 100%;
-  min-height: 32px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: #25223d;
-  cursor: pointer;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 8px 7px calc(8px + var(--tab-indent));
-  text-align: left;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
-}
-
-.ded-document-tabs__item:hover,
-.ded-document-tabs__item:focus-visible {
-  background: rgba(91,35,255,0.07);
-  border-color: rgba(91,35,255,0.18);
-  outline: none;
-}
-
-.ded-document-tabs__item--active {
-  background: #ffffff;
-  border-color: rgba(91,35,255,0.24);
-  color: var(--color-primary);
-  box-shadow: 0 1px 2px rgba(22,16,58,0.06);
-}
-
-.ded-document-tabs__item span {
-  min-width: 0;
-  overflow: hidden;
-  color: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ded-document-tabs__item em {
-  color: var(--color-text-muted);
-  font-size: 10.5px;
-  font-style: normal;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.ded-document-tabs__empty {
-  margin: 6px 4px 0;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-@media (max-width: 1180px) {
-  .ded-sticky-ruler {
-    --ded-ruler-left-rail-width: var(--ded-ruler-sidebar-width);
-  }
-
-  .ded-document-tabs {
-    display: none;
-  }
 }
 
 /* Vertical ruler sidebar — clipping frame; scroll is driven by JS from canvas */
