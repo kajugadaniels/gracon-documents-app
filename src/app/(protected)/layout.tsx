@@ -158,6 +158,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    background: '#ffffff',
                 }}
             >
                 <div
