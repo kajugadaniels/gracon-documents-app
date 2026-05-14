@@ -1789,6 +1789,17 @@ body {
   min-height: 40px;
   cursor: pointer;
 }
+.document-print-preview__actions .btn-ghost {
+  border-color: rgba(255,255,255,0.34);
+  background: rgba(255,255,255,0.10);
+  color: #ffffff;
+}
+.document-print-preview__actions .btn-ghost:hover,
+.document-print-preview__actions .btn-ghost:focus-visible {
+  border-color: rgba(255,255,255,0.58);
+  background: rgba(255,255,255,0.18);
+  color: #ffffff;
+}
 .document-print-preview__body {
   min-height: 0;
   overflow: auto;
