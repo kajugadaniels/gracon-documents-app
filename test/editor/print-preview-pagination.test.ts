@@ -54,3 +54,34 @@ test('buildPrintPreviewPaginationConfig escapes header and footer html', () => {
     assert.equal(config.headerRight, '');
     assert.equal(config.footerRight, '');
 });
+
+test('buildPrintPreviewPaginationConfig disables chrome and content offsets when header/footer are off', () => {
+    const config = buildPrintPreviewPaginationConfig({
+        title: 'Agreement',
+        status: 'FINAL',
+        pageGap: -20,
+        layout: {
+            paperSize: 'A4',
+            margins: { top: 96.4, right: 76.2, bottom: 96.6, left: 75.8 },
+            headerFooter: {
+                headerEnabled: false,
+                footerEnabled: false,
+                pageNumbersEnabled: true,
+                headerText: 'Hidden header',
+                footerText: 'Hidden footer',
+            },
+        },
+    });
+
+    assert.equal(config.marginTop, 96);
+    assert.equal(config.marginRight, 76);
+    assert.equal(config.marginBottom, 97);
+    assert.equal(config.marginLeft, 76);
+    assert.equal(config.contentMarginTop, 0);
+    assert.equal(config.contentMarginBottom, 0);
+    assert.equal(config.headerLeft, '');
+    assert.equal(config.headerRight, '');
+    assert.equal(config.footerLeft, '');
+    assert.equal(config.footerRight, '');
+    assert.equal(config.pageGap, 0);
+});
