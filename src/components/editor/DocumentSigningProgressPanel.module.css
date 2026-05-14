@@ -1,6 +1,6 @@
 .rail {
     position: absolute;
-    top: 24px;
+    top: 32px;
     right: clamp(16px, 2.4vw, 32px);
     z-index: 14;
     width: min(340px, calc(100vw - 64px));
