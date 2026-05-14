@@ -26,6 +26,7 @@ import type { DocumentLayout } from '@/lib/document-layout';
 import { normalizeEditorLinkUrl } from '@/lib/editor-link';
 import { buildPrintPreviewPaginationConfig } from '@/lib/print-preview-pagination';
 import { removeDocumentBoundariesFromTiptapContent } from '@/lib/remove-document-boundaries';
+import { DocumentLoadingState } from './DocumentLoadingState';
 
 export type PaginatedPrintPreviewRenderMode = 'preview' | 'export';
 
@@ -195,9 +196,7 @@ export function PaginatedPrintPreviewCanvas({
                         {editor ? (
                             <EditorContent editor={editor} />
                         ) : (
-                            <div className="paginated-print-preview__loading">
-                                Preparing preview...
-                            </div>
+                            <DocumentLoadingState variant="paper" message="Preparing preview..." />
                         )}
                     </div>
                     {bottomOverlay}
