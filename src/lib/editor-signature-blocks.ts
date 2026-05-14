@@ -29,6 +29,13 @@ export interface SignatureBlockInsert {
     signatureImageUrl?: string | null;
 }
 
+type TiptapJsonNode = {
+    type?: unknown;
+    attrs?: Record<string, unknown>;
+    content?: unknown;
+    [key: string]: unknown;
+};
+
 function getOwnerDisplayName(user: SessionUser): string {
     return [user.postNames, user.surName].filter(Boolean).join(' ').trim() || user.email;
 }
@@ -153,6 +160,95 @@ export function getSignatureBlockSignerOrder(content: unknown): string[] {
 export function hasSignatureBlockForUser(content: unknown, userId: string | null | undefined) {
     if (!userId) return false;
     return getSignatureBlockSignerOrder(content).includes(userId);
+}
+
+function getSignatureBlockInsertKey(block: SignatureBlockInsert) {
+    if (block.signerUserId) return `user:${block.signerUserId}`;
+    if (block.signerAccessId) return `access:${block.signerAccessId}`;
+    if (block.blockId) return `block:${block.blockId}`;
+    return '';
+}
+
+function getSignatureBlockNodeKey(attrs: Record<string, unknown> | undefined) {
+    if (!attrs) return '';
+
+    const signerUserId = typeof attrs.signerUserId === 'string' ? attrs.signerUserId : '';
+    const signerAccessId = typeof attrs.signerAccessId === 'string' ? attrs.signerAccessId : '';
+    const blockId = typeof attrs.blockId === 'string' ? attrs.blockId : '';
+
+    if (signerUserId) return `user:${signerUserId}`;
+    if (signerAccessId) return `access:${signerAccessId}`;
+    if (blockId) return `block:${blockId}`;
+    return '';
+}
+
+function mergeSignatureBlockAttrs(
+    attrs: Record<string, unknown> | undefined,
+    evidence: SignatureBlockInsert,
+) {
+    return {
+        ...(attrs ?? {}),
+        label: evidence.label,
+        signerRole: evidence.signerRole,
+        required: evidence.required,
+        signerUserId: evidence.signerUserId,
+        signerAccessId: evidence.signerAccessId,
+        signerName: evidence.signerName,
+        signerEmail: evidence.signerEmail,
+        signatureId: evidence.signatureId ?? null,
+        signedAt: evidence.signedAt ?? null,
+        signatureImageUrl: evidence.signatureImageUrl ?? null,
+    };
+}
+
+/**
+ * Returns TipTap JSON with signed signature-block evidence applied for preview/export rendering.
+ */
+export function applySignatureBlockEvidenceToContent(
+    content: Record<string, unknown> | null,
+    blocks: SignatureBlockInsert[],
+): Record<string, unknown> | null {
+    if (!content || blocks.length === 0) return content;
+
+    const evidenceByKey = new Map(
+        blocks
+            .map((block) => [getSignatureBlockInsertKey(block), block] as const)
+            .filter(([key]) => key),
+    );
+    if (evidenceByKey.size === 0) return content;
+
+    let changed = false;
+
+    function visit(value: unknown): unknown {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            return value;
+        }
+
+        const node = value as TiptapJsonNode;
+        const nextNode: TiptapJsonNode = { ...node };
+
+        if (Array.isArray(node.content)) {
+            const currentContent = node.content;
+            const nextContent = currentContent.map(visit);
+            if (nextContent.some((child, index) => child !== currentContent[index])) {
+                nextNode.content = nextContent;
+            }
+        }
+
+        if (node.type === 'signatureBlock') {
+            const evidence = evidenceByKey.get(getSignatureBlockNodeKey(node.attrs));
+
+            if (evidence) {
+                nextNode.attrs = mergeSignatureBlockAttrs(node.attrs, evidence);
+                changed = true;
+            }
+        }
+
+        return nextNode;
+    }
+
+    const nextContent = visit(content);
+    return changed ? nextContent as Record<string, unknown> : content;
 }
 
 /**
