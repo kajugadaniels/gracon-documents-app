@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import { VerifyForm } from '@/components/pages/verify';
 
 export const metadata: Metadata = {
-    title: 'Verify Document — Gracon 360',
+    title: 'Verify Document',
     description: 'Verify the authenticity of a digitally signed document.',
 };
 
