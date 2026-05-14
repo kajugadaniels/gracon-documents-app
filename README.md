@@ -70,6 +70,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Owner lock is a confirmed action, not an accidental one-click mutation
 - Signed and locked documents render signing evidence in editor and print preview, with QR verification centered at the bottom of the signed page surface
 - Print preview currently isolates paginated rendering from live editing; the long-term production plan is Gracon-owned pagination rather than live-editor ownership by `tiptap-pagination-plus`
+- Print preview owns a cleanup audit for hidden paginated export roots: temporary export hosts, readiness timers, and DOM refs must be cleared when saving finishes or the preview unmounts
 - Gracon-owned page break and pagination architecture is documented in `docs/gracon-owned-pagination-architecture.md`
 - Cross-tab share activity refresh and document metadata merge patterns
 - Typed insert-menu action registry so menu labels, enabled states, and editor command dispatch stay aligned while features are implemented incrementally
@@ -152,6 +153,7 @@ app/documents/
 - Document cards are styled through `DocumentCard.module.css`; do not add new `doc-card` globals.
 - Signing progress is styled through `DocumentSigningProgressPanel.module.css`; keep it independent from document canvas geometry.
 - Pagination must remain Gracon-owned in the live editor. Third-party pagination can be studied or temporarily isolated in preview paths only, but must not own live editing behavior.
+- Hidden print-preview/export renderers must be treated as short-lived resources. Any new async render path must cancel timers, ignore callbacks after unmount, remove temporary DOM hosts, and keep object refs from pointing at detached nodes.
 
 ## Local Commands
 
