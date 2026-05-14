@@ -17,7 +17,7 @@
   --color-primary-subtle:    rgba(91, 35, 255, 0.08);
 
   /* ── Backgrounds ── */
-  --color-bg-base:           #ffffff;
+  --color-bg-base:           #f7f6fb;
   --color-bg-elevated:       rgba(255, 255, 255, 0.68);
   --color-bg-elevated-hover: rgba(255, 255, 255, 0.88);
   --color-bg-input:          rgba(255, 255, 255, 0.82);
@@ -105,7 +105,8 @@ body {
   font-size:        14px;
   line-height:      1.6;
   min-height:       100dvh;
-  background-image: none;
+  background-image: linear-gradient(180deg, #fbfafd 0%, var(--color-bg-base) 100%);
+  background-attachment: fixed;
 }
 
 /* ── Glass ── */
