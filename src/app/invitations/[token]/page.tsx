@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { InvitationAcceptanceView } from '@/components/pages/invitations/InvitationAcceptanceView';
 
 export const metadata: Metadata = {
-    title: 'Document Invitation — Gracon 360 Documents',
+    title: 'Document Invitation',
     description: 'Review and accept a secure document-sharing invitation.',
 };
 
