@@ -147,14 +147,18 @@ export function DocumentSigningProgressPanel({
                 }
 
                 const canvas = anchorRef.current;
-                const frame = canvas?.querySelector<HTMLElement>('[data-document-export-root="true"]');
 
-                if (!frame) {
+                if (!canvas) {
                     setRailStyle({});
                     return;
                 }
 
-                const top = Math.max(16, Math.round(frame.getBoundingClientRect().top));
+                const canvasStyles = window.getComputedStyle(canvas);
+                const canvasPaddingTop = Number.parseFloat(canvasStyles.paddingTop) || 0;
+                const top = Math.max(
+                    16,
+                    Math.round(canvas.getBoundingClientRect().top + canvasPaddingTop),
+                );
 
                 setRailStyle({
                     top,
@@ -165,16 +169,11 @@ export function DocumentSigningProgressPanel({
 
         updateRailPosition();
 
-        const canvas = anchorRef.current;
         window.addEventListener('resize', updateRailPosition);
-        window.addEventListener('scroll', updateRailPosition, { passive: true });
-        canvas?.addEventListener('scroll', updateRailPosition, { passive: true });
 
         return () => {
             window.cancelAnimationFrame(frameId);
             window.removeEventListener('resize', updateRailPosition);
-            window.removeEventListener('scroll', updateRailPosition);
-            canvas?.removeEventListener('scroll', updateRailPosition);
         };
     }, [anchorRef]);
 

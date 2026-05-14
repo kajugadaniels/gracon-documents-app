@@ -55,7 +55,7 @@ export function SigningModal({ document: doc, onClose, onSigned }: SigningModalP
                 {step === 'review' && (
                     <>
                         <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                            {doc.status === 'FINALISED' ? 'Sign Document' : '✅ Document Already Locked'}
+                            {doc.status === 'FINALISED' ? 'Sign Document' : 'Document Already Locked'}
                         </h2>
                         <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
                             {doc.status === 'FINALISED'
