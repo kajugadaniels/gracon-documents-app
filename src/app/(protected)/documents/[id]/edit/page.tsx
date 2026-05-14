@@ -21,6 +21,7 @@ import { DocEditorHeader } from '@/components/editor/DocEditorHeader';
 import { DocumentCommentsPanel } from '@/components/editor/DocumentCommentsPanel';
 import { DocumentSigningProgressPanel } from '@/components/editor/DocumentSigningProgressPanel';
 import { DocumentLoadingState } from '@/components/editor/DocumentLoadingState';
+import { DocumentSurfaceErrorBoundary } from '@/components/editor/DocumentSurfaceErrorBoundary';
 import { SignatureBlockPreparationDialog } from '@/components/editor/SignatureBlockPreparationDialog';
 import { PagedDocumentCanvas } from '@/components/editor/PagedDocumentCanvas';
 import { mergeDocumentShareState } from '@/store/editor/document-share-state';
@@ -110,6 +111,8 @@ export default function EditDocumentPage() {
     const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
     const [retryKey, setRetryKey] = useState(0);
     const [shareActivityRefreshKey, setShareActivityRefreshKey] = useState(0);
+    const [editorRecoveryKey, setEditorRecoveryKey] = useState(0);
+    const [previewRecoveryKey, setPreviewRecoveryKey] = useState(0);
 
     useDocumentTitle(title || doc?.title || 'Loading Document');
     const [signingReadiness, setSigningReadiness] = useState<DocumentSigningReadiness | null>(null);
@@ -1012,18 +1015,26 @@ export default function EditDocumentPage() {
             )}
 
             {showPrintPreview && (
-                <DocumentPrintPreviewDialog
-                    documentId={doc.id}
-                    title={title.trim() || doc.title}
-                    status={doc.status}
-                    content={previewContentWithSignatureEvidence}
-                    layout={documentLayout}
-                    pageCount={continuousDocumentLayout.pageCount}
-                    pageHeight={continuousDocumentLayout.pageHeight}
-                    contentHeight={continuousDocumentLayout.contentHeight}
-                    overlayContent={signatureStrip}
+                <DocumentSurfaceErrorBoundary
+                    surface="preview"
+                    resetKey={`${doc.id}:${previewRecoveryKey}:${title}:${doc.status}`}
+                    onReset={() => setPreviewRecoveryKey((current) => current + 1)}
                     onClose={() => setShowPrintPreview(false)}
-                />
+                >
+                    <DocumentPrintPreviewDialog
+                        key={`${doc.id}:${previewRecoveryKey}`}
+                        documentId={doc.id}
+                        title={title.trim() || doc.title}
+                        status={doc.status}
+                        content={previewContentWithSignatureEvidence}
+                        layout={documentLayout}
+                        pageCount={continuousDocumentLayout.pageCount}
+                        pageHeight={continuousDocumentLayout.pageHeight}
+                        contentHeight={continuousDocumentLayout.contentHeight}
+                        overlayContent={signatureStrip}
+                        onClose={() => setShowPrintPreview(false)}
+                    />
+                </DocumentSurfaceErrorBoundary>
             )}
 
             {/* ── Sticky horizontal ruler (Google Docs-style — stays below the header) ── */}
@@ -1065,26 +1076,35 @@ export default function EditDocumentPage() {
                 )}
 
                 {/* ── Paper canvas ── */}
-                <PagedDocumentCanvas
-                    canvasRef={canvasRef}
-                    documentId={doc.id}
-                    title={doc.title}
-                    status={doc.status}
-                    content={doc.content}
-                    isReadOnly={isReadOnly}
-                    zoomScale={zoomScale}
-                    pageCount={continuousDocumentLayout.pageCount}
-                    pageHeight={continuousDocumentLayout.pageHeight}
-                    contentHeight={continuousDocumentLayout.contentHeight}
-                    printLayout={viewState.printLayout}
-                    showFormattingMarks={viewState.showFormattingMarks}
-                    paperStyle={documentLayoutStyle}
-                    headerFooter={documentLayout.headerFooter}
-                    overlayContent={signatureStrip}
-                    commentAnchors={commentAnchors}
-                    onContentChange={handleContentChange}
-                    onEditorReady={setEditor}
-                />
+                <DocumentSurfaceErrorBoundary
+                    surface="editor"
+                    resetKey={`${doc.id}:${editorRecoveryKey}`}
+                    onReset={() => {
+                        setEditor(null);
+                        setEditorRecoveryKey((current) => current + 1);
+                    }}
+                >
+                    <PagedDocumentCanvas
+                        canvasRef={canvasRef}
+                        documentId={`${doc.id}:${editorRecoveryKey}`}
+                        title={doc.title}
+                        status={doc.status}
+                        content={doc.content}
+                        isReadOnly={isReadOnly}
+                        zoomScale={zoomScale}
+                        pageCount={continuousDocumentLayout.pageCount}
+                        pageHeight={continuousDocumentLayout.pageHeight}
+                        contentHeight={continuousDocumentLayout.contentHeight}
+                        printLayout={viewState.printLayout}
+                        showFormattingMarks={viewState.showFormattingMarks}
+                        paperStyle={documentLayoutStyle}
+                        headerFooter={documentLayout.headerFooter}
+                        overlayContent={signatureStrip}
+                        commentAnchors={commentAnchors}
+                        onContentChange={handleContentChange}
+                        onEditorReady={setEditor}
+                    />
+                </DocumentSurfaceErrorBoundary>
                 <DocumentSigningProgressPanel
                     document={doc}
                     anchorRef={canvasRef}
