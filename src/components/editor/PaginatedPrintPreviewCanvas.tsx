@@ -1,7 +1,7 @@
 'use client';
 
 // Isolated read-only TipTap renderer for paginated print preview experiments.
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -62,6 +62,7 @@ export function PaginatedPrintPreviewCanvas({
     onReady,
     onPreviewError,
 }: PaginatedPrintPreviewCanvasProps) {
+    const isMountedRef = useRef(false);
     const sanitizedContent = useMemo(
         () => removeDocumentBoundariesFromTiptapContent(content)
             ?? { type: 'doc', content: [{ type: 'paragraph' }] },
@@ -125,7 +126,15 @@ export function PaginatedPrintPreviewCanvas({
     }, [documentId]);
 
     useEffect(() => {
-        if (!editor) return;
+        isMountedRef.current = true;
+
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!editor || editor.isDestroyed || !isMountedRef.current) return;
 
         try {
             editor.commands.updatePageHeight(paginationConfig.pageHeight);
@@ -151,6 +160,7 @@ export function PaginatedPrintPreviewCanvas({
                 paginationConfig.footerRight,
             );
         } catch (error) {
+            if (!isMountedRef.current) return;
             onPreviewError?.(
                 error instanceof Error
                     ? error
@@ -160,11 +170,14 @@ export function PaginatedPrintPreviewCanvas({
     }, [editor, onPreviewError, paginationConfig]);
 
     useEffect(() => {
-        if (!editor) return;
+        if (!editor || editor.isDestroyed || !isMountedRef.current) return;
         try {
             editor.commands.setContent(sanitizedContent, { emitUpdate: false });
-            onReady?.();
+            if (isMountedRef.current) {
+                onReady?.();
+            }
         } catch (error) {
+            if (!isMountedRef.current) return;
             onPreviewError?.(
                 error instanceof Error
                     ? error
