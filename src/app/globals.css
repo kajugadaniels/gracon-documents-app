@@ -1884,6 +1884,10 @@ body {
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
   body.document-print-preview-active {
     background: #fff !important;
   }
@@ -1905,6 +1909,9 @@ body {
   body.document-print-preview-active .document-print-preview__toolbar {
     display: none !important;
   }
+  body.document-print-preview-active .document-print-preview__export-fallback {
+    display: none !important;
+  }
   body.document-print-preview-active .document-print-preview__body,
   body.document-print-preview-active .document-print-preview .ded-canvas,
   body.document-print-preview-active .document-print-preview .document-workspace-stage {
@@ -1922,6 +1929,24 @@ body {
   body.document-print-preview-active .document-print-preview .document-layout-frame {
     transform: none !important;
     transform-origin: top left !important;
+  }
+  body.document-print-preview-active .paginated-print-preview {
+    display: block !important;
+  }
+  body.document-print-preview-active .paginated-print-preview__shell,
+  body.document-print-preview-active .paginated-print-preview__frame {
+    width: var(--paper-width) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    transform-origin: top left !important;
+  }
+  body.document-print-preview-active .paginated-print-preview__editor .ProseMirror {
+    box-shadow: none !important;
+  }
+  body.document-print-preview-active .paginated-print-preview__editor .rm-pagination-gap {
+    background: #fff !important;
+    border: 0 !important;
   }
 }
 
