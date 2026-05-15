@@ -12,25 +12,40 @@ function getEnv(name: string): string | undefined {
 
 export const documentAuthCookiePolicy = {
     accessCookieName:
-        getEnv('NEXT_PUBLIC_AUTH_ACCESS_COOKIE_NAME') ?? DEFAULT_ACCESS_TOKEN_COOKIE,
+        getEnv('AUTH_ACCESS_COOKIE_NAME') ??
+        getEnv('NEXT_PUBLIC_AUTH_ACCESS_COOKIE_NAME') ??
+        DEFAULT_ACCESS_TOKEN_COOKIE,
     refreshCookieName:
-        getEnv('NEXT_PUBLIC_AUTH_REFRESH_COOKIE_NAME') ?? DEFAULT_REFRESH_TOKEN_COOKIE,
+        getEnv('AUTH_REFRESH_COOKIE_NAME') ??
+        getEnv('NEXT_PUBLIC_AUTH_REFRESH_COOKIE_NAME') ??
+        DEFAULT_REFRESH_TOKEN_COOKIE,
     sessionHintCookieName:
+        getEnv('AUTH_SESSION_HINT_COOKIE_NAME') ??
         getEnv('NEXT_PUBLIC_AUTH_SESSION_HINT_COOKIE_NAME') ??
         DEFAULT_SESSION_HINT_COOKIE,
-    cookieDomain: getEnv('NEXT_PUBLIC_AUTH_COOKIE_DOMAIN'),
+    cookieDomain:
+        getEnv('AUTH_COOKIE_DOMAIN') ?? getEnv('NEXT_PUBLIC_AUTH_COOKIE_DOMAIN'),
     cookieSecure:
+        getEnv('AUTH_COOKIE_SECURE') === 'true' ||
         getEnv('NEXT_PUBLIC_AUTH_COOKIE_SECURE') === 'true' ||
         process.env.NODE_ENV === 'production',
-    cookieSameSite: normalizeSameSite(getEnv('NEXT_PUBLIC_AUTH_COOKIE_SAME_SITE')),
+    cookieSameSite: normalizeSameSite(
+        getEnv('AUTH_COOKIE_SAME_SITE') ?? getEnv('NEXT_PUBLIC_AUTH_COOKIE_SAME_SITE'),
+    ),
     accessTokenMaxAgeSeconds: parseDurationSeconds(
-        getEnv('NEXT_PUBLIC_AUTH_ACCESS_TOKEN_TTL'),
+        getEnv('AUTH_ACCESS_TOKEN_TTL') ?? getEnv('NEXT_PUBLIC_AUTH_ACCESS_TOKEN_TTL'),
         DEFAULT_ACCESS_TOKEN_TTL,
     ),
     refreshTokenMaxAgeSeconds: parseDurationSeconds(
-        getEnv('NEXT_PUBLIC_AUTH_REFRESH_TOKEN_TTL'),
+        getEnv('AUTH_REFRESH_TOKEN_TTL') ?? getEnv('NEXT_PUBLIC_AUTH_REFRESH_TOKEN_TTL'),
         DEFAULT_REFRESH_TOKEN_TTL,
     ),
+    refreshRotationRequired:
+        (getEnv('AUTH_REFRESH_ROTATION') ??
+            getEnv('NEXT_PUBLIC_AUTH_REFRESH_ROTATION')) !== 'false',
+    refreshReuseDetectionRequired:
+        (getEnv('AUTH_REUSE_DETECTION') ??
+            getEnv('NEXT_PUBLIC_AUTH_REUSE_DETECTION')) !== 'false',
 };
 
 function normalizeSameSite(value: string | undefined): CookieSameSite {
@@ -56,7 +71,9 @@ function parseDurationSeconds(value: string | undefined, fallback: string): numb
 }
 
 export function shouldUseMainAppLogin(): boolean {
-    const explicit = getEnv('NEXT_PUBLIC_DOCUMENTS_USE_MAIN_APP_LOGIN');
+    const explicit =
+        getEnv('DOCUMENTS_USE_MAIN_APP_LOGIN') ??
+        getEnv('NEXT_PUBLIC_DOCUMENTS_USE_MAIN_APP_LOGIN');
 
     if (explicit === 'true') return true;
     if (explicit === 'false') return false;
@@ -65,7 +82,9 @@ export function shouldUseMainAppLogin(): boolean {
 }
 
 export function shouldAllowReadableDocumentAuthCookies(): boolean {
-    const explicit = getEnv('NEXT_PUBLIC_ALLOW_DEV_READABLE_AUTH_COOKIES');
+    const explicit =
+        getEnv('ALLOW_DEV_READABLE_AUTH_COOKIES') ??
+        getEnv('NEXT_PUBLIC_ALLOW_DEV_READABLE_AUTH_COOKIES');
 
     if (explicit === 'true') return true;
     if (explicit === 'false') return false;
