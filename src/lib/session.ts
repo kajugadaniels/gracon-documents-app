@@ -85,6 +85,21 @@ export function getIdentityVerificationUrl(nextPath?: string): string {
     return url.toString();
 }
 
+export async function logoutFromDocuments(): Promise<void> {
+    try {
+        await fetch('/api/logout', {
+            method: 'POST',
+            credentials: 'include',
+            cache: 'no-store',
+        });
+    } catch {
+        // Logout handoff must still continue so app/app can clear its own
+        // state and shared parent-domain cookies.
+    }
+
+    window.location.href = `${APP_URL}/logout`;
+}
+
 function getUnavailableMessage(payload: unknown, fallback: string): string {
     const message = (payload as { message?: string; error?: string } | null)?.message
         ?? (payload as { message?: string; error?: string } | null)?.error;
