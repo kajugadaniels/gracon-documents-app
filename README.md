@@ -42,6 +42,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Next.js proxy routes for auth refresh/current user and signature operations
 - Server-side single-flight session refresh/upgrade helpers for auth and signature proxy routes
 - Cross-app auth is moving to the shared Gracon session-cookie contract owned by `app/app` and the auth service. `app/documents` should validate server-side cookies through local route handlers and must not depend on JavaScript-readable refresh tokens in production.
+- Logout flows through the local documents `/api/logout` route first, then hands off to `app/app` logout so shared parent-domain cookies are cleared without reloading protected document state first.
 - Zustand hydration from sessionStorage plus cookie-backed recovery
 - A4-style editor work, autosave, versions, and signing states
 - White default workspace background for documents, templates, and protected loading surfaces; the editor canvas owns its own neutral gray paper workspace
@@ -178,11 +179,15 @@ NEXT_PUBLIC_DOCS_URL=http://localhost:4002
 NEXT_PUBLIC_APP_URL=http://localhost:4000
 NEXT_PUBLIC_DOCUMENTS_API_URL=http://localhost:3005/api/v1
 NEXT_PUBLIC_SIGNATURE_API_URL=http://localhost:3002/api/v1
-NEXT_PUBLIC_AUTH_COOKIE_DOMAIN=
-NEXT_PUBLIC_AUTH_COOKIE_SECURE=false
-NEXT_PUBLIC_AUTH_COOKIE_SAME_SITE=lax
-NEXT_PUBLIC_AUTH_ACCESS_TOKEN_TTL=15m
-NEXT_PUBLIC_AUTH_REFRESH_TOKEN_TTL=1d
+AUTH_COOKIE_DOMAIN=
+AUTH_COOKIE_SECURE=false
+AUTH_COOKIE_SAME_SITE=lax
+AUTH_ACCESS_TOKEN_TTL=15m
+AUTH_REFRESH_TOKEN_TTL=1d
+AUTH_REFRESH_ROTATION=true
+AUTH_REUSE_DETECTION=true
+DOCUMENTS_USE_MAIN_APP_LOGIN=false
+ALLOW_DEV_READABLE_AUTH_COOKIES=true
 NEXT_PUBLIC_DOCUMENTS_USE_MAIN_APP_LOGIN=false
 NEXT_PUBLIC_ALLOW_DEV_READABLE_AUTH_COOKIES=true
 ```
@@ -192,12 +197,16 @@ For production, the auth cookie domain should be the parent domain, for example
 `.gracon360.com`, so `app.gracon360.com` login can be reused by
 `documents.gracon360.com`. Real session credentials should be `HttpOnly` and
 validated server-side; `session_active` is only a non-sensitive hint.
+Keep `DOCUMENTS_USE_MAIN_APP_LOGIN=false` and readable development cookies
+enabled locally. In production, enable main-app login, disable readable auth
+cookies, and let the server route handlers own shared cookie validation.
 
 ## Integration Boundaries
 
 - Talks directly to `api/documents`
 - Uses local proxy routes for auth/session recovery and signature endpoints
 - Uses local `/api/session` to validate the shared Gracon session server-side before loading protected document routes. Missing production sessions should redirect to `app/app` login, while the local documents login remains available for development compatibility.
+- Uses local `/api/logout` to revoke the current refresh session when available and clear shared document-visible session cookies before handing off to `app/app`.
 - Redirects to `app/app` for login and identity verification
 - Should not host its own standalone identity-verification UI now
 
@@ -206,6 +215,7 @@ validated server-side; `session_active` is only a non-sensitive hint.
 - Use hard navigation when jumping to `app/app`
 - Do not add new production code that requires reading refresh tokens from `document.cookie`. Shared auth must be validated through server-side route handlers.
 - Keep the existing local development login/readable-cookie method available for developer workflows. Production should use `NEXT_PUBLIC_DOCUMENTS_USE_MAIN_APP_LOGIN=true` and server-owned cookies from `app/app`.
+- Keep logout unified. Document UI should call `logoutFromDocuments()` so local documents cookies and the shared app session are both cleared.
 - Keep document permissions and signing state separate in the UI
 - Reflect the backend workflow correctly: finalise, sign, then owner lock
 - Keep page layout data consistent across editor rendering and export
