@@ -15,6 +15,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Search01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import type { SessionUser } from '@/app/(protected)/layout';
 import { APP_URL } from '@/lib/session';
+import { clearDocumentAuthCookies } from '@/lib/auth/session-cookie-policy';
 import { DOCS_NAV_ITEMS } from '@/constants';
 
 /** Debounce delay in ms before the search query is pushed to the URL. */
@@ -85,8 +86,7 @@ export function DocsHeader({ user }: { user: SessionUser }) {
     }
 
     function logout() {
-        document.cookie = 'g360_at=; path=/; max-age=0; SameSite=Lax';
-        document.cookie = 'g360_rt=; path=/; max-age=0; SameSite=Lax';
+        clearDocumentAuthCookies();
         window.location.href = `${APP_URL}/logout`;
     }
 
