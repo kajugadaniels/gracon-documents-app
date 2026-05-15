@@ -1,4 +1,8 @@
 import { NextResponse } from 'next/server';
+import {
+    documentAuthCookiePolicy,
+    shouldAllowReadableDocumentAuthCookies,
+} from '@/lib/auth/session-cookie-policy';
 
 const AUTH_SERVICE_BASE =
     process.env.NEXT_PUBLIC_AUTH_API_URL ?? 'http://localhost:3000/api/v1';
@@ -32,17 +36,31 @@ export async function POST(request: Request) {
                 const refreshToken = payload?.refreshToken as string | undefined;
 
                 if (accessToken && refreshToken) {
-                    const maxAge = 60 * 60 * 24 * 30;
+                    const commonOptions = {
+                        path: '/',
+                        sameSite: documentAuthCookiePolicy.cookieSameSite,
+                        secure: documentAuthCookiePolicy.cookieSecure,
+                        domain: documentAuthCookiePolicy.cookieDomain,
+                        httpOnly: !shouldAllowReadableDocumentAuthCookies(),
+                    };
 
-                    nextResponse.cookies.set('g360_at', accessToken, {
-                        maxAge,
-                        path: '/',
-                        sameSite: 'lax',
+                    // Local documents login remains useful in development. In
+                    // production, login should normally happen in app/app and
+                    // any credential cookies written here are HttpOnly.
+                    nextResponse.cookies.set(documentAuthCookiePolicy.accessCookieName, accessToken, {
+                        ...commonOptions,
+                        maxAge: documentAuthCookiePolicy.accessTokenMaxAgeSeconds,
                     });
-                    nextResponse.cookies.set('g360_rt', refreshToken, {
-                        maxAge,
+                    nextResponse.cookies.set(documentAuthCookiePolicy.refreshCookieName, refreshToken, {
+                        ...commonOptions,
+                        maxAge: documentAuthCookiePolicy.refreshTokenMaxAgeSeconds,
+                    });
+                    nextResponse.cookies.set(documentAuthCookiePolicy.sessionHintCookieName, '1', {
+                        maxAge: documentAuthCookiePolicy.refreshTokenMaxAgeSeconds,
                         path: '/',
-                        sameSite: 'lax',
+                        sameSite: documentAuthCookiePolicy.cookieSameSite,
+                        secure: documentAuthCookiePolicy.cookieSecure,
+                        domain: documentAuthCookiePolicy.cookieDomain,
                     });
                 }
             } catch {
