@@ -14,8 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Search01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import type { SessionUser } from '@/app/(protected)/layout';
-import { APP_URL } from '@/lib/session';
-import { clearDocumentAuthCookies } from '@/lib/auth/session-cookie-policy';
+import { logoutFromDocuments } from '@/lib/session';
 import { DOCS_NAV_ITEMS } from '@/constants';
 
 /** Debounce delay in ms before the search query is pushed to the URL. */
@@ -86,8 +85,7 @@ export function DocsHeader({ user }: { user: SessionUser }) {
     }
 
     function logout() {
-        clearDocumentAuthCookies();
-        window.location.href = `${APP_URL}/logout`;
+        void logoutFromDocuments();
     }
 
     const initials = `${user.postNames?.[0] ?? ''}${user.surName?.[0] ?? ''}`.toUpperCase() || 'U';
