@@ -8,13 +8,15 @@
  */
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { documentAuthCookiePolicy } from '@/lib/auth/session-cookie-policy';
+import {
+    documentAuthCookiePolicy,
+    shouldAllowReadableDocumentAuthCookies,
+} from '@/lib/auth/session-cookie-policy';
 
 const AUTH_BASE =
     process.env.NEXT_PUBLIC_AUTH_API_URL ??
     process.env.NEXT_PUBLIC_API_URL ??
     'http://localhost:3000/api/v1';
-const SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 export type RefreshedTokens = {
     accessToken: string;
@@ -93,15 +95,22 @@ export function refreshSession(
  * longer recoverable.
  */
 export function clearSessionCookies<T extends NextResponse>(response: T): T {
-    response.cookies.set(documentAuthCookiePolicy.accessCookieName, '', {
+    const options = {
         maxAge: 0,
         path: '/',
-        sameSite: 'lax',
+        sameSite: documentAuthCookiePolicy.cookieSameSite,
+        secure: documentAuthCookiePolicy.cookieSecure,
+        domain: documentAuthCookiePolicy.cookieDomain,
+    };
+
+    response.cookies.set(documentAuthCookiePolicy.accessCookieName, '', {
+        ...options,
     });
     response.cookies.set(documentAuthCookiePolicy.refreshCookieName, '', {
-        maxAge: 0,
-        path: '/',
-        sameSite: 'lax',
+        ...options,
+    });
+    response.cookies.set(documentAuthCookiePolicy.sessionHintCookieName, '', {
+        ...options,
     });
     return response;
 }
@@ -113,15 +122,28 @@ export function applySessionCookies<T extends NextResponse>(
     response: T,
     tokens: RefreshedTokens,
 ): T {
-    response.cookies.set(documentAuthCookiePolicy.accessCookieName, tokens.accessToken, {
-        maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
+    const commonOptions = {
         path: '/',
-        sameSite: 'lax',
+        sameSite: documentAuthCookiePolicy.cookieSameSite,
+        secure: documentAuthCookiePolicy.cookieSecure,
+        domain: documentAuthCookiePolicy.cookieDomain,
+        httpOnly: !shouldAllowReadableDocumentAuthCookies(),
+    };
+
+    response.cookies.set(documentAuthCookiePolicy.accessCookieName, tokens.accessToken, {
+        ...commonOptions,
+        maxAge: documentAuthCookiePolicy.accessTokenMaxAgeSeconds,
     });
     response.cookies.set(documentAuthCookiePolicy.refreshCookieName, tokens.refreshToken, {
-        maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
+        ...commonOptions,
+        maxAge: documentAuthCookiePolicy.refreshTokenMaxAgeSeconds,
+    });
+    response.cookies.set(documentAuthCookiePolicy.sessionHintCookieName, '1', {
+        maxAge: documentAuthCookiePolicy.refreshTokenMaxAgeSeconds,
         path: '/',
-        sameSite: 'lax',
+        sameSite: documentAuthCookiePolicy.cookieSameSite,
+        secure: documentAuthCookiePolicy.cookieSecure,
+        domain: documentAuthCookiePolicy.cookieDomain,
     });
 
     return response;
