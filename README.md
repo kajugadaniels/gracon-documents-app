@@ -183,6 +183,8 @@ NEXT_PUBLIC_AUTH_COOKIE_SECURE=false
 NEXT_PUBLIC_AUTH_COOKIE_SAME_SITE=lax
 NEXT_PUBLIC_AUTH_ACCESS_TOKEN_TTL=15m
 NEXT_PUBLIC_AUTH_REFRESH_TOKEN_TTL=1d
+NEXT_PUBLIC_DOCUMENTS_USE_MAIN_APP_LOGIN=false
+NEXT_PUBLIC_ALLOW_DEV_READABLE_AUTH_COOKIES=true
 ```
 
 Editor image storage variables belong in `api/documents`, not this frontend app. Do not expose storage credentials with `NEXT_PUBLIC_`.
@@ -195,6 +197,7 @@ validated server-side; `session_active` is only a non-sensitive hint.
 
 - Talks directly to `api/documents`
 - Uses local proxy routes for auth/session recovery and signature endpoints
+- Uses local `/api/session` to validate the shared Gracon session server-side before loading protected document routes. Missing production sessions should redirect to `app/app` login, while the local documents login remains available for development compatibility.
 - Redirects to `app/app` for login and identity verification
 - Should not host its own standalone identity-verification UI now
 
@@ -202,6 +205,7 @@ validated server-side; `session_active` is only a non-sensitive hint.
 
 - Use hard navigation when jumping to `app/app`
 - Do not add new production code that requires reading refresh tokens from `document.cookie`. Shared auth must be validated through server-side route handlers.
+- Keep the existing local development login/readable-cookie method available for developer workflows. Production should use `NEXT_PUBLIC_DOCUMENTS_USE_MAIN_APP_LOGIN=true` and server-owned cookies from `app/app`.
 - Keep document permissions and signing state separate in the UI
 - Reflect the backend workflow correctly: finalise, sign, then owner lock
 - Keep page layout data consistent across editor rendering and export
