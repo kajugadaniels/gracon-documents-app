@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { documentAuthCookiePolicy } from '@/lib/auth/session-cookie-policy';
+import {
+    documentAuthCookiePolicy,
+    shouldUseMainAppLogin,
+} from '@/lib/auth/session-cookie-policy';
+
+const APP_URL =
+    process.env.NEXT_PUBLIC_MAIN_APP_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    'http://localhost:4000';
 
 // Public routes in app/documents that do not require authentication.
 const PUBLIC_PATHS = ['/verify', '/login'];
@@ -31,8 +39,13 @@ export function proxy(req: NextRequest) {
     if (isPublic) return NextResponse.next();
 
     if (!hasSessionCookie) {
-        const loginUrl = new URL('/login', req.url);
-        loginUrl.searchParams.set('next', `${pathname}${search}`);
+        const loginBase = shouldUseMainAppLogin() ? APP_URL : req.url;
+        const loginUrl = new URL('/login', loginBase);
+        const next = shouldUseMainAppLogin()
+            ? new URL(`${pathname}${search}`, req.url).toString()
+            : `${pathname}${search}`;
+
+        loginUrl.searchParams.set('next', next);
         return NextResponse.redirect(loginUrl);
     }
 
