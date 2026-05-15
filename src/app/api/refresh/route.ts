@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
     applySessionCookies,
     clearSessionCookies,
+    getSessionCookies,
     refreshSession,
 } from '@/lib/server/session-proxy';
 
 export async function POST(request: NextRequest) {
-    const refreshToken = request.cookies.get('g360_rt')?.value ?? null;
+    const { refreshToken } = getSessionCookies(request);
 
     if (!refreshToken) {
         const response = NextResponse.json(
