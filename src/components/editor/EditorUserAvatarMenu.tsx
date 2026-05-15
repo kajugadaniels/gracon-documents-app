@@ -11,8 +11,7 @@ import { useState, useRef, useEffect } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Logout01Icon } from '@hugeicons/core-free-icons';
 import { useSessionUser } from '@/app/(protected)/layout';
-import { APP_URL } from '@/lib/session';
-import { clearDocumentAuthCookies } from '@/lib/auth/session-cookie-policy';
+import { logoutFromDocuments } from '@/lib/session';
 
 /** Avatar dropdown for the document editor header — shows user info and sign-out. */
 export function EditorUserAvatarMenu() {
@@ -34,8 +33,7 @@ export function EditorUserAvatarMenu() {
         `${user.postNames?.[0] ?? ''}${user.surName?.[0] ?? ''}`.toUpperCase() || 'U';
 
     function logout() {
-        clearDocumentAuthCookies();
-        window.location.href = `${APP_URL}/logout`;
+        void logoutFromDocuments();
     }
 
     return (
