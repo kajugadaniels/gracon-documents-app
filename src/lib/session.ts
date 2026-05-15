@@ -7,6 +7,7 @@
  * These cookies are readable here because both apps run on the same
  * host (localhost in dev, same root domain in production).
  */
+import { documentAuthCookiePolicy, shouldUseMainAppLogin } from '@/lib/auth/session-cookie-policy';
 
 export const APP_URL =
     process.env.NEXT_PUBLIC_MAIN_APP_URL ??
@@ -96,7 +97,9 @@ function getUnavailableMessage(payload: unknown, fallback: string): string {
  */
 export function getAccessToken(): string | null {
     if (typeof document === 'undefined') return null;
-    const match = document.cookie.match(/(?:^|;\s*)g360_at=([^;]+)/);
+    const match = document.cookie.match(
+        new RegExp(`(?:^|;\\s*)${documentAuthCookiePolicy.accessCookieName}=([^;]+)`),
+    );
     return match?.[1] ?? null;
 }
 
@@ -107,6 +110,13 @@ export function getAccessToken(): string | null {
 export function redirectToLogin(intendedPath = DEFAULT_NEXT_PATH): void {
     if (typeof window === 'undefined') return;
     const next = normalizeDocsPath(intendedPath);
+    if (shouldUseMainAppLogin()) {
+        const loginUrl = new URL('/login', APP_URL);
+        loginUrl.searchParams.set('next', new URL(next, DOCS_URL).toString());
+        window.location.href = loginUrl.toString();
+        return;
+    }
+
     window.location.href = `/login?next=${encodeURIComponent(next)}`;
 }
 
@@ -153,11 +163,11 @@ export async function refreshAccessToken(): Promise<SessionRefreshResult> {
 }
 
 /**
- * Fetches the current user profile from the local same-origin /api/me route.
+ * Fetches the current user profile from the local same-origin /api/session route.
  */
 export async function fetchCurrentUser(): Promise<SessionBootstrapResult> {
     try {
-        const res = await fetch(`${SESSION_API_BASE}/me`, {
+        const res = await fetch(`${SESSION_API_BASE}/session`, {
             credentials: 'include',
             cache: 'no-store',
         });
@@ -166,7 +176,7 @@ export async function fetchCurrentUser(): Promise<SessionBootstrapResult> {
             const data = await res.json();
             return {
                 status: 'authenticated',
-                user: (data?.data ?? data) as Record<string, unknown>,
+                user: (data?.user ?? data?.data ?? data) as Record<string, unknown>,
             };
         }
 
