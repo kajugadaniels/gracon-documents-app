@@ -11,8 +11,6 @@ import { PagedDocumentCanvas } from './PagedDocumentCanvas';
 import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension';
 import styles from './DocumentPrintPreviewDialog.module.css';
 
-const SAVE_PDF_USES_EXISTING_EXPORT_CANVAS = true;
-
 interface DocumentPrintPreviewDialogProps {
     documentId: string;
     title: string;
@@ -103,7 +101,6 @@ export function DocumentPrintPreviewDialog({
     onClose,
 }: DocumentPrintPreviewDialogProps) {
     const previewCanvasRef = useRef<HTMLDivElement>(null);
-    const exportCanvasRef = useRef<HTMLDivElement>(null);
     const isMountedRef = useRef(false);
     const [savingPdf, setSavingPdf] = useState(false);
     const [zoom, setZoom] = useState(getPreviewZoom);
@@ -130,7 +127,7 @@ export function DocumentPrintPreviewDialog({
                 window.cancelAnimationFrame(resizeFrame);
             }
             removeDetachedPaginatedExportHosts();
-            clearPreviewElementRefs(previewCanvasRef, exportCanvasRef);
+            clearPreviewElementRefs(previewCanvasRef);
             auditPrintPreviewCleanup();
         };
     }, []);
@@ -138,9 +135,7 @@ export function DocumentPrintPreviewDialog({
     async function handleSavePdf() {
         setSavingPdf(true);
         try {
-            const exportHost = SAVE_PDF_USES_EXISTING_EXPORT_CANVAS
-                ? exportCanvasRef.current
-                : previewCanvasRef.current;
+            const exportHost = previewCanvasRef.current;
             const exportRoot = exportHost?.querySelector(
                 '[data-document-export-root="true"]',
             ) as HTMLElement | null;
@@ -178,7 +173,7 @@ export function DocumentPrintPreviewDialog({
             headerFooter={previewLayout.headerFooter}
             showRepeatedPageChrome
             pageGap={PAPER_PAGE_GAP_PX}
-            overlayContent={null}
+            overlayContent={overlayContent}
             commentAnchors={emptyAnchors}
             onEditorReady={() => undefined}
         />
@@ -224,31 +219,6 @@ export function DocumentPrintPreviewDialog({
             <div className={styles.body}>
                 {continuousPreviewCanvas}
 
-                {SAVE_PDF_USES_EXISTING_EXPORT_CANVAS && (
-                    <div className={styles.exportFallback} aria-hidden="true">
-                        <PagedDocumentCanvas
-                            canvasRef={exportCanvasRef}
-                            documentId={`${documentId}-print-export-fallback`}
-                            title={title}
-                            status={status}
-                            content={content}
-                            isReadOnly
-                            zoomScale={1}
-                            pageCount={pageCount}
-                            pageHeight={pageHeight}
-                            contentHeight={contentHeight}
-                            printLayout
-                            showFormattingMarks={false}
-                            paperStyle={previewPaperStyle}
-                            headerFooter={previewLayout.headerFooter}
-                            showRepeatedPageChrome
-                            pageGap={PAPER_PAGE_GAP_PX}
-                            overlayContent={overlayContent}
-                            commentAnchors={emptyAnchors}
-                            onEditorReady={() => undefined}
-                        />
-                    </div>
-                )}
             </div>
         </div>
     );
