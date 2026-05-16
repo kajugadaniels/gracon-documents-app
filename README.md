@@ -162,7 +162,7 @@ app/documents/
 - Hidden print-preview/export renderers must be treated as short-lived resources. Any new async render path must cancel timers, ignore callbacks after unmount, remove temporary DOM hosts, and keep object refs from pointing at detached nodes.
 - Print preview should not mount a hidden second editor just to prepare PDF export. Export from the visible Gracon canvas unless a future worker/server renderer replaces it.
 - Autosave skips unchanged TipTap JSON payloads so long documents do not repeatedly upload identical content.
-- Comment loading is intentionally bounded; increase limits deliberately only when adding pagination or virtualization.
+- Comment loading is intentionally bounded and cursor-paginated; the comments drawer loads older review history only on demand.
 
 ## Local Commands
 
@@ -232,3 +232,4 @@ cookies, and let the server route handlers own shared cookie validation.
 - Keep `components/editor` and `components/documents` for `.tsx` UI components; put editor/document `.ts` hooks, extensions, sync helpers, and pure state helpers under `src/store/editor` or `src/store/documents`
 - Test invitation, share, signing, and public verify flows after document-domain changes
 - Keep signed/locked read-only tests current whenever document statuses, permissions, or editor view modes change
+- Keep the comments drawer cursor-paginated. Do not reintroduce a full unbounded comment-history fetch in the editor.
