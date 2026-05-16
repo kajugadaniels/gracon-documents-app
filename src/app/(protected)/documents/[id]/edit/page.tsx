@@ -114,7 +114,12 @@ export default function EditDocumentPage() {
     const [commentsOpen, setCommentsOpen] = useState(false);
     const [comments, setComments] = useState<DocumentComment[]>([]);
     const [commentsLoading, setCommentsLoading] = useState(false);
+    const [commentsLoadingMore, setCommentsLoadingMore] = useState(false);
     const [commentsError, setCommentsError] = useState<string | null>(null);
+    const [commentsNextCursor, setCommentsNextCursor] = useState<string | null>(
+        null,
+    );
+    const [commentsHasMore, setCommentsHasMore] = useState(false);
     const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
     const [retryKey, setRetryKey] = useState(0);
     const [shareActivityRefreshKey, setShareActivityRefreshKey] = useState(0);
@@ -280,18 +285,38 @@ export default function EditDocumentPage() {
         return () => { ignore = true; };
     }, [id, retryKey]);
 
-    const loadComments = useCallback(async () => {
-        setCommentsLoading(true);
+    const loadComments = useCallback(async (cursor?: string | null) => {
+        const isLoadingMore = Boolean(cursor);
+        if (isLoadingMore) {
+            setCommentsLoadingMore(true);
+        } else {
+            setCommentsLoading(true);
+        }
         setCommentsError(null);
         try {
-            const response = await listDocumentComments(id);
-            setComments(response.comments);
+            const response = await listDocumentComments(id, 50, cursor);
+            setComments((current) =>
+                isLoadingMore
+                    ? [...current, ...response.comments]
+                    : response.comments,
+            );
+            setCommentsNextCursor(response.nextCursor);
+            setCommentsHasMore(response.hasMore);
         } catch (error: unknown) {
             setCommentsError(getErrorMessage(error, 'Unable to load comments.'));
         } finally {
-            setCommentsLoading(false);
+            if (isLoadingMore) {
+                setCommentsLoadingMore(false);
+            } else {
+                setCommentsLoading(false);
+            }
         }
     }, [id]);
+
+    const loadMoreComments = useCallback(async () => {
+        if (!commentsNextCursor || commentsLoadingMore) return;
+        await loadComments(commentsNextCursor);
+    }, [commentsLoadingMore, commentsNextCursor, loadComments]);
 
     useEffect(() => {
         if (!doc?.id) return;
@@ -1153,10 +1178,13 @@ export default function EditDocumentPage() {
                 open={commentsOpen}
                 comments={comments}
                 loading={commentsLoading}
+                loadingMore={commentsLoadingMore}
                 error={commentsError}
+                hasMore={commentsHasMore}
                 activeCommentId={activeCommentId}
                 onCommentsChange={setComments}
                 onReload={loadComments}
+                onLoadMore={loadMoreComments}
                 onFocusComment={handleFocusComment}
                 onClose={() => setCommentsOpen(false)}
             />
