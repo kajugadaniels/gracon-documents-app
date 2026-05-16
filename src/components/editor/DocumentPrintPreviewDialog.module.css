@@ -84,17 +84,6 @@
   min-height: 100%;
 }
 
-.exportFallback {
-  position: fixed;
-  top: 0;
-  left: -12000px;
-  width: var(--paper-width);
-  height: auto;
-  overflow: visible;
-  pointer-events: none;
-  opacity: 0;
-}
-
 @media (max-width: 720px) {
   .toolbar {
     align-items: flex-start;
@@ -139,8 +128,7 @@
     overflow: visible !important;
   }
 
-  :global(body.document-print-preview-active) .toolbar,
-  :global(body.document-print-preview-active) .exportFallback {
+  :global(body.document-print-preview-active) .toolbar {
     display: none !important;
   }
 
