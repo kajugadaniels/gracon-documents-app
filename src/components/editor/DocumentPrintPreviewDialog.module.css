@@ -1,0 +1,167 @@
+/* Scoped print-preview shell styles.
+   The document paper remains rendered by PagedDocumentCanvas; this module only
+   owns modal chrome, action placement, responsive behavior, and print isolation. */
+
+.preview {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: #10121a;
+  color: #ffffff;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(14, 16, 24, 0.94);
+  backdrop-filter: blur(18px);
+}
+
+.toolbar h2 {
+  margin: 3px 0 4px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.toolbar span {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eyebrow {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.actions button {
+  min-height: 40px;
+  cursor: pointer;
+}
+
+.ghostButton {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+}
+
+.ghostButton:hover,
+.ghostButton:focus-visible {
+  border-color: rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.preview :global(.ded-canvas) {
+  min-height: 100%;
+  padding: 28px 24px 56px;
+}
+
+.preview :global(.document-workspace-stage) {
+  min-height: 100%;
+}
+
+.exportFallback {
+  position: fixed;
+  top: 0;
+  left: -12000px;
+  width: var(--paper-width);
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions button {
+    flex: 1 1 112px;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  :global(body.document-print-preview-active) {
+    background: #ffffff !important;
+  }
+
+  :global(body.document-print-preview-active > *) {
+    visibility: hidden !important;
+  }
+
+  :global(body.document-print-preview-active) .preview,
+  :global(body.document-print-preview-active) .preview * {
+    visibility: visible !important;
+  }
+
+  :global(body.document-print-preview-active) .preview {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    display: block !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+
+  :global(body.document-print-preview-active) .toolbar,
+  :global(body.document-print-preview-active) .exportFallback {
+    display: none !important;
+  }
+
+  :global(body.document-print-preview-active) .body,
+  :global(body.document-print-preview-active) .preview :global(.ded-canvas),
+  :global(body.document-print-preview-active) .preview :global(.document-workspace-stage) {
+    display: block !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  :global(body.document-print-preview-active) .preview :global(.document-layout-shell) {
+    width: var(--paper-width) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+  }
+
+  :global(body.document-print-preview-active) .preview :global(.document-layout-frame) {
+    transform: none !important;
+    transform-origin: top left !important;
+  }
+}
