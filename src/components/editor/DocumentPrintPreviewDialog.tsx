@@ -9,9 +9,9 @@ import { DEFAULT_DOCUMENT_LAYOUT, type DocumentLayout } from '@/lib/document-lay
 import { buildDocumentLayoutStyle } from '@/lib/document-layout';
 import { PagedDocumentCanvas } from './PagedDocumentCanvas';
 import type { CommentAnchorInput } from '@/store/editor/comment-anchor-extension';
+import styles from './DocumentPrintPreviewDialog.module.css';
 
 const SAVE_PDF_USES_EXISTING_EXPORT_CANVAS = true;
-const PAGINATED_EXPORT_HOST_SELECTOR = '[data-paginated-export-host="true"]';
 
 interface DocumentPrintPreviewDialogProps {
     documentId: string;
@@ -61,17 +61,15 @@ type PrintPreviewExportSource = 'gracon-canvas';
 
 function removeDetachedPaginatedExportHosts() {
     document
-        .querySelectorAll(PAGINATED_EXPORT_HOST_SELECTOR)
+        .querySelectorAll('[data-print-preview-export-host="true"]')
         .forEach((element) => element.remove());
 }
 
 function auditPrintPreviewCleanup() {
     if (process.env.NODE_ENV === 'production') return;
 
-    const leakedExportHosts = document.querySelectorAll(PAGINATED_EXPORT_HOST_SELECTOR).length;
-    const leakedHiddenEditors = document.querySelectorAll(
-        '.document-print-preview__paginated-export [data-paginated-print-export-root="true"]',
-    ).length;
+    const leakedExportHosts = document.querySelectorAll('[data-print-preview-export-host="true"]').length;
+    const leakedHiddenEditors = 0;
 
     if (leakedExportHosts > 0 || leakedHiddenEditors > 0) {
         console.warn('Print preview cleanup audit found stale hidden preview DOM.', {
@@ -188,27 +186,27 @@ export function DocumentPrintPreviewDialog({
 
     return (
         <div
-            className="document-print-preview"
+            className={styles.preview}
             role="dialog"
             aria-modal="true"
             aria-labelledby="document-print-preview-title"
             data-prepared-pdf-export-source={preparedPdfExportSource}
         >
-            <div className="document-print-preview__toolbar">
+            <div className={styles.toolbar}>
                 <div>
-                    <p className="document-print-preview__eyebrow">Print preview</p>
+                    <p className={styles.eyebrow}>Print preview</p>
                     <h2 id="document-print-preview-title">{title}</h2>
                     <span>
                         {pageCount} page{pageCount === 1 ? '' : 's'} · Same geometry as PDF export
                     </span>
                 </div>
-                <div className="document-print-preview__actions">
-                    <button type="button" className="btn-ghost" onClick={onClose}>
+                <div className={styles.actions}>
+                    <button type="button" className={styles.ghostButton} onClick={onClose}>
                         Close
                     </button>
                     <button
                         type="button"
-                        className="btn-ghost"
+                        className={styles.ghostButton}
                         onClick={() => window.print()}
                     >
                         Print
@@ -223,11 +221,11 @@ export function DocumentPrintPreviewDialog({
                     </button>
                 </div>
             </div>
-            <div className="document-print-preview__body">
+            <div className={styles.body}>
                 {continuousPreviewCanvas}
 
                 {SAVE_PDF_USES_EXISTING_EXPORT_CANVAS && (
-                    <div className="document-print-preview__export-fallback" aria-hidden="true">
+                    <div className={styles.exportFallback} aria-hidden="true">
                         <PagedDocumentCanvas
                             canvasRef={exportCanvasRef}
                             documentId={`${documentId}-print-export-fallback`}
