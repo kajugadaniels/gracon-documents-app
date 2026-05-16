@@ -81,6 +81,15 @@ function getErrorMessage(error: unknown, fallback: string) {
     return typeof message === 'string' && message.trim() ? message : fallback;
 }
 
+function getContentFingerprint(content: Record<string, unknown> | null) {
+    if (!content) return '';
+    try {
+        return JSON.stringify(content);
+    } catch {
+        return String(Date.now());
+    }
+}
+
 export default function EditDocumentPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
@@ -158,6 +167,7 @@ export default function EditDocumentPage() {
     const contentRef = useRef<Record<string, unknown> | null>(null);
     const wordCntRef = useRef(0);
     const dirtyRef = useRef(false);
+    const lastSavedContentFingerprintRef = useRef('');
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const rulerCommitLayoutRef = useRef<DocumentLayout | null>(null);
@@ -258,6 +268,7 @@ export default function EditDocumentPage() {
                 setDoc(d);
                 setTitle(d.title);
                 contentRef.current = d.content;
+                lastSavedContentFingerprintRef.current = getContentFingerprint(d.content);
             })
             .catch((error: unknown) => {
                 if (ignore) return;
@@ -384,6 +395,12 @@ export default function EditDocumentPage() {
 
         const content = contentRef.current;
         const wordCount = wordCntRef.current;
+        const nextFingerprint = getContentFingerprint(content);
+        if (!force && nextFingerprint === lastSavedContentFingerprintRef.current) {
+            dirtyRef.current = false;
+            return false;
+        }
+
         setSaveStatus('saving');
         dirtyRef.current = false;
 
@@ -392,6 +409,7 @@ export default function EditDocumentPage() {
                 for (let attempt = 0; attempt < 2; attempt += 1) {
                     try {
                         await autosaveDocument(id, content, wordCount);
+                        lastSavedContentFingerprintRef.current = nextFingerprint;
                         setSaveStatus('saved');
                         setTimeout(() => setSaveStatus('idle'), 2000);
                         return true;
