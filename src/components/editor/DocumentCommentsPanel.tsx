@@ -23,10 +23,13 @@ interface DocumentCommentsPanelProps {
     open: boolean;
     comments: DocumentComment[];
     loading: boolean;
+    loadingMore: boolean;
     error: string | null;
+    hasMore: boolean;
     activeCommentId: string | null;
     onCommentsChange: (comments: DocumentComment[]) => void;
     onReload: () => void | Promise<void>;
+    onLoadMore: () => void | Promise<void>;
     onFocusComment: (comment: DocumentComment) => void;
     onClose: () => void;
 }
@@ -203,10 +206,13 @@ export function DocumentCommentsPanel({
     open,
     comments,
     loading,
+    loadingMore,
     error,
+    hasMore,
     activeCommentId,
     onCommentsChange,
     onReload,
+    onLoadMore,
     onFocusComment,
     onClose,
 }: DocumentCommentsPanelProps) {
@@ -386,15 +392,29 @@ export function DocumentCommentsPanel({
                                 canResolve={canResolve}
                                 busyCommentId={busyCommentId}
                                 replyDraft={replyDrafts[comment.id] ?? ''}
-                                onReplyChange={(value) => setReplyDrafts((current) => ({
-                                    ...current,
-                                    [comment.id]: value,
-                                }))}
+                                onReplyChange={(value) =>
+                                    setReplyDrafts((current) => ({
+                                        ...current,
+                                        [comment.id]: value,
+                                    }))
+                                }
                                 onReplySubmit={() => void submitReply(comment.id)}
                                 onResolve={() => void resolveComment(comment.id)}
                                 onFocus={() => onFocusComment(comment)}
                             />
                         ))}
+                        {hasMore && (
+                            <button
+                                type="button"
+                                className="doc-comments__load-more"
+                                disabled={loadingMore}
+                                onClick={() => void onLoadMore()}
+                            >
+                                {loadingMore
+                                    ? 'Loading older comments...'
+                                    : 'Load older comments'}
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
