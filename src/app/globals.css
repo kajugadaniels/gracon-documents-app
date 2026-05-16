@@ -5056,6 +5056,30 @@ body {
   gap: 12px;
 }
 
+.doc-comments__load-more {
+  width: 100%;
+  border: 1px dashed rgba(91,35,255,0.22);
+  border-radius: 14px;
+  background: rgba(91,35,255,0.04);
+  color: var(--color-primary);
+  padding: 11px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.doc-comments__load-more:hover:not(:disabled) {
+  background: rgba(91,35,255,0.08);
+  border-color: rgba(91,35,255,0.34);
+}
+
+.doc-comments__load-more:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .doc-comments__card {
   border: 1px solid rgba(22,16,58,0.09);
   border-radius: 18px;
