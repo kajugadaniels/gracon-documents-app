@@ -14,6 +14,7 @@ import {
     type DocumentComment,
 } from '@/api/documents.api';
 import { toast } from '@/components/ui';
+import styles from './DocumentCommentsPanel.module.css';
 
 interface DocumentCommentsPanelProps {
     documentId: string;
@@ -95,6 +96,10 @@ function replaceComment(
     return comments.map((comment) => comment.id === updated.id ? updated : comment);
 }
 
+function cx(...classNames: Array<string | false>) {
+    return classNames.filter(Boolean).join(' ');
+}
+
 function CommentCard({
     comment,
     active,
@@ -122,25 +127,25 @@ function CommentCard({
     const isBusy = busyCommentId === comment.id;
 
     return (
-        <article className={`doc-comments__card${isResolved ? ' doc-comments__card--resolved' : ''}${active ? ' doc-comments__card--active' : ''}`}>
-            <div className="doc-comments__card-head">
-                <div className="doc-comments__avatar" aria-hidden="true">
+        <article className={cx(styles.card, isResolved && styles.resolvedCard, active && styles.activeCard)}>
+            <div className={styles.cardHead}>
+                <div className={styles.avatar} aria-hidden="true">
                     {comment.author.imageUrl
-                        ? <img src={comment.author.imageUrl} alt={getInitials(comment)} />
-                        : <span>{getInitials(comment)}</span>
+                        ? <img className={styles.avatarImage} src={comment.author.imageUrl} alt={getInitials(comment)} />
+                        : <span className={styles.avatarText}>{getInitials(comment)}</span>
                     }
                 </div>
-                <div className="doc-comments__identity">
-                    <p>{comment.author.displayName}</p>
-                    <time dateTime={comment.createdAt}>{formatCommentDate(comment.createdAt)}</time>
+                <div className={styles.identity}>
+                    <p className={styles.identityName}>{comment.author.displayName}</p>
+                    <time className={styles.metaTime} dateTime={comment.createdAt}>{formatCommentDate(comment.createdAt)}</time>
                 </div>
-                {isResolved && <span className="doc-comments__status">Resolved</span>}
+                {isResolved && <span className={styles.status}>Resolved</span>}
             </div>
 
             {comment.anchorText && (
                 <button
                     type="button"
-                    className="doc-comments__anchor"
+                    className={styles.anchor}
                     onClick={onFocus}
                     title="Go to commented text"
                 >
@@ -148,25 +153,26 @@ function CommentCard({
                 </button>
             )}
 
-            <p className="doc-comments__content">{comment.content}</p>
+            <p className={styles.content}>{comment.content}</p>
 
             {comment.replies.length > 0 && (
-                <div className="doc-comments__replies">
+                <div className={styles.replies}>
                     {comment.replies.map((reply) => (
-                        <div key={reply.id} className="doc-comments__reply">
-                            <div className="doc-comments__reply-meta">
-                                <strong>{reply.author.displayName}</strong>
-                                <time dateTime={reply.createdAt}>{formatCommentDate(reply.createdAt)}</time>
+                        <div key={reply.id} className={styles.reply}>
+                            <div className={styles.replyMeta}>
+                                <strong className={styles.replyAuthor}>{reply.author.displayName}</strong>
+                                <time className={styles.metaTime} dateTime={reply.createdAt}>{formatCommentDate(reply.createdAt)}</time>
                             </div>
-                            <p>{reply.content}</p>
+                            <p className={styles.replyContent}>{reply.content}</p>
                         </div>
                     ))}
                 </div>
             )}
 
             {!isResolved && canComment && (
-                <div className="doc-comments__reply-form">
+                <div className={styles.replyForm}>
                     <input
+                        className={styles.replyInput}
                         value={replyDraft}
                         onChange={(event) => onReplyChange(event.target.value)}
                         placeholder="Reply..."
@@ -175,6 +181,7 @@ function CommentCard({
                     />
                     <button
                         type="button"
+                        className={styles.replyButton}
                         disabled={Boolean(busyCommentId) || !replyDraft.trim()}
                         onClick={onReplySubmit}
                     >
@@ -186,7 +193,7 @@ function CommentCard({
             {!isResolved && canResolve && (
                 <button
                     type="button"
-                    className="doc-comments__resolve-btn"
+                    className={styles.resolveButton}
                     disabled={Boolean(busyCommentId)}
                     onClick={onResolve}
                 >
@@ -313,20 +320,21 @@ export function DocumentCommentsPanel({
     }
 
     return (
-        <aside className="doc-comments" aria-label="Document comments">
-            <div className="doc-comments__header">
+        <aside className={styles.panel} aria-label="Document comments">
+            <div className={styles.header}>
                 <div>
-                    <p className="doc-comments__eyebrow">Review</p>
-                    <h2>Comments</h2>
+                    <p className={styles.eyebrow}>Review</p>
+                    <h2 className={styles.title}>Comments</h2>
                 </div>
-                <button type="button" className="doc-comments__close" onClick={onClose} aria-label="Close comments">
+                <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close comments">
                     &times;
                 </button>
             </div>
 
             {canComment ? (
-                <div className="doc-comments__composer">
+                <div className={styles.composer}>
                     <textarea
+                        className={styles.composerTextarea}
                         value={content}
                         onChange={(event) => setContent(event.target.value)}
                         placeholder="Add a comment..."
@@ -334,10 +342,11 @@ export function DocumentCommentsPanel({
                         disabled={submitting}
                     />
                     {anchorText && (
-                        <div className="doc-comments__selection">
-                            <span>{anchorText}</span>
+                        <div className={styles.selection}>
+                            <span className={styles.selectionText}>{anchorText}</span>
                             <button
                                 type="button"
+                                className={styles.selectionClear}
                                 onClick={() => {
                                     setAnchorText('');
                                     setAnchorFrom(null);
@@ -348,13 +357,13 @@ export function DocumentCommentsPanel({
                             </button>
                         </div>
                     )}
-                    <div className="doc-comments__composer-actions">
-                        <button type="button" className="doc-comments__ghost-btn" onClick={captureSelection}>
+                    <div className={styles.composerActions}>
+                        <button type="button" className={styles.ghostButton} onClick={captureSelection}>
                             Use selection
                         </button>
                         <button
                             type="button"
-                            className="doc-comments__primary-btn"
+                            className={styles.primaryButton}
                             disabled={submitting || !content.trim()}
                             onClick={submitComment}
                         >
@@ -363,26 +372,26 @@ export function DocumentCommentsPanel({
                     </div>
                 </div>
             ) : (
-                <p className="doc-comments__notice">
+                <p className={styles.notice}>
                     You can view comments, but you do not have permission to add them.
                 </p>
             )}
 
-            <div className="doc-comments__body">
-                {loading && <p className="doc-comments__empty">Loading comments...</p>}
+            <div className={styles.body}>
+                {loading && <p className={styles.empty}>Loading comments...</p>}
                 {error && (
-                    <div className="doc-comments__error">
-                        <p>{error}</p>
-                        <button type="button" onClick={() => void onReload()}>Try again</button>
+                    <div className={styles.error}>
+                        <p className={styles.errorText}>{error}</p>
+                        <button type="button" className={styles.errorButton} onClick={() => void onReload()}>Try again</button>
                     </div>
                 )}
                 {!loading && !error && comments.length === 0 && (
-                    <p className="doc-comments__empty">
+                    <p className={styles.empty}>
                         No comments yet. Select text and start the review.
                     </p>
                 )}
                 {!loading && !error && comments.length > 0 && (
-                    <div className="doc-comments__list">
+                    <div className={styles.list}>
                         {comments.map((comment) => (
                             <CommentCard
                                 key={comment.id}
@@ -406,7 +415,7 @@ export function DocumentCommentsPanel({
                         {hasMore && (
                             <button
                                 type="button"
-                                className="doc-comments__load-more"
+                                className={styles.loadMoreButton}
                                 disabled={loadingMore}
                                 onClick={() => void onLoadMore()}
                             >
