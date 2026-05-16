@@ -73,7 +73,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Signed, finalised, and locked editor immutability is centralized in `src/lib/document-readonly.ts` with regression coverage so future editor changes cannot accidentally re-enable editing
 - Owner lock is a confirmed action, not an accidental one-click mutation
 - Signed and locked documents render signing evidence in editor and print preview, with QR verification centered at the bottom of the signed page surface
-- Print preview currently isolates paginated rendering from live editing; the long-term production plan is Gracon-owned pagination rather than live-editor ownership by `tiptap-pagination-plus`
+- Print preview now uses the stable Gracon-owned canvas/export fallback; third-party runtime pagination has been removed while Gracon-owned pagination is implemented
 - Print preview owns a cleanup audit for hidden paginated export roots: temporary export hosts, readiness timers, and DOM refs must be cleared when saving finishes or the preview unmounts
 - Gracon-owned page break and pagination architecture is documented in `docs/gracon-owned-pagination-architecture.md`
 - Cross-tab share activity refresh and document metadata merge patterns
