@@ -153,6 +153,7 @@ export interface DocumentComment {
 
 export interface DocumentCommentsResponse {
     documentId: string;
+    limit?: number;
     comments: DocumentComment[];
 }
 
@@ -596,8 +597,11 @@ export async function getDocumentAccessAuditLog(
 
 export async function listDocumentComments(
     id: string,
+    limit = 50,
 ): Promise<DocumentCommentsResponse> {
-    const res = await apiClient.get(`/documents/${id}/comments`);
+    const res = await apiClient.get(`/documents/${id}/comments`, {
+        params: { limit },
+    });
     return res.data;
 }
 
