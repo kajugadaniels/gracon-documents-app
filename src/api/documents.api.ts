@@ -1,3 +1,8 @@
+/**
+ * documents.api.ts
+ *
+ * Typed browser client for the documents workspace API.
+ */
 import { apiClient, authClient } from './client';
 
 export type DocumentType = 'RICH_TEXT' | 'SPREADSHEET';
@@ -154,6 +159,8 @@ export interface DocumentComment {
 export interface DocumentCommentsResponse {
     documentId: string;
     limit?: number;
+    nextCursor: string | null;
+    hasMore: boolean;
     comments: DocumentComment[];
 }
 
@@ -598,9 +605,10 @@ export async function getDocumentAccessAuditLog(
 export async function listDocumentComments(
     id: string,
     limit = 50,
+    cursor?: string | null,
 ): Promise<DocumentCommentsResponse> {
     const res = await apiClient.get(`/documents/${id}/comments`, {
-        params: { limit },
+        params: { limit, ...(cursor ? { cursor } : {}) },
     });
     return res.data;
 }
