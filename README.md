@@ -160,6 +160,9 @@ app/documents/
 - Print preview shell styling is scoped through `DocumentPrintPreviewDialog.module.css`; keep modal chrome out of `globals.css`.
 - Pagination must remain Gracon-owned in the live editor, print preview, and export path. Third-party pagination packages may be studied externally, but should not be reintroduced into runtime dependencies.
 - Hidden print-preview/export renderers must be treated as short-lived resources. Any new async render path must cancel timers, ignore callbacks after unmount, remove temporary DOM hosts, and keep object refs from pointing at detached nodes.
+- Print preview should not mount a hidden second editor just to prepare PDF export. Export from the visible Gracon canvas unless a future worker/server renderer replaces it.
+- Autosave skips unchanged TipTap JSON payloads so long documents do not repeatedly upload identical content.
+- Comment loading is intentionally bounded; increase limits deliberately only when adding pagination or virtualization.
 
 ## Local Commands
 
