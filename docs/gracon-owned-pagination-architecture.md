@@ -376,19 +376,20 @@ Use actual existing file names when implementing. Do not create duplicate system
 
 Goal:
 
-- Confirm `tiptap-pagination-plus` is not used in the live editor.
-- Keep any remaining usage isolated to print preview only until Gracon preview pagination is ready.
+- Confirm `tiptap-pagination-plus` is not used in the live editor, print preview, or PDF export path.
+- Keep print preview on the stable Gracon-owned `PagedDocumentCanvas` until Gracon preview pagination is ready.
 
 Tasks:
 
 - Audit imports for `tiptap-pagination-plus`.
-- Document which code paths are experimental or temporary.
+- Remove third-party pagination package/runtime adapters when no code path needs them.
 - Ensure live `PagedDocumentCanvas` uses the single TipTap editor path.
+- Ensure print preview and PDF export use Gracon-owned rendering.
 
 Exit criteria:
 
-- Live editing does not load `PaginationPlus`.
-- No runtime pagination package owns live page behavior.
+- No app code imports `PaginationPlus`.
+- No runtime pagination package owns live, preview, or export page behavior.
 
 ### Milestone 2: Add Manual Page Break Schema
 
@@ -551,7 +552,7 @@ Tasks:
 - Test editing, paste, undo/redo, insert image, resize image, tables, signing, locking, comments, share, print preview, PDF export, DOCX export.
 - Add regression tests for page plan changes.
 - Add screenshots or Playwright checks for visual page gaps if the project test setup supports it.
-- Remove unused third-party pagination dependency once no code path needs it.
+- Keep third-party pagination packages out of runtime dependencies.
 
 Exit criteria:
 
