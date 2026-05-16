@@ -157,7 +157,8 @@ app/documents/
 - Prefer scoped CSS modules for route/component-specific styling. `globals.css` should be reserved for design tokens, shared primitives, app shell rules, editor document geometry, and truly global utilities.
 - Document cards are styled through `DocumentCard.module.css`; do not add new `doc-card` globals.
 - Signing progress is styled through `DocumentSigningProgressPanel.module.css`; keep it independent from document canvas geometry.
-- Pagination must remain Gracon-owned in the live editor. Third-party pagination can be studied or temporarily isolated in preview paths only, but must not own live editing behavior.
+- Print preview shell styling is scoped through `DocumentPrintPreviewDialog.module.css`; keep modal chrome out of `globals.css`.
+- Pagination must remain Gracon-owned in the live editor, print preview, and export path. Third-party pagination packages may be studied externally, but should not be reintroduced into runtime dependencies.
 - Hidden print-preview/export renderers must be treated as short-lived resources. Any new async render path must cancel timers, ignore callbacks after unmount, remove temporary DOM hosts, and keep object refs from pointing at detached nodes.
 
 ## Local Commands
