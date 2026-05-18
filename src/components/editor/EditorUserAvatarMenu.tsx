@@ -12,6 +12,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Logout01Icon } from '@hugeicons/core-free-icons';
 import { useSessionUser } from '@/app/(protected)/layout';
 import { logoutFromDocuments } from '@/lib/session';
+import { UserAvatar } from '@/components/shared/UserAvatar';
 
 /** Avatar dropdown for the document editor header — shows user info and sign-out. */
 export function EditorUserAvatarMenu() {
@@ -29,9 +30,6 @@ export function EditorUserAvatarMenu() {
 
     if (!user) return null;
 
-    const initials =
-        `${user.postNames?.[0] ?? ''}${user.surName?.[0] ?? ''}`.toUpperCase() || 'U';
-
     function logout() {
         void logoutFromDocuments();
     }
@@ -44,17 +42,7 @@ export function EditorUserAvatarMenu() {
                 title={`${user.postNames} ${user.surName}`}
                 aria-label="Account menu"
             >
-                {user.imageUrl ? (
-                    <img
-                        src={user.imageUrl}
-                        alt={initials}
-                        width={32}
-                        height={32}
-                        style={{ borderRadius: '50%', objectFit: 'cover', display: 'block' }}
-                    />
-                ) : (
-                    <span className="ded-avatar-btn__initials">{initials}</span>
-                )}
+                <UserAvatar user={user} size="sm" />
             </button>
             {open && (
                 <div className="ded-avatar-menu__dropdown">
