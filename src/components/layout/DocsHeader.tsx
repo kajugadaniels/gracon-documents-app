@@ -16,6 +16,7 @@ import { Search01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import type { SessionUser } from '@/app/(protected)/layout';
 import { logoutFromDocuments } from '@/lib/session';
 import { DOCS_NAV_ITEMS } from '@/constants';
+import { UserAvatar } from '@/components/shared/UserAvatar';
 
 /** Debounce delay in ms before the search query is pushed to the URL. */
 const SEARCH_DEBOUNCE_MS = 350;
@@ -88,7 +89,6 @@ export function DocsHeader({ user }: { user: SessionUser }) {
         void logoutFromDocuments();
     }
 
-    const initials = `${user.postNames?.[0] ?? ''}${user.surName?.[0] ?? ''}`.toUpperCase() || 'U';
     const status   = searchParams.get('status');
 
     return (
@@ -176,17 +176,7 @@ export function DocsHeader({ user }: { user: SessionUser }) {
                         title={`${user.postNames} ${user.surName} — click to sign out`}
                         aria-label="Sign out"
                     >
-                        {user.imageUrl ? (
-                            <img
-                                src={user.imageUrl}
-                                alt={initials}
-                                width={38}
-                                height={38}
-                                style={{ borderRadius: '50%', objectFit: 'cover', display: 'block' }}
-                            />
-                        ) : (
-                            <span>{initials}</span>
-                        )}
+                        <UserAvatar user={user} size="md" />
                     </button>
                 </div>
             </div>
