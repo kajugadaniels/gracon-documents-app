@@ -42,6 +42,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Next.js proxy routes for auth refresh/current user and signature operations
 - Server-side single-flight session refresh/upgrade helpers for auth and signature proxy routes
 - Cross-app auth is moving to the shared Gracon session-cookie contract owned by `app/app` and the auth service. `app/documents` should validate server-side cookies through local route handlers and must not depend on JavaScript-readable refresh tokens in production.
+- Profile avatars render through the same-origin `/api/profile-image` route with a reusable `UserAvatar` fallback. Do not place raw presigned S3 profile-image URLs directly in header or editor chrome DOM.
 - Logout flows through the local documents `/api/logout` route first, then hands off to `app/app` logout so shared parent-domain cookies are cleared without reloading protected document state first.
 - Zustand hydration from sessionStorage plus cookie-backed recovery
 - A4-style editor work, autosave, versions, and signing states
