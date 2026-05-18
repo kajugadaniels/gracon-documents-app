@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Search01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import { Search01Icon, Cancel01Icon, Logout01Icon } from '@hugeicons/core-free-icons';
 import type { SessionUser } from '@/app/(protected)/layout';
 import { logoutFromDocuments } from '@/lib/session';
 import { DOCS_NAV_ITEMS } from '@/constants';
@@ -29,8 +29,10 @@ export function DocsHeader({ user }: { user: SessionUser }) {
     const [query,            setQuery]            = useState(searchParams.get('search') ?? '');
     const [searching,        setSearching]        = useState(false);
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+    const [avatarMenuOpen,   setAvatarMenuOpen]   = useState(false);
 
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const avatarMenuRef = useRef<HTMLDivElement>(null);
 
     // Keep local query in sync when URL params change externally (e.g. nav away and back).
     useEffect(() => {
@@ -40,6 +42,18 @@ export function DocsHeader({ user }: { user: SessionUser }) {
     // Clean up any pending debounce on unmount.
     useEffect(() => () => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
+    }, []);
+
+    // Close the account menu when focus moves outside the avatar dropdown.
+    useEffect(() => {
+        const handler = (event: MouseEvent) => {
+            if (!avatarMenuRef.current?.contains(event.target as Node)) {
+                setAvatarMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
     }, []);
 
     /** Handles every keystroke: updates UI instantly, debounces the URL push. */
@@ -90,6 +104,7 @@ export function DocsHeader({ user }: { user: SessionUser }) {
     }
 
     const status   = searchParams.get('status');
+    const fullName = `${user.postNames} ${user.surName}`.trim() || user.email;
 
     return (
         <header className="docs-header">
@@ -169,15 +184,40 @@ export function DocsHeader({ user }: { user: SessionUser }) {
                         Verify
                     </Link>
 
-                    {/* Avatar — click to sign out */}
-                    <button
-                        onClick={logout}
-                        className="docs-header__avatar"
-                        title={`${user.postNames} ${user.surName} — click to sign out`}
-                        aria-label="Sign out"
-                    >
-                        <UserAvatar user={user} size="md" />
-                    </button>
+                    <div ref={avatarMenuRef} className="docs-header__account">
+                        <button
+                            type="button"
+                            onClick={() => setAvatarMenuOpen((open) => !open)}
+                            className="docs-header__avatar"
+                            title={fullName}
+                            aria-label="Open account menu"
+                            aria-expanded={avatarMenuOpen}
+                            aria-haspopup="menu"
+                        >
+                            <UserAvatar user={user} size="md" />
+                        </button>
+
+                        {avatarMenuOpen && (
+                            <div className="docs-header__account-menu" role="menu">
+                                <div className="docs-header__account-profile">
+                                    <UserAvatar user={user} size="sm" />
+                                    <div className="docs-header__account-copy">
+                                        <p className="docs-header__account-name">{fullName}</p>
+                                        <p className="docs-header__account-email">{user.email}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="docs-header__account-item docs-header__account-item--danger"
+                                    onClick={logout}
+                                    role="menuitem"
+                                >
+                                    <HugeiconsIcon icon={Logout01Icon} size={15} />
+                                    <span>Sign out</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
