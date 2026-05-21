@@ -21,6 +21,10 @@ import {
     type UserSearchResult,
 } from '@/api/auth/search-users.api';
 import {
+    getUserPreferencesApi,
+    type UserInviteVerificationPreference,
+} from '@/api/auth/user-preferences.api';
+import {
     getDocumentAccessList,
     shareDocumentAccess,
     type CollaboratorPermission,
@@ -51,10 +55,8 @@ const PERMISSION_OPTIONS: Array<{
     { value: 'MANAGE_ACCESS', label: 'Manage access',  description: 'Can invite and update collaborators' },
 ];
 
-const DEFAULT_VERIFICATION_REQUIREMENTS: InvitationVerificationRequirement[] = [
-    'EMAIL_OTP',
-    'IDENTITY_VERIFICATION',
-];
+const DEFAULT_VERIFICATION_REQUIREMENTS: InvitationVerificationRequirement[] = [];
+const ACTIVE_VERIFICATION_FALLBACK: InvitationVerificationRequirement[] = ['EMAIL_OTP'];
 
 const VERIFICATION_OPTIONS: Array<{
     value: InvitationVerificationRequirement | 'NONE';
@@ -124,6 +126,19 @@ function extractApiError(error: unknown, fallback: string): string {
     const msg = (error as { response?: { data?: { message?: string } } })
         ?.response?.data?.message;
     return typeof msg === 'string' && msg.trim() ? msg : fallback;
+}
+
+/**
+ * Converts auth-owned preference values into document invitation gate values.
+ */
+function mapDocumentPreferenceToRequirements(
+    preferences: UserInviteVerificationPreference[],
+): InvitationVerificationRequirement[] {
+    if (preferences.includes('NO_VERIFICATION')) return [];
+
+    return (['EMAIL_OTP', 'IDENTITY_VERIFICATION'] as const).filter((requirement) =>
+        preferences.includes(requirement),
+    );
 }
 
 /** Fixed-size user avatar with initials fallback for share dialog results. */
@@ -372,6 +387,8 @@ export function ShareDocumentDialog({
 
     // ── Invite form state ──
     const [permissions,  setPermissions]  = useState<CollaboratorPermission[]>(['READ']);
+    const [defaultVerificationRequirements, setDefaultVerificationRequirements] =
+        useState<InvitationVerificationRequirement[]>(DEFAULT_VERIFICATION_REQUIREMENTS);
     const [verificationRequirements, setVerificationRequirements] =
         useState<InvitationVerificationRequirement[]>(DEFAULT_VERIFICATION_REQUIREMENTS);
     const [note,         setNote]         = useState('');
@@ -381,6 +398,7 @@ export function ShareDocumentDialog({
     const inputRef    = useRef<HTMLInputElement | null>(null);
     const backdropRef = useRef<HTMLDivElement>(null);
     const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const verificationTouchedRef = useRef(false);
 
     // Auto-focus the search input on mount.
     useEffect(() => { inputRef.current?.focus(); }, []);
@@ -394,6 +412,30 @@ export function ShareDocumentDialog({
 
     // Clean up the debounce timer on unmount.
     useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+    // Hydrate the owner's saved document invitation defaults without blocking sharing.
+    useEffect(() => {
+        let cancelled = false;
+
+        getUserPreferencesApi()
+            .then(({ data }) => {
+                if (cancelled) return;
+
+                const nextDefaults = mapDocumentPreferenceToRequirements(
+                    data.defaultDocumentInviteVerifications,
+                );
+
+                setDefaultVerificationRequirements(nextDefaults);
+                if (!verificationTouchedRef.current) {
+                    setVerificationRequirements(nextDefaults);
+                }
+            })
+            .catch(() => {
+                // Keep the local no-verification fallback; sharing still remains server-enforced.
+            });
+
+        return () => { cancelled = true; };
+    }, []);
 
     const runSearch = useCallback(async (q: string, mode: UserSearchMode) => {
         setLoading(true);
@@ -455,6 +497,7 @@ export function ShareDocumentDialog({
     }
 
     function handleToggleVerificationRequirement(requirement: InvitationVerificationRequirement) {
+        verificationTouchedRef.current = true;
         setVerificationRequirements((prev) =>
             prev.includes(requirement)
                 ? prev.filter((item) => item !== requirement)
@@ -463,7 +506,14 @@ export function ShareDocumentDialog({
     }
 
     function handleSetNoVerification(enabled: boolean) {
-        setVerificationRequirements(enabled ? [] : DEFAULT_VERIFICATION_REQUIREMENTS);
+        verificationTouchedRef.current = true;
+        setVerificationRequirements(
+            enabled
+                ? []
+                : defaultVerificationRequirements.length > 0
+                  ? defaultVerificationRequirements
+                  : ACTIVE_VERIFICATION_FALLBACK,
+        );
     }
 
     async function handleSendInvitation() {
@@ -480,11 +530,12 @@ export function ShareDocumentDialog({
             if (response.emailStatus === 'failed') {
                 toast.error('Access created, but the invitation email could not be sent.');
             } else {
-                toast.success('Invitation sent successfully.');
+            toast.success('Invitation sent successfully.');
             }
             setQuery(''); setResults([]); setSelectedId(null);
             setSelectedUser(null); setPermissions(['READ']);
-            setVerificationRequirements(DEFAULT_VERIFICATION_REQUIREMENTS);
+            verificationTouchedRef.current = false;
+            setVerificationRequirements(defaultVerificationRequirements);
             setNote('');
             setAccessRefreshKey((k) => k + 1);
             onActivityRecorded();
