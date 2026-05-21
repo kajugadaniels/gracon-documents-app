@@ -138,6 +138,7 @@ test/
 
 ```text
 app/documents/
+  agents/        project-local AI agent rules
   src/
     app/
     api/
@@ -150,6 +151,12 @@ app/documents/
   test/
   package.json
 ```
+
+## AI Agent Rules
+
+Project-local AI guidance lives in `agents/README.md`.
+
+Read that guide before changing the editor, document canvas, page setup, rulers, print preview, export, import, invitations, signing, locking, session handoff, or public verification surfaces. The guide is intentionally specific to this frontend so contributors preserve document geometry, signed-document immutability, Gracon-owned pagination/export work, and the identity handoff boundary with `app/app`.
 
 ## Recent Production Notes
 
