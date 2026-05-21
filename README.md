@@ -20,6 +20,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Rich-text editing and autosave experience
 - Premium page setup dialog, persisted margins, and draggable ruler-based margin adjustment
 - Share dialog, permission assignment, invitation review
+- Share-dialog verification defaults are read from the user-owned settings in `api/auth`
 - Signature workflow UI and signing progress
 - Locked-document verification surface, including signed evidence, signature imagery, and QR verification placement
 - One-call signing-readiness gating before opening the signing modal
@@ -66,6 +67,7 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - PDF import uses PDF.js text extraction to rebuild editable TipTap content with page order, line grouping, indentation, line spacing, font size, and basic bold/italic metadata; scanned image-only PDFs require OCR before import
 - Export parity tests for page margins, paragraph indents, hanging indents, line spacing, and tab-stop conversion
 - Invitation gate with OTP and identity-proof return flow
+- The share dialog fetches `/api/v1/users/preferences` through the same-origin documents proxy and uses `defaultDocumentInviteVerifications` only as a UI default. Login is still always required, and `api/documents` remains the enforcement point for document invitation access.
 - Signing readiness checks from `api/documents` so the UI can route users to login, identity verification, certificate setup, or signing without extra probing calls
 - Signing modal submits to a local BFF route that calls `api/signature` and then records the result in `api/documents`, reducing partial browser-side failure states
 - Signing actions reuse one readiness state across the header, progress panel, and modal return flow
@@ -211,6 +213,7 @@ cookies, and let the server route handlers own shared cookie validation.
 
 - Talks directly to `api/documents`
 - Uses local proxy routes for auth/session recovery and signature endpoints
+- Uses local proxy routes for auth-owned user preferences so the documents frontend does not call `api/auth` directly from browser code
 - Uses local `/api/session` to validate the shared Gracon session server-side before loading protected document routes. Missing production sessions should redirect to `app/app` login, while the local documents login remains available for development compatibility.
 - Uses local `/api/logout` to revoke the current refresh session when available and clear shared document-visible session cookies before handing off to `app/app`.
 - Redirects to `app/app` for login and identity verification
@@ -226,6 +229,7 @@ cookies, and let the server route handlers own shared cookie validation.
 - Reflect the backend workflow correctly: finalise, sign, then owner lock
 - Keep page layout data consistent across editor rendering and export
 - Treat invitation review as a security-sensitive flow, not a simple share acceptance
+- Treat user preference defaults as preselection only. Never skip backend invitation gates just because the UI default is `No extra verification`.
 
 ## Contribution Checklist
 
