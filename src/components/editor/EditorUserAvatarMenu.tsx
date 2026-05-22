@@ -3,18 +3,22 @@
  *
  * User avatar button in the document editor header.
  * Displays the user's profile picture (or initials fallback) and a dropdown
- * showing the user's name, email, and a sign-out action.
+ * showing account links, the user's name, email, and a sign-out action.
  */
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Logout01Icon } from '@hugeicons/core-free-icons';
+import { Logout01Icon, Profile02Icon, Settings02Icon } from '@hugeicons/core-free-icons';
 import { useSessionUser } from '@/app/(protected)/layout';
-import { logoutFromDocuments } from '@/lib/session';
+import {
+    getMainAppProfileUrl,
+    getMainAppSettingsUrl,
+    logoutFromDocuments,
+} from '@/lib/session';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 
-/** Avatar dropdown for the document editor header — shows user info and sign-out. */
+/** Avatar dropdown for the document editor header with cross-app account links. */
 export function EditorUserAvatarMenu() {
     const user = useSessionUser();
     const [open, setOpen] = useState(false);
@@ -34,6 +38,10 @@ export function EditorUserAvatarMenu() {
         void logoutFromDocuments();
     }
 
+    const fullName = `${user.postNames} ${user.surName}`.trim() || user.email;
+    const profileUrl = getMainAppProfileUrl();
+    const settingsUrl = getMainAppSettingsUrl();
+
     return (
         <div ref={ref} className="ded-avatar-menu">
             <button
@@ -45,15 +53,37 @@ export function EditorUserAvatarMenu() {
                 <UserAvatar user={user} size="sm" />
             </button>
             {open && (
-                <div className="ded-avatar-menu__dropdown">
+                <div className="ded-avatar-menu__dropdown" role="menu">
                     <div className="ded-avatar-menu__profile">
-                        <p className="ded-avatar-menu__name">{user.postNames} {user.surName}</p>
-                        <p className="ded-avatar-menu__email">{user.email}</p>
+                        <UserAvatar user={user} size="sm" />
+                        <div className="ded-avatar-menu__copy">
+                            <p className="ded-avatar-menu__name">{fullName}</p>
+                            <p className="ded-avatar-menu__email">{user.email}</p>
+                        </div>
                     </div>
+                    <a
+                        className="ded-avatar-menu__item"
+                        href={profileUrl}
+                        role="menuitem"
+                        onClick={() => setOpen(false)}
+                    >
+                        <HugeiconsIcon icon={Profile02Icon} size={15} />
+                        <span>Profile</span>
+                    </a>
+                    <a
+                        className="ded-avatar-menu__item"
+                        href={settingsUrl}
+                        role="menuitem"
+                        onClick={() => setOpen(false)}
+                    >
+                        <HugeiconsIcon icon={Settings02Icon} size={15} />
+                        <span>Settings</span>
+                    </a>
                     <div className="ded-avatar-menu__divider" />
                     <button
                         className="ded-avatar-menu__item ded-avatar-menu__item--danger"
                         onClick={logout}
+                        role="menuitem"
                     >
                         <HugeiconsIcon icon={Logout01Icon} size={15} />
                         <span>Sign out</span>
