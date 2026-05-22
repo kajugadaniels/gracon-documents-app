@@ -8,7 +8,8 @@ Purpose: protect document access, invitation proof chains, signing workflows, sh
 - Production auth must validate shared session cookies through local route handlers.
 - Do not add production code that depends on reading refresh tokens from `document.cookie`.
 - Keep local development login/readable-cookie compatibility intact.
-- Logout must flow through documents `/api/logout` before handing off to `app/app` logout.
+- Logout must flow through documents `/api/logout` before returning to the documents `/login` route.
+- Profile and Settings account-menu links may leave the documents app, but only to the configured identity-app origin.
 
 ## Invitations
 
