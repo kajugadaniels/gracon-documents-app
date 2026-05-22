@@ -44,7 +44,8 @@ This application lets users create, organize, edit, share, sign, verify, and rev
 - Server-side single-flight session refresh/upgrade helpers for auth and signature proxy routes
 - Cross-app auth is moving to the shared Gracon session-cookie contract owned by `app/app` and the auth service. `app/documents` should validate server-side cookies through local route handlers and must not depend on JavaScript-readable refresh tokens in production.
 - Profile avatars render through the same-origin `/api/profile-image` route with a reusable `UserAvatar` fallback. Do not place raw presigned S3 profile-image URLs directly in header or editor chrome DOM.
-- Logout flows through the local documents `/api/logout` route first, then hands off to `app/app` logout so shared parent-domain cookies are cleared without reloading protected document state first.
+- Logout flows through the local documents `/api/logout` route first, then returns to the documents `/login` route so the user can sign back into the document workspace without an app/app login loop.
+- The documents account dropdown links to `app/app` for Profile and Settings because account preferences remain identity-app owned.
 - Zustand hydration from sessionStorage plus cookie-backed recovery
 - A4-style editor work, autosave, versions, and signing states
 - White default workspace background for documents, templates, and protected loading surfaces; the editor canvas owns its own neutral gray paper workspace
@@ -222,7 +223,7 @@ cookies, and let the server route handlers own shared cookie validation.
 - Uses local proxy routes for auth/session recovery and signature endpoints
 - Uses local proxy routes for auth-owned user preferences so the documents frontend does not call `api/auth` directly from browser code
 - Uses local `/api/session` to validate the shared Gracon session server-side before loading protected document routes. Missing production sessions should redirect to `app/app` login, while the local documents login remains available for development compatibility.
-- Uses local `/api/logout` to revoke the current refresh session when available and clear shared document-visible session cookies before handing off to `app/app`.
+- Uses local `/api/logout` to revoke the current refresh session when available and clear shared document-visible session cookies before returning to the documents login route.
 - Redirects to `app/app` for login and identity verification
 - Should not host its own standalone identity-verification UI now
 
@@ -231,7 +232,7 @@ cookies, and let the server route handlers own shared cookie validation.
 - Use hard navigation when jumping to `app/app`
 - Do not add new production code that requires reading refresh tokens from `document.cookie`. Shared auth must be validated through server-side route handlers.
 - Keep the existing local development login/readable-cookie method available for developer workflows. Production should use `NEXT_PUBLIC_DOCUMENTS_USE_MAIN_APP_LOGIN=true` and server-owned cookies from `app/app`.
-- Keep logout unified. Document UI should call `logoutFromDocuments()` so local documents cookies and the shared app session are both cleared.
+- Keep logout unified. Document UI should call `logoutFromDocuments()` so local documents cookies and the shared session are cleared before returning to `/login`.
 - Keep document permissions and signing state separate in the UI
 - Reflect the backend workflow correctly: finalise, sign, then owner lock
 - Keep page layout data consistent across editor rendering and export
