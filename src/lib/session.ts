@@ -113,11 +113,11 @@ export async function logoutFromDocuments(): Promise<void> {
             cache: 'no-store',
         });
     } catch {
-        // Logout handoff must still continue so app/app can clear its own
-        // state and shared parent-domain cookies.
+        // The user must still leave the protected workspace if the auth service
+        // is temporarily unavailable or the refresh token was already revoked.
     }
 
-    window.location.href = `${APP_URL}/logout`;
+    window.location.href = '/login';
 }
 
 function getUnavailableMessage(payload: unknown, fallback: string): string {
