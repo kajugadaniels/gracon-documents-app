@@ -24,11 +24,12 @@ Purpose: keep local development login, production shared sessions, refresh, logo
 ## Logout
 
 - Document UI should call `logoutFromDocuments()`.
-- Local documents cookies should be cleared before handoff to `app/app`.
+- Local documents cookies and shared session cookies should be cleared through `/api/logout` before redirecting to the documents `/login` route.
 - Never redirect login back to `/logout` as `next`.
 
 ## Redirects
 
 - Use hard navigation for cross-origin app jumps.
+- Profile and Settings links in account menus should jump to `app/app` because account preferences are identity-app owned.
 - Preserve invitation or document return paths only when safe.
 - Keep identity verification redirects pointed to `app/app`; do not re-add standalone identity verification UI here.
