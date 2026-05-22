@@ -18,6 +18,8 @@ const SESSION_API_BASE = '/api';
 const DEFAULT_NEXT_PATH = '/documents';
 const DIGITAL_CERTIFICATE_PATH = '/profile/signature';
 const IDENTITY_VERIFICATION_PATH = '/verify-identity';
+const PROFILE_SETTINGS_PATH = '/settings/profile';
+const WORKSPACE_SETTINGS_PATH = '/settings';
 
 export type SessionRefreshResult =
     | {
@@ -83,6 +85,24 @@ export function getIdentityVerificationUrl(nextPath?: string): string {
         url.searchParams.set('next', new URL(nextPath, DOCS_URL).toString());
     }
     return url.toString();
+}
+
+/**
+ * Builds the main identity-app profile URL used by documents account menus.
+ *
+ * @returns Absolute URL for the profile page in app/app.
+ */
+export function getMainAppProfileUrl(): string {
+    return new URL(PROFILE_SETTINGS_PATH, APP_URL).toString();
+}
+
+/**
+ * Builds the main identity-app workspace settings URL used by documents account menus.
+ *
+ * @returns Absolute URL for the settings page in app/app.
+ */
+export function getMainAppSettingsUrl(): string {
+    return new URL(WORKSPACE_SETTINGS_PATH, APP_URL).toString();
 }
 
 export async function logoutFromDocuments(): Promise<void> {
