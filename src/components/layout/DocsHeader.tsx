@@ -12,9 +12,19 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Search01Icon, Cancel01Icon, Logout01Icon } from '@hugeicons/core-free-icons';
+import {
+    Search01Icon,
+    Cancel01Icon,
+    Logout01Icon,
+    Profile02Icon,
+    Settings02Icon,
+} from '@hugeicons/core-free-icons';
 import type { SessionUser } from '@/app/(protected)/layout';
-import { logoutFromDocuments } from '@/lib/session';
+import {
+    getMainAppProfileUrl,
+    getMainAppSettingsUrl,
+    logoutFromDocuments,
+} from '@/lib/session';
 import { DOCS_NAV_ITEMS } from '@/constants';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 
@@ -105,6 +115,8 @@ export function DocsHeader({ user }: { user: SessionUser }) {
 
     const status   = searchParams.get('status');
     const fullName = `${user.postNames} ${user.surName}`.trim() || user.email;
+    const profileUrl = getMainAppProfileUrl();
+    const settingsUrl = getMainAppSettingsUrl();
 
     return (
         <header className="docs-header">
@@ -206,6 +218,25 @@ export function DocsHeader({ user }: { user: SessionUser }) {
                                         <p className="docs-header__account-email">{user.email}</p>
                                     </div>
                                 </div>
+                                <a
+                                    className="docs-header__account-item"
+                                    href={profileUrl}
+                                    role="menuitem"
+                                    onClick={() => setAvatarMenuOpen(false)}
+                                >
+                                    <HugeiconsIcon icon={Profile02Icon} size={15} />
+                                    <span>Profile</span>
+                                </a>
+                                <a
+                                    className="docs-header__account-item"
+                                    href={settingsUrl}
+                                    role="menuitem"
+                                    onClick={() => setAvatarMenuOpen(false)}
+                                >
+                                    <HugeiconsIcon icon={Settings02Icon} size={15} />
+                                    <span>Settings</span>
+                                </a>
+                                <div className="docs-header__account-divider" />
                                 <button
                                     type="button"
                                     className="docs-header__account-item docs-header__account-item--danger"
